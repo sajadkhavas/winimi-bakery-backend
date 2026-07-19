@@ -76,7 +76,7 @@ jobs:
         run: php scripts/audit-backend-foundation.php
 
       - name: Pint formatting
-        run: vendor/bin/pint --test
+        run: composer format:check
 
       - name: Run database migrations
         run: php artisan migrate:fresh --force
