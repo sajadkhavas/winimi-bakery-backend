@@ -168,9 +168,10 @@ foreach ([
     $requireText('tests/Feature/BackendContractFreezeTest.php', $test, "Phase 16 regression {$test}");
 }
 
-$requireText('composer.json', '"audit:freeze"', 'Composer Phase 16 audit command');
-$requireText('.github/workflows/backend-ci.yml', 'composer audit:freeze', 'CI backend freeze audit');
-$requireText('.github/workflows/backend-ci.yml', 'composer format:check', 'read-only Pint validation');
+$requireText('.github/workflows/backend-ci.yml', 'php scripts/audit-backend-freeze.php', 'CI backend freeze audit');
+$requireText('.github/workflows/backend-ci.yml', 'composer format:check', 'read-only existing Pint validation');
+$requireText('.github/workflows/backend-ci.yml', 'php vendor/bin/pint --test', 'read-only Phase 16 Pint validation');
+$requireText('.github/workflows/backend-ci.yml', 'php artisan backend:readiness --json', 'executable readiness gate');
 $forbidText('.github/workflows/backend-ci.yml', 'Apply canonical Pint formatting', 'CI source mutation');
 $forbidText('.github/workflows/backend-ci.yml', 'pint-formatted-files', 'temporary Pint artifact workflow');
 
