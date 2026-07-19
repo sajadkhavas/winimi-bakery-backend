@@ -51,6 +51,11 @@ class Customer extends Authenticatable
         return $this->hasMany(OtpChallenge::class);
     }
 
+    public function orders(): HasMany
+    {
+        return $this->hasMany(Order::class)->latest('placed_at');
+    }
+
     public function scopeActive(Builder $query): Builder
     {
         return $query->where('is_active', true);
