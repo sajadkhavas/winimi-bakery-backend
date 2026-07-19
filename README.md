@@ -1,6 +1,6 @@
 # Winimi Bakery Backend
 
-Laravel 11 + Filament 3 backend for the Winimi Bakery storefront.
+Laravel 12 + Filament 3 backend for the Winimi Bakery storefront.
 
 > Phase 10 establishes the backend foundation and migration boundary. The previous ToolMaster catalog remains available temporarily under `/api/v1/*`, but it is not the final bakery commerce contract.
 
@@ -60,10 +60,22 @@ The CI pipeline validates:
 - Composer metadata and dependency security
 - Laravel boot and route cache
 - database migrations on SQLite
-- Pint formatting
+- Pint formatting for Phase 10 foundation files
 - unit and feature tests
 - system API contract
 - absence of active ToolMaster identity in the Winimi foundation
+
+## Security baseline
+
+Phase 10 upgrades the inherited dependency set to patched branches required by the current Composer security advisories:
+
+- Laravel Framework `12.61.1+`
+- Filament `3.3.53+`
+- Guzzle `7.12.1+`
+- PSR-7 `2.12.1+`
+- Laravel 12 compatible Filament Authentication Log plugin
+
+`composer audit` is a required CI step and cannot be skipped for merge.
 
 ## System endpoints
 
