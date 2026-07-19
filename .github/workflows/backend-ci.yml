@@ -92,7 +92,19 @@ jobs:
         run: composer audit:payments
 
       - name: Store operations audit
-        run: composer audit:operations
+        id: operations_audit
+        run: |
+          set -o pipefail
+          composer audit:operations 2>&1 | tee operations-audit.log
+
+      - name: Upload store operations audit diagnostics
+        if: failure() && steps.operations_audit.outcome == 'failure'
+        uses: actions/upload-artifact@v4
+        with:
+          name: store-operations-audit-diagnostics
+          path: operations-audit.log
+          if-no-files-found: error
+          retention-days: 3
 
       - name: Pint formatting
         id: pint
