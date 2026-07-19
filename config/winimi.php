@@ -18,7 +18,7 @@ return [
 
     'api' => [
         'version' => '1',
-        'contract_version' => '2026-07-19-phase-13',
+        'contract_version' => '2026-07-19-phase-13.5',
         'request_id_header' => 'X-Request-ID',
     ],
 
@@ -114,6 +114,46 @@ return [
             'endpoints' => [
                 'POST /api/orders/{orderId}/payments',
                 'POST /api/payments/zarinpal/verify',
+            ],
+        ],
+    ],
+
+    'launch' => [
+        'strategy' => 'complete-internal-work-before-external-activation',
+        'roadmap_version' => '2026-07-19-phase-13.5',
+        'internal_gates' => [
+            'backend_complete' => [
+                'status' => 'in-progress',
+                'target_phase' => 16,
+            ],
+            'frontend_integrated' => [
+                'status' => 'not-started',
+                'target_phase' => 17,
+            ],
+            'end_to_end_verified' => [
+                'status' => 'not-started',
+                'target_phase' => 18,
+            ],
+            'production_deployed' => [
+                'status' => 'not-started',
+                'target_phase' => 19,
+            ],
+        ],
+        'external_only' => [
+            'payment_gateway_credentials' => [
+                'status' => 'pending-external',
+                'target_phase' => 20,
+                'server_keys' => ['ZARINPAL_MERCHANT_ID'],
+            ],
+            'enamad_badge_code' => [
+                'status' => 'pending-external',
+                'target_phase' => 20,
+                'setting' => 'ENAMAD_BADGE_CODE',
+            ],
+            'sms_provider_credentials' => [
+                'status' => 'pending-external',
+                'target_phase' => 20,
+                'server_keys' => ['KAVENEGAR_API_KEY', 'KAVENEGAR_TEMPLATE'],
             ],
         ],
     ],

@@ -28,11 +28,12 @@ class SystemApiTest extends TestCase
             ->assertOk()
             ->assertJsonPath('success', true)
             ->assertJsonPath('data.brand.nameEn', 'Winimi Bakery')
-            ->assertJsonPath('data.contractVersion', '2026-07-19-phase-13')
+            ->assertJsonPath('data.contractVersion', '2026-07-19-phase-13.5')
+            ->assertJsonPath('data.roadmapVersion', '2026-07-19-phase-13.5')
             ->assertJsonPath('data.legacyApiEnabled', true);
     }
 
-    public function test_contract_endpoint_reports_only_completed_contracts_as_implemented(): void
+    public function test_contract_endpoint_reports_completed_contracts_and_locked_launch_strategy(): void
     {
         $response = $this->getJson('/api/system/contracts');
 
@@ -45,7 +46,16 @@ class SystemApiTest extends TestCase
             ->assertJsonPath('data.contracts.authentication.source', 'customer-session-otp')
             ->assertJsonPath('data.contracts.orders.status', 'implemented')
             ->assertJsonPath('data.contracts.orders.source', 'transactional-order-reservations')
-            ->assertJsonPath('data.contracts.payments.status', 'contract-only');
+            ->assertJsonPath('data.contracts.payments.status', 'contract-only')
+            ->assertJsonPath('data.launch.strategy', 'complete-internal-work-before-external-activation')
+            ->assertJsonPath('data.launch.internal_gates.backend_complete.target_phase', 16)
+            ->assertJsonPath('data.launch.internal_gates.frontend_integrated.target_phase', 17)
+            ->assertJsonPath('data.launch.internal_gates.end_to_end_verified.target_phase', 18)
+            ->assertJsonPath('data.launch.internal_gates.production_deployed.target_phase', 19)
+            ->assertJsonPath('data.launch.external_only.payment_gateway_credentials.status', 'pending-external')
+            ->assertJsonPath('data.launch.external_only.enamad_badge_code.status', 'pending-external')
+            ->assertJsonPath('data.launch.external_only.sms_provider_credentials.status', 'pending-external')
+            ->assertJsonCount(3, 'data.launch.external_only');
     }
 
     public function test_unknown_api_routes_render_json(): void

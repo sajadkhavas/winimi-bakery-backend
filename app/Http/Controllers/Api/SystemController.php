@@ -54,6 +54,7 @@ class SystemController extends Controller
             ],
             'apiVersion' => (string) config('winimi.api.version'),
             'contractVersion' => (string) config('winimi.api.contract_version'),
+            'roadmapVersion' => (string) config('winimi.launch.roadmap_version'),
             'framework' => [
                 'name' => 'Laravel',
                 'version' => app()->version(),
@@ -67,10 +68,11 @@ class SystemController extends Controller
         return ApiResponse::success([
             'contractVersion' => (string) config('winimi.api.contract_version'),
             'contracts' => config('winimi.contracts', []),
+            'launch' => config('winimi.launch', []),
             'notes' => [
                 'مسیرهای /api/v1 متعلق به دامنه قدیمی ToolMaster هستند و موقتاً برای مهاجرت حفظ شده‌اند.',
-                'مسیرهای OTP، حساب، سفارش و پرداخت فقط پس از تکمیل فاز مربوطه فعال می‌شوند.',
-                'فعال‌بودن endpoint در این فهرست فقط زمانی معتبر است که status آن implemented باشد.',
+                'بک‌اند پیش از اتصال نهایی فرانت باید به وضعیت backend_complete=ready برسد.',
+                'پس از استقرار، فقط کد درگاه، کد اینماد و اطلاعات پنل پیامکی به‌عنوان ورودی خارجی باقی می‌مانند.',
             ],
         ]);
     }
