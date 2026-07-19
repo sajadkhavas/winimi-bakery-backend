@@ -1,0 +1,57 @@
+name: Phase 10 Dependency Update
+
+on:
+  push:
+    branches:
+      - feature/phase-10-backend-foundation
+
+permissions:
+  contents: write
+
+jobs:
+  update-lock:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v4
+        with:
+          ref: feature/phase-10-backend-foundation
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.3"
+          extensions: bcmath, ctype, curl, dom, fileinfo, gd, intl, mbstring, openssl, pdo_sqlite, sqlite3, tokenizer, xml, zip
+          coverage: none
+          tools: composer:v2
+
+      - name: Resolve secure dependency set
+        id: composer_update
+        run: |
+          set -o pipefail
+          composer update --with-all-dependencies --no-interaction --no-progress --no-scripts 2>&1 | tee composer-update.log
+
+      - name: Upload dependency resolver diagnostics
+        if: failure() && steps.composer_update.outcome == 'failure'
+        uses: actions/upload-artifact@v4
+        with:
+          name: composer-update-diagnostics
+          path: composer-update.log
+          if-no-files-found: error
+          retention-days: 3
+
+      - name: Commit lockfile
+        if: success()
+        run: |
+          if git diff --quiet -- composer.lock; then
+            echo "Composer lockfile is already synchronized."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add composer.lock
+          git commit -m "security: update patched Composer dependencies"
+          git push origin HEAD:feature/phase-10-backend-foundation
