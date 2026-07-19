@@ -1,7 +1,17 @@
 <?php
 
+use App\Models\OtpChallenge;
 use Illuminate\Support\Facades\Schedule;
 
 Schedule::command('sitemap:generate')->dailyAt('03:00');
 Schedule::command('cache:prune-stale-tags')->hourly();
 Schedule::command('queue:prune-batches')->daily();
+
+Schedule::call(function (): void {
+    OtpChallenge::query()
+        ->where(function ($query): void {
+            $query->whereNotNull('consumed_at')
+                ->orWhere('expires_at', '<', now()->subDay());
+        })
+        ->delete();
+})->hourly()->name('prune-otp-challenges')->withoutOverlapping();

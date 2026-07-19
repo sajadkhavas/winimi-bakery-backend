@@ -13,11 +13,25 @@ return [
 
     'api' => [
         'version' => '1',
-        'contract_version' => '2026-07-19-phase-11',
+        'contract_version' => '2026-07-19-phase-12',
         'request_id_header' => 'X-Request-ID',
     ],
 
     'frontend_origins' => $frontendOrigins,
+
+    'otp' => [
+        'provider' => env('SMS_PROVIDER', 'disabled'),
+        'length' => (int) env('OTP_LENGTH', 6),
+        'expires_seconds' => (int) env('OTP_EXPIRES_SECONDS', 120),
+        'retry_after_seconds' => (int) env('OTP_RETRY_AFTER_SECONDS', 60),
+        'max_attempts' => (int) env('OTP_MAX_ATTEMPTS', 5),
+        'expose_test_code' => (bool) env('OTP_EXPOSE_TEST_CODE', false),
+        'kavenegar' => [
+            'api_key' => env('KAVENEGAR_API_KEY'),
+            'template' => env('KAVENEGAR_TEMPLATE'),
+            'base_url' => env('KAVENEGAR_BASE_URL', 'https://api.kavenegar.com/v1'),
+        ],
+    ],
 
     'legacy' => [
         'enabled' => (bool) env('LEGACY_TOOLMASTER_API_ENABLED', true),
@@ -45,8 +59,9 @@ return [
             ],
         ],
         'authentication' => [
-            'status' => 'contract-only',
+            'status' => 'implemented',
             'target_phase' => 12,
+            'source' => 'customer-session-otp',
             'endpoints' => [
                 'POST /api/auth/otp/request',
                 'POST /api/auth/otp/verify',

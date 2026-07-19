@@ -28,7 +28,7 @@ class SystemApiTest extends TestCase
             ->assertOk()
             ->assertJsonPath('success', true)
             ->assertJsonPath('data.brand.nameEn', 'Winimi Bakery')
-            ->assertJsonPath('data.contractVersion', '2026-07-19-phase-11')
+            ->assertJsonPath('data.contractVersion', '2026-07-19-phase-12')
             ->assertJsonPath('data.legacyApiEnabled', true);
     }
 
@@ -41,7 +41,8 @@ class SystemApiTest extends TestCase
             ->assertJsonPath('data.contracts.system.status', 'implemented')
             ->assertJsonPath('data.contracts.catalog.status', 'implemented')
             ->assertJsonPath('data.contracts.catalog.source', 'bakery-catalog')
-            ->assertJsonPath('data.contracts.authentication.status', 'contract-only')
+            ->assertJsonPath('data.contracts.authentication.status', 'implemented')
+            ->assertJsonPath('data.contracts.authentication.source', 'customer-session-otp')
             ->assertJsonPath('data.contracts.orders.status', 'contract-only')
             ->assertJsonPath('data.contracts.payments.status', 'contract-only');
     }

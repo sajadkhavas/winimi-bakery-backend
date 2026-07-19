@@ -23,7 +23,8 @@ class BackendFoundationTest extends TestCase
         $this->assertSame('implemented', $contracts['system']['status']);
         $this->assertSame('implemented', $contracts['catalog']['status']);
         $this->assertSame('bakery-catalog', $contracts['catalog']['source']);
-        $this->assertNotSame('implemented', $contracts['authentication']['status']);
+        $this->assertSame('implemented', $contracts['authentication']['status']);
+        $this->assertSame('customer-session-otp', $contracts['authentication']['source']);
         $this->assertNotSame('implemented', $contracts['orders']['status']);
         $this->assertNotSame('implemented', $contracts['payments']['status']);
     }

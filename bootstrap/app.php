@@ -3,6 +3,7 @@
 use App\Http\Middleware\AttachApiContext;
 use App\Http\Middleware\CheckIpBlacklist;
 use App\Http\Middleware\CheckMaintenanceMode;
+use App\Http\Middleware\EnsureActiveCustomer;
 use App\Http\Middleware\HandleRedirects;
 use App\Http\Middleware\MarkLegacyApi;
 use Illuminate\Foundation\Application;
@@ -29,6 +30,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'api.context' => AttachApiContext::class,
             'api.legacy' => MarkLegacyApi::class,
+            'customer.active' => EnsureActiveCustomer::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {

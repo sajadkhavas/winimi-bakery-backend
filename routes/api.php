@@ -1,6 +1,8 @@
 <?php
 
+use App\Http\Controllers\Api\AccountController;
 use App\Http\Controllers\Api\CatalogController;
+use App\Http\Controllers\Api\OtpAuthController;
 use App\Http\Controllers\Api\PerformanceMetricController;
 use App\Http\Controllers\Api\SystemController;
 use App\Http\Controllers\Api\V1\AuthController;
@@ -31,6 +33,22 @@ Route::prefix('catalog')->middleware('throttle:120,1')->group(function () {
     Route::get('products', [CatalogController::class, 'products']);
     Route::get('products/{slug}', [CatalogController::class, 'product']);
     Route::get('categories', [CatalogController::class, 'categories']);
+});
+
+Route::prefix('auth')->group(function () {
+    Route::post('otp/request', [OtpAuthController::class, 'requestOtp'])
+        ->middleware('throttle:otp-request');
+    Route::post('otp/verify', [OtpAuthController::class, 'verify'])
+        ->middleware('throttle:otp-verify');
+
+    Route::middleware(['auth:customer', 'customer.active', 'throttle:60,1'])->group(function () {
+        Route::get('me', [OtpAuthController::class, 'me']);
+        Route::post('logout', [OtpAuthController::class, 'logout']);
+    });
+});
+
+Route::prefix('account')->middleware(['auth:customer', 'customer.active', 'throttle:60,1'])->group(function () {
+    Route::patch('profile', [AccountController::class, 'updateProfile']);
 });
 
 /*

@@ -12,8 +12,9 @@ The production frontend lives in `sajadkhavas/cooci`. This repository owns the A
 | System health and contract endpoints | Implemented |
 | Bakery catalog, categories and Variants | Implemented in Phase 11 |
 | Bakery catalog Filament management | Implemented in Phase 11 |
+| Customer mobile OTP and secure sessions | Implemented in Phase 12 |
+| Customer profile and Filament management | Implemented in Phase 12 |
 | Legacy ToolMaster API | Preserved with deprecation headers |
-| Mobile OTP and account sessions | Planned for Phase 12 |
 | Checkout, orders and inventory transactions | Planned for Phase 13 |
 | Zarinpal payment lifecycle | Planned for Phase 14 |
 
@@ -61,12 +62,14 @@ GitHub Actions validates:
 - Composer metadata and patched dependencies
 - backend foundation audit
 - bakery catalog architecture audit
+- customer OTP/session security audit
 - scoped Laravel Pint formatting
 - complete fresh migrations on SQLite
 - cached configuration and routes
 - Filament resource/component discovery
-- public catalog API behavior
-- real Filament create-form rendering
+- catalog and authentication API behavior
+- OTP expiry, cooldown, attempt limits and one-time consumption
+- customer profile, session rotation and logout
 - Composer security audit
 
 ## System API
@@ -78,12 +81,7 @@ GET /api/system/meta
 GET /api/system/contracts
 ```
 
-All API responses include:
-
-```text
-X-Request-ID
-X-API-Version
-```
+All API responses include `X-Request-ID` and `X-API-Version`.
 
 ## Bakery catalog API
 
@@ -93,77 +91,69 @@ GET /api/catalog/products
 GET /api/catalog/products/{slug}
 ```
 
-Supported product-list filters:
+The public bakery catalog uses `bakery_categories`, `bakery_products` and `bakery_product_variants`. Price and inventory belong to active Variants and are calculated by the server. Detailed documentation is in `docs/CATALOG_API.md`.
+
+## Customer authentication API
 
 ```text
-category
-search
-featured
-requiresCooling
-inStock
-sort=featured|newest|name|price-asc|price-desc
-page
-perPage
+POST  /api/auth/otp/request
+POST  /api/auth/otp/verify
+GET   /api/auth/me
+POST  /api/auth/logout
+PATCH /api/account/profile
 ```
 
-The public bakery catalog is backed by independent commerce tables:
+Customer authentication is isolated from administrator authentication:
 
-```text
-bakery_categories
-bakery_products
-bakery_product_variants
+- Filament administrators remain in `users` with the `web` guard
+- storefront customers live in `customers`
+- storefront sessions use the `customer` guard
+- OTP codes are stored only as secure hashes
+- challenge mobile payloads are encrypted
+- session IDs rotate after verification
+- logout invalidates the session and CSRF token
+- failed attempts, expiry, resend cooldown and one-time use are enforced
+- rate limits are independently keyed by IP, mobile and challenge
+- no trusted Bearer token is stored in LocalStorage
+
+Detailed documentation is in `docs/CUSTOMER_AUTH.md` and `docs/API_CONTRACT.md`.
+
+### Local OTP testing
+
+External SMS is disabled by default. For local or automated testing only:
+
+```env
+APP_ENV=local
+SMS_PROVIDER=testing
+OTP_EXPOSE_TEST_CODE=true
 ```
 
-The inherited industrial `products`, `categories`, `brands`, `subcategories` and RFQ tables are not used as bakery-commerce truth.
+Production must never expose the code:
 
-Catalog rules:
+```env
+APP_ENV=production
+APP_DEBUG=false
+SMS_PROVIDER=kavenegar
+OTP_EXPOSE_TEST_CODE=false
+SESSION_ENCRYPT=true
+SESSION_SECURE_COOKIE=true
+```
 
-- public IDs are ULIDs rather than database sequence IDs
-- price and stock belong to Variants
-- current product price is calculated from active Variants
-- inventory is calculated by the server
-- inactive products and categories are not public
-- products require at least one active Variant to be public
-- ingredients, allergens and storage data are returned only after content verification
-- media carries its verification state
-- sale price must be lower than regular price
+Server-only keys such as `KAVENEGAR_API_KEY` and `ZARINPAL_MERCHANT_ID` must never use `VITE_*` variables.
 
-Detailed catalog documentation:
+## Filament management
 
-- `docs/CATALOG_API.md`
-- `docs/API_CONTRACT.md`
-- `docs/BACKEND_AUDIT.md`
+The navigation group `فروشگاه وینیمی` contains:
 
-## Filament catalog management
+- دسته‌های بیکری
+- محصولات بیکری
+- مشتریان
 
-The admin navigation group `فروشگاه وینیمی` contains:
-
-- `دسته‌های بیکری`
-- `محصولات بیکری`
-
-Product management includes:
-
-- category, product code and slug
-- short and complete descriptions
-- cooling requirement and preparation time
-- active and featured states
-- ingredients and allergens
-- content and media verification
-- main image and gallery
-- SEO fields
-- Variant name and SKU
-- weight
-- regular and sale price
-- stock quantity and low-stock threshold
-- active and default Variant state
-
-The Filament panel uses the Winimi Bakery identity and no longer depends on the inherited frontend Vite manifest.
+Customer accounts cannot be manually created or bulk deleted from Filament. Mobile numbers are read-only because changing a mobile requires a dedicated verification flow. Administrators may inspect profile data and enable or disable an account.
 
 ## Frontend integration boundary
 
-The target frontend is `sajadkhavas/cooci`.
-
-Production frontend variables will eventually use:
+The target frontend is `sajadkhavas/cooci`. Until the dedicated integration phase, frontend authentication remains disabled in production configuration even though the backend contract is implemented.
 
 ```env
 VITE_USE_BACKEND=true
@@ -171,42 +161,6 @@ VITE_API_BASE_URL=https://api.winimibakery.com
 VITE_AUTH_MODE=disabled
 VITE_PAYMENT_MODE=disabled
 ```
-
-Catalog data can be integrated after the dedicated frontend/backend integration phase. Authentication and payment must remain disabled until their server contracts are implemented.
-
-Backend secrets such as SMS provider keys and Zarinpal Merchant ID must never use `VITE_*` variables.
-
-## Authentication architecture
-
-The final customer flow will use:
-
-- Iranian mobile OTP
-- short-lived hashed OTP challenges
-- Laravel server-managed sessions
-- HttpOnly cookies
-- session rotation after verification
-- explicit credentialed CORS origins
-- no trusted Bearer token in LocalStorage
-
-The inherited email/password Bearer-token endpoints under `/api/v1/auth/*` are legacy and must not be used by the new frontend.
-
-## Legacy API policy
-
-Existing `/api/v1/*` routes are preserved temporarily for incremental migration. Responses contain:
-
-```text
-Deprecation: true
-X-Winimi-Legacy-Domain: toolmaster
-Link: </api/system/contracts>; rel="deprecation"
-```
-
-Disable the legacy layer in production when migration no longer requires it:
-
-```env
-LEGACY_TOOLMASTER_API_ENABLED=false
-```
-
-No new Winimi commerce feature may be implemented under `/api/v1`.
 
 ## CORS and session configuration
 
@@ -217,6 +171,7 @@ FRONTEND_URLS=http://localhost:5173,http://localhost:4173
 SANCTUM_STATEFUL_DOMAINS=localhost:5173,localhost:4173,localhost:8000
 SESSION_DOMAIN=null
 SESSION_SECURE_COOKIE=false
+SESSION_ENCRYPT=true
 ```
 
 Production example:
@@ -231,20 +186,13 @@ SESSION_DOMAIN=.winimibakery.com
 SESSION_SECURE_COOKIE=true
 SESSION_HTTP_ONLY=true
 SESSION_SAME_SITE=lax
+SESSION_ENCRYPT=true
 LEGACY_TOOLMASTER_API_ENABLED=false
 ```
 
-## Security baseline
+## Legacy API policy
 
-Required patched branches include:
-
-- Laravel Framework `12.61.1+`
-- Filament `3.3.53+`
-- Guzzle `7.12.1+`
-- PSR-7 `2.12.1+`
-- Laravel 12 compatible Filament Authentication Log plugin
-
-`composer audit` is mandatory in CI.
+Existing `/api/v1/*` routes remain temporarily for incremental migration and return deprecation headers. No new Winimi commerce feature may be implemented under `/api/v1`.
 
 ## Deployment principle
 
@@ -263,7 +211,7 @@ Production also requires HTTPS, a queue worker, scheduler, database backups, app
 
 - Phase 10: foundation and migration boundary — complete
 - Phase 11: bakery catalog, Variants, stock and Filament resources — complete
-- Phase 12: OTP authentication and customer account
+- Phase 12: OTP authentication, customer sessions and profile — complete
 - Phase 13: checkout, orders and inventory transactions
 - Phase 14: Zarinpal payment lifecycle
 - Phase 15+: reviews, notifications, reporting and full frontend integration

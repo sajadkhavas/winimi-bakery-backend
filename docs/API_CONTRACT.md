@@ -1,40 +1,22 @@
 # Winimi Frontend / Backend API Contract
 
-Contract version: `2026-07-19`
-Frontend base URL example: `https://api.winimibakery.com`
+Contract version: `2026-07-19-phase-12`
+
+Frontend API origin example: `https://api.winimibakery.com`
 
 ## General rules
 
-- All requests and responses use JSON except payment-provider redirects and media files.
+- All application requests and responses use JSON except media files and payment redirects.
 - Frontend requests use `credentials: include`.
-- Authentication uses an HttpOnly Laravel session cookie, not LocalStorage Bearer tokens.
-- State-changing cookie-authenticated requests must follow the selected CSRF architecture.
-- Monetary values are integer toman values in the application contract.
-- The server recalculates price, stock, packaging and delivery. Client totals are never trusted.
-- Public identifiers for OTP challenges, orders and payment attempts must be non-sequential.
-- Error responses must not expose stack traces, provider payloads, secrets or existence of a registered mobile.
-- `X-Request-ID` is accepted and returned. The backend creates one when absent.
-- `Idempotency-Key` is required for checkout and payment-attempt creation.
+- Customer authentication uses a Laravel HttpOnly session cookie, not a LocalStorage Bearer token.
+- State-changing first-party requests follow Laravel Sanctum CSRF protection.
+- `X-Request-ID` is accepted and returned.
+- Public identifiers are ULIDs or other non-sequential identifiers.
+- Integer application prices are expressed in toman.
+- Client totals, inventory and ownership claims are never authoritative.
+- Error responses never expose stack traces, provider secrets or raw provider payloads.
 
-## Foundation endpoints implemented in Phase 10
-
-### `GET /api/system/health`
-
-Liveness check. Does not require the database.
-
-### `GET /api/system/ready`
-
-Readiness check. Returns HTTP 503 when the database connection is unavailable.
-
-### `GET /api/system/meta`
-
-Returns service, framework and contract metadata.
-
-### `GET /api/system/contracts`
-
-Returns the implementation status of each contract group. A route is usable only when its status is `implemented`.
-
-## Standard foundation response envelope
+## Standard response envelope
 
 ```json
 {
@@ -47,47 +29,41 @@ Returns the implementation status of each contract group. A route is usable only
 }
 ```
 
-Error example:
+Validation error example:
 
 ```json
 {
-  "success": false,
-  "message": "درخواست معتبر نیست.",
+  "message": "The given data was invalid.",
   "errors": {
     "mobile": ["شماره موبایل معتبر نیست."]
-  },
-  "meta": {
-    "requestId": "uuid",
-    "apiVersion": "1"
   }
 }
 ```
 
-Existing legacy resources may keep their old resource envelope during migration. New Winimi endpoints must follow their exact frontend payload contract first and may add non-breaking metadata.
+## System contract — implemented
 
-## Catalog target — Phase 11
+```text
+GET /api/system/health
+GET /api/system/ready
+GET /api/system/meta
+GET /api/system/contracts
+```
 
-- `GET /api/catalog/products`
-- `GET /api/catalog/products/{slug}`
-- `GET /api/catalog/categories`
+`GET /api/system/contracts` is the machine-readable source of truth for implementation status.
 
-Required product concepts:
+## Catalog contract — implemented in Phase 11
 
-- stable ID and slug
-- product code
-- category
-- variants with independent price and stock
-- integer toman price
-- optional regular and sale price
-- cooling requirement
-- media with verified status
-- ingredients, allergens, shelf life and storage information with verified status
-- active and featured flags
-- server-calculated availability
+```text
+GET /api/catalog/categories
+GET /api/catalog/products
+GET /api/catalog/products/{slug}
+```
 
-The old `/api/v1/products*` endpoints are a legacy industrial adapter and are not compatible with the final frontend Product type.
+Products use server-calculated Variant price, stock and availability. The inherited `/api/v1/products*` endpoints are legacy industrial endpoints and are not the Winimi storefront contract.
 
-## Authentication target — Phase 12
+## Customer authentication contract — implemented in Phase 12
+
+Customer accounts are independent from Filament administrator users.
 
 ### `POST /api/auth/otp/request`
 
@@ -99,62 +75,115 @@ Request:
 }
 ```
 
-Response:
+Accepted input may contain Persian or Arabic digits and `+98`, `0098`, `98` or leading-zero formats.
+
+Success response, HTTP 202:
 
 ```json
 {
-  "challengeId": "OTP-public-random-id",
-  "expiresIn": 120,
-  "retryAfter": 60
+  "success": true,
+  "data": {
+    "challengeId": "01K...ULID",
+    "expiresIn": 120,
+    "retryAfter": 60
+  },
+  "message": "اگر شماره قابل ارسال باشد، کد ورود ارسال شد."
 }
 ```
 
+The response never reveals whether the mobile already belongs to a customer.
+
+Possible errors:
+
+- HTTP 422: invalid mobile format
+- HTTP 429: route rate limit or resend cooldown; includes `Retry-After`
+- HTTP 503: SMS provider disabled or unavailable
+
 ### `POST /api/auth/otp/verify`
+
+Request:
 
 ```json
 {
   "mobile": "09123456789",
-  "challengeId": "OTP-public-random-id",
+  "challengeId": "01K...ULID",
   "code": "123456"
 }
 ```
 
-Response:
+Success response:
 
 ```json
 {
-  "user": {
-    "id": "public-user-id",
-    "mobile": "09123456789",
-    "fullName": "نام مشتری",
-    "createdAt": "2026-07-19T07:00:00.000Z"
+  "success": true,
+  "data": {
+    "user": {
+      "id": "01K...ULID",
+      "mobile": "09123456789",
+      "fullName": null,
+      "email": null,
+      "mobileVerified": true,
+      "marketingConsent": false,
+      "createdAt": "2026-07-19T16:00:00.000000Z",
+      "updatedAt": "2026-07-19T16:00:00.000000Z"
+    }
   }
 }
 ```
 
-OTP requirements:
+Successful verification consumes the challenge, creates or updates the customer, logs in through the `customer` guard and rotates the session ID.
 
-- normalize Persian, Arabic and English digits
-- store only a cryptographic hash
-- short expiry and limited attempts
-- rate-limit by mobile, IP and session/device context
-- invalidate after success
-- rotate session ID after login
-- never return or log the production code
+### `GET /api/auth/me`
 
-Additional account endpoints:
+Requires an authenticated customer session. Returns the same `user` shape.
 
-- `GET /api/auth/me`
-- `POST /api/auth/logout`
-- `PATCH /api/account/profile`
-- `GET /api/account/orders`
-- `GET /api/account/orders/{orderId}`
+### `POST /api/auth/logout`
 
-Every order query must be scoped server-side to the authenticated account. Unauthorized owned-resource lookups return 404.
+Requires an authenticated customer session. Logs out the `customer` guard, invalidates the session and rotates the CSRF token.
 
-## Checkout and order target — Phase 13
+### `PATCH /api/account/profile`
 
-### `POST /api/checkout`
+Requires an authenticated customer session.
+
+```json
+{
+  "fullName": "نام مشتری",
+  "email": "customer@example.com",
+  "marketingConsent": true
+}
+```
+
+All fields are optional. The mobile cannot be changed through this endpoint.
+
+### Authentication security requirements
+
+- only a cryptographic hash of the OTP is stored
+- challenge mobile payload is encrypted at rest
+- mobile, IP and User-Agent lookup values use keyed hashes
+- challenges expire quickly and are one-time
+- failed attempts persist and enforce a maximum
+- requesting a new challenge consumes previous active challenges
+- request limits are keyed by IP and mobile
+- verification limits are keyed by IP and challenge ID
+- test codes may be exposed only in local/testing with an explicit flag
+- production codes are never returned or logged
+- disabled or failed SMS delivery removes the unused challenge
+- inactive or deleted customer accounts cannot log in
+- expired and consumed challenges are pruned automatically
+
+Provider and deployment details are documented in `docs/CUSTOMER_AUTH.md`.
+
+## Orders contract — Phase 13, not implemented
+
+The following routes must remain unavailable until the order domain is complete:
+
+```text
+POST /api/checkout
+GET /api/account/orders
+GET /api/account/orders/{orderId}
+```
+
+### Future `POST /api/checkout`
 
 Required header:
 
@@ -162,7 +191,7 @@ Required header:
 Idempotency-Key: CHK-random-token
 ```
 
-Request:
+Target request:
 
 ```json
 {
@@ -186,76 +215,20 @@ Request:
 }
 ```
 
-Response expected by the frontend:
+The server will lock and validate stock, calculate all prices and fees, enforce chilled delivery and create one order per idempotency key.
 
-```json
-{
-  "order": {},
-  "payment": {
-    "attemptId": "payment-attempt-public-id",
-    "redirectUrl": "https://payment-provider.example/redirect",
-    "authority": "optional-provider-authority"
-  }
-}
+## Payments contract — Phase 14, not implemented
+
+```text
+POST /api/orders/{orderId}/payments
+POST /api/payments/zarinpal/verify
 ```
 
-Server responsibilities:
-
-- validate active products and variants
-- lock and check stock transactionally
-- calculate every price and fee in the server
-- validate chilled delivery rules
-- create one order per idempotency key
-- store an immutable order-item price snapshot
-- never accept subtotal or total from the client as authoritative
-
-## Payment target — Phase 14
-
-- `POST /api/orders/{orderId}/payments`
-- `POST /api/payments/zarinpal/verify`
-
-Payment creation request:
-
-```json
-{
-  "provider": "zarinpal"
-}
-```
-
-Verification request expected by the frontend:
-
-```json
-{
-  "orderId": "order-public-id",
-  "authority": "provider-authority",
-  "status": "OK"
-}
-```
-
-Verification response:
-
-```json
-{
-  "state": "success",
-  "order": {},
-  "refId": "provider-reference-id"
-}
-```
-
-Allowed states are `success`, `failed`, `cancelled` and `unknown`.
-
-Payment rules:
-
-- Merchant ID remains server-only.
-- Create a PaymentAttempt before redirecting.
-- Verify amount, authority, order and attempt atomically.
-- Verification must be idempotent.
-- Never mark an order paid from callback query parameters alone.
-- Preserve provider reference IDs and sanitized failure reasons.
+Merchant credentials remain server-only. A payment attempt must exist before redirect and verification must be idempotent and atomic.
 
 ## Legacy API policy
 
-All current `/api/v1/*` routes are preserved temporarily and return:
+All `/api/v1/*` routes are temporary ToolMaster compatibility endpoints and return:
 
 ```text
 Deprecation: true
@@ -263,4 +236,4 @@ X-Winimi-Legacy-Domain: toolmaster
 Link: </api/system/contracts>; rel="deprecation"
 ```
 
-No new Winimi commerce feature may be implemented under the legacy route group.
+No new Winimi commerce feature may be implemented under `/api/v1`.
