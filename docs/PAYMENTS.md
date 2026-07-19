@@ -46,7 +46,7 @@ Example request:
 }
 ```
 
-The callback status is not proof of payment. The backend calls the provider verification API with the recorded authority and exact server-side amount.
+The callback status is not proof of payment. The backend calls the provider verification API with the recorded authority and exact server-side amount. Only provider verification may mark an order paid.
 
 On verified payment, one database transaction:
 
