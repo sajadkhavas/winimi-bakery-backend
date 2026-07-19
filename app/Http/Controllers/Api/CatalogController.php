@@ -27,6 +27,16 @@ class CatalogController extends Controller
             'perPage' => ['nullable', 'integer', 'min:1', 'max:48'],
         ]);
 
+        $featured = $request->has('featured')
+            ? $request->boolean('featured')
+            : false;
+        $requiresCooling = $request->has('requiresCooling')
+            ? $request->boolean('requiresCooling')
+            : null;
+        $inStock = $request->has('inStock')
+            ? $request->boolean('inStock')
+            : false;
+
         $query = BakeryProduct::query()
             ->active()
             ->with(['category', 'activeVariants', 'media']);
@@ -47,15 +57,15 @@ class CatalogController extends Controller
             });
         }
 
-        if (($filters['featured'] ?? false) === true) {
+        if ($featured) {
             $query->featured();
         }
 
-        if (array_key_exists('requiresCooling', $filters)) {
-            $query->where('requires_cooling', (bool) $filters['requiresCooling']);
+        if ($requiresCooling !== null) {
+            $query->where('requires_cooling', $requiresCooling);
         }
 
-        if (($filters['inStock'] ?? false) === true) {
+        if ($inStock) {
             $query->whereHas(
                 'activeVariants',
                 fn (Builder $variant): Builder => $variant->where('stock_quantity', '>', 0),
@@ -79,9 +89,9 @@ class CatalogController extends Controller
             'filters' => [
                 'category' => $filters['category'] ?? null,
                 'search' => $filters['search'] ?? null,
-                'featured' => (bool) ($filters['featured'] ?? false),
-                'requiresCooling' => $filters['requiresCooling'] ?? null,
-                'inStock' => (bool) ($filters['inStock'] ?? false),
+                'featured' => $featured,
+                'requiresCooling' => $requiresCooling,
+                'inStock' => $inStock,
                 'sort' => $filters['sort'] ?? 'featured',
             ],
         ]);
