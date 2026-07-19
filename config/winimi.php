@@ -13,7 +13,7 @@ return [
 
     'api' => [
         'version' => '1',
-        'contract_version' => '2026-07-19',
+        'contract_version' => '2026-07-19-phase-11',
         'request_id_header' => 'X-Request-ID',
     ],
 
@@ -35,8 +35,9 @@ return [
             ],
         ],
         'catalog' => [
-            'status' => 'legacy-adapter',
+            'status' => 'implemented',
             'target_phase' => 11,
+            'source' => 'bakery-catalog',
             'endpoints' => [
                 'GET /api/catalog/products',
                 'GET /api/catalog/products/{slug}',
