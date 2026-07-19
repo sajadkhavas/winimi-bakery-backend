@@ -12,7 +12,12 @@ final class PaymentProviderManager
 {
     public function current(): PaymentProvider
     {
-        $provider = strtolower(trim((string) config('winimi.payment.provider', 'disabled')));
+        return $this->for((string) config('winimi.payment.provider', 'disabled'));
+    }
+
+    public function for(string $provider): PaymentProvider
+    {
+        $provider = strtolower(trim($provider));
 
         return match ($provider) {
             'disabled' => app(DisabledPaymentProvider::class),
