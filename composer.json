@@ -1,7 +1,7 @@
 {
-    "name": "toolmaster/backend",
+    "name": "winimi/bakery-backend",
     "type": "project",
-    "description": "ToolMaster Laravel + Filament backend (Headless API)",
+    "description": "Winimi Bakery Laravel 11 headless commerce backend with Filament administration",
     "license": "MIT",
     "require": {
         "php": "^8.2",
@@ -71,10 +71,20 @@
             "@php artisan key:generate --ansi",
             "@php -r \"file_exists('database/database.sqlite') || touch('database/database.sqlite');\"",
             "@php artisan migrate --graceful --ansi"
+        ],
+        "test": [
+            "@php artisan test"
+        ],
+        "check": [
+            "@php vendor/bin/pint --test",
+            "@php artisan route:list --except-vendor",
+            "@php artisan test"
         ]
     },
     "extra": {
-        "laravel": { "dont-discover": [] }
+        "laravel": {
+            "dont-discover": []
+        }
     },
     "config": {
         "optimize-autoloader": true,
