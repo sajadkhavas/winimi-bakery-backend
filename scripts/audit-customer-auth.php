@@ -26,6 +26,7 @@ $sources = [];
 foreach ($files as $name => $path) {
     if (! is_file($path)) {
         $errors[] = "Missing required customer-auth file: {$path}";
+
         continue;
     }
 
@@ -64,8 +65,8 @@ $require('controller', "Auth::guard('customer')->login", 'customer guard login')
 $require('controller', '$request->session()->regenerate()', 'session rotation after login');
 $require('controller', '$request->session()->invalidate()', 'session invalidation on logout');
 $require('routes', "middleware(['auth:customer'", 'protected customer endpoints');
-$require('routes', "throttle:otp-request", 'OTP request limiter');
-$require('routes', "throttle:otp-verify", 'OTP verification limiter');
+$require('routes', 'throttle:otp-request', 'OTP request limiter');
+$require('routes', 'throttle:otp-verify', 'OTP verification limiter');
 $require('provider', "RateLimiter::for('otp-request'", 'mobile/IP request rate limiter');
 $require('provider', "RateLimiter::for('otp-verify'", 'challenge/IP verify rate limiter');
 $require('schedule', 'prune-otp-challenges', 'OTP challenge pruning schedule');
