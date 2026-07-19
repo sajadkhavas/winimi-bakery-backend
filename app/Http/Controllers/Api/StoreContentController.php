@@ -10,6 +10,7 @@ use App\Models\BakeryGalleryItem;
 use App\Models\BakeryPost;
 use App\Models\StoreSetting;
 use App\Support\ApiResponse;
+use App\Support\Pagination;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -70,7 +71,10 @@ class StoreContentController extends Controller
 
     public function faqs(Request $request): JsonResponse
     {
-        $category = trim((string) $request->query('category'));
+        $filters = $request->validate([
+            'category' => ['nullable', 'string', 'max:100'],
+        ]);
+        $category = trim((string) ($filters['category'] ?? ''));
         $faqs = BakeryFaq::query()
             ->active()
             ->when($category !== '', fn (Builder $query): Builder => $query->where('category', $category))
@@ -107,9 +111,14 @@ class StoreContentController extends Controller
 
     public function posts(Request $request): JsonResponse
     {
-        $perPage = min(30, max(1, (int) $request->integer('perPage', 12)));
-        $category = trim((string) $request->query('category'));
-        $search = trim((string) $request->query('search'));
+        $filters = $request->validate([
+            'category' => ['nullable', 'string', 'max:120'],
+            'search' => ['nullable', 'string', 'max:100'],
+            'page' => ['nullable', 'integer', 'min:1'],
+            'perPage' => ['nullable', 'integer', 'min:1', 'max:'.config('winimi.policies.pagination.catalog_max', 48)],
+        ]);
+        $category = trim((string) ($filters['category'] ?? ''));
+        $search = trim((string) ($filters['search'] ?? ''));
         $posts = BakeryPost::query()
             ->published()
             ->when($category !== '', fn (Builder $query): Builder => $query->where('category', $category))
@@ -120,16 +129,18 @@ class StoreContentController extends Controller
                 });
             })
             ->latest('published_at')
-            ->paginate($perPage);
+            ->paginate((int) ($filters['perPage'] ?? config(
+                'winimi.policies.pagination.catalog_default',
+                12,
+            )));
 
         return ApiResponse::success(
             $posts->getCollection()->map(fn (BakeryPost $post): array => $this->postSummary($post))->all(),
             meta: [
-                'pagination' => [
-                    'page' => $posts->currentPage(),
-                    'perPage' => $posts->perPage(),
-                    'total' => $posts->total(),
-                    'totalPages' => $posts->lastPage(),
+                'pagination' => Pagination::meta($posts),
+                'filters' => [
+                    'category' => $category !== '' ? $category : null,
+                    'search' => $search !== '' ? $search : null,
                 ],
             ],
         );

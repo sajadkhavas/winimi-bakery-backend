@@ -13,6 +13,7 @@ use App\Models\Customer;
 use App\Models\InventoryReservation;
 use App\Models\NotificationOutbox;
 use App\Models\Order;
+use App\Models\User;
 use App\Services\Orders\OrderLifecycleService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Validation\ValidationException;
@@ -28,6 +29,8 @@ class OrderFulfillmentTest extends TestCase
 
     private BakeryProductVariant $variant;
 
+    private int $adminId;
+
     protected function setUp(): void
     {
         parent::setUp();
@@ -37,6 +40,12 @@ class OrderFulfillmentTest extends TestCase
             'winimi.notifications.max_attempts' => 5,
             'winimi.notifications.retry_seconds' => 60,
         ]);
+
+        $this->adminId = User::query()->create([
+            'name' => 'مدیر عملیات تست',
+            'email' => 'fulfillment-admin@example.test',
+            'password' => 'test-password',
+        ])->getKey();
 
         $this->customer = Customer::query()->create([
             'mobile' => '09120000000',
@@ -79,29 +88,29 @@ class OrderFulfillmentTest extends TestCase
         $lifecycle = app(OrderLifecycleService::class);
 
         $this->assertValidationFailure(
-            fn () => $lifecycle->transitionByAdmin($order, OrderStatus::Preparing, 1),
+            fn () => $lifecycle->transitionByAdmin($order, OrderStatus::Preparing, $this->adminId),
         );
 
-        $order = $lifecycle->transitionByAdmin($order, OrderStatus::Confirmed, 1, 'تأیید سفارش');
-        $order = $lifecycle->transitionByAdmin($order, OrderStatus::Preparing, 1);
-        $order = $lifecycle->transitionByAdmin($order, OrderStatus::Ready, 1);
+        $order = $lifecycle->transitionByAdmin($order, OrderStatus::Confirmed, $this->adminId, 'تأیید سفارش');
+        $order = $lifecycle->transitionByAdmin($order, OrderStatus::Preparing, $this->adminId);
+        $order = $lifecycle->transitionByAdmin($order, OrderStatus::Ready, $this->adminId);
 
         $this->assertValidationFailure(
-            fn () => $lifecycle->transitionByAdmin($order, OrderStatus::Delivered, 1),
+            fn () => $lifecycle->transitionByAdmin($order, OrderStatus::Delivered, $this->adminId),
         );
         $this->assertValidationFailure(
-            fn () => $lifecycle->transitionByAdmin($order, OrderStatus::Dispatched, 1),
+            fn () => $lifecycle->transitionByAdmin($order, OrderStatus::Dispatched, $this->adminId),
         );
 
         $order = $lifecycle->transitionByAdmin(
             $order,
             OrderStatus::Dispatched,
-            1,
+            $this->adminId,
             'تحویل به پیک',
             'TRACK-123',
         );
-        $order = $lifecycle->transitionByAdmin($order, OrderStatus::Delivered, 1);
-        $lifecycle->addInternalNote($order, 1, 'این یادداشت فقط برای مدیر است.');
+        $order = $lifecycle->transitionByAdmin($order, OrderStatus::Delivered, $this->adminId);
+        $lifecycle->addInternalNote($order, $this->adminId, 'این یادداشت فقط برای مدیر است.');
 
         $this->assertSame(OrderStatus::Delivered, $order->status);
         $this->assertSame('TRACK-123', $order->tracking_code);
@@ -112,6 +121,7 @@ class OrderFulfillmentTest extends TestCase
         $this->assertNotNull($order->delivered_at);
         $this->assertDatabaseHas('order_internal_notes', [
             'order_id' => $order->getKey(),
+            'user_id' => $this->adminId,
             'note' => 'این یادداشت فقط برای مدیر است.',
         ]);
 
@@ -131,7 +141,7 @@ class OrderFulfillmentTest extends TestCase
         $cancelled = $lifecycle->transitionByAdmin(
             $order,
             OrderStatus::Cancelled,
-            1,
+            $this->adminId,
             'لغو مدیریتی و نیازمند پیگیری بازپرداخت',
         );
 
@@ -145,7 +155,7 @@ class OrderFulfillmentTest extends TestCase
         ]);
 
         $this->assertValidationFailure(
-            fn () => $lifecycle->transitionByAdmin($cancelled, OrderStatus::Cancelled, 1),
+            fn () => $lifecycle->transitionByAdmin($cancelled, OrderStatus::Cancelled, $this->adminId),
         );
 
         $this->assertSame(5, $this->variant->fresh()->stock_quantity);
@@ -156,20 +166,20 @@ class OrderFulfillmentTest extends TestCase
     {
         $order = $this->createPaidOrder(DeliveryMethod::Pickup, 'WNM-FUL-0003');
         $lifecycle = app(OrderLifecycleService::class);
-        $order = $lifecycle->transitionByAdmin($order, OrderStatus::Confirmed, 1);
-        $order = $lifecycle->transitionByAdmin($order, OrderStatus::Preparing, 1);
-        $order = $lifecycle->transitionByAdmin($order, OrderStatus::Ready, 1);
+        $order = $lifecycle->transitionByAdmin($order, OrderStatus::Confirmed, $this->adminId);
+        $order = $lifecycle->transitionByAdmin($order, OrderStatus::Preparing, $this->adminId);
+        $order = $lifecycle->transitionByAdmin($order, OrderStatus::Ready, $this->adminId);
 
         $this->assertValidationFailure(
             fn () => $lifecycle->transitionByAdmin(
                 $order,
                 OrderStatus::Dispatched,
-                1,
+                $this->adminId,
                 trackingCode: 'INVALID-PICKUP',
             ),
         );
 
-        $delivered = $lifecycle->transitionByAdmin($order, OrderStatus::Delivered, 1);
+        $delivered = $lifecycle->transitionByAdmin($order, OrderStatus::Delivered, $this->adminId);
 
         $this->assertSame(OrderStatus::Delivered, $delivered->status);
         $this->assertNull($delivered->dispatched_at);

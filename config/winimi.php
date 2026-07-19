@@ -10,6 +10,8 @@ $boolean = static fn (string $key, bool $default = false): bool => filter_var(
     FILTER_VALIDATE_BOOL,
 );
 
+$environment = (string) env('APP_ENV', 'production');
+$legacyDefault = $environment !== 'production';
 $zarinpalSandbox = $boolean('ZARINPAL_SANDBOX', true);
 
 return [
@@ -20,8 +22,9 @@ return [
 
     'api' => [
         'version' => '1',
-        'contract_version' => '2026-07-20-phase-15',
+        'contract_version' => '2026-07-20-phase-16',
         'request_id_header' => 'X-Request-ID',
+        'openapi_path' => base_path('docs/openapi.json'),
     ],
 
     'frontend_origins' => $frontendOrigins,
@@ -109,8 +112,45 @@ return [
         ],
     ],
 
+    'policies' => [
+        'pagination' => [
+            'shape' => ['page', 'perPage', 'total', 'totalPages', 'from', 'to', 'hasMore'],
+            'catalog_default' => 12,
+            'catalog_max' => 48,
+            'account_default' => 10,
+            'account_max' => 30,
+        ],
+        'queue' => [
+            'connection' => env('QUEUE_CONNECTION', 'database'),
+            'notification_dispatch_command' => 'notifications:dispatch --limit=100',
+            'inventory_release_command' => 'inventory:release-expired',
+            'scheduler_frequency' => 'every-minute-without-overlap',
+        ],
+        'cache' => [
+            'store' => env('CACHE_STORE', 'database'),
+            'prefix' => env('CACHE_PREFIX', 'winimi'),
+            'configuration_must_be_cached_in_production' => true,
+        ],
+        'storage' => [
+            'application_disk' => env('FILESYSTEM_DISK', 'local'),
+            'media_disk' => env('MEDIA_DISK', 'public'),
+            'persistent_media_required_in_production' => true,
+            'private_provider_payloads' => true,
+        ],
+        'backup' => [
+            'disk' => env('BACKUP_DISK', 'local'),
+            'retention_days' => (int) env('BACKUP_RETENTION_DAYS', 14),
+            'daily' => true,
+            'restore_verification_required' => true,
+        ],
+        'legacy' => [
+            'production_default' => false,
+            'storefront_dependency_allowed' => false,
+        ],
+    ],
+
     'legacy' => [
-        'enabled' => $boolean('LEGACY_TOOLMASTER_API_ENABLED', true),
+        'enabled' => $boolean('LEGACY_TOOLMASTER_API_ENABLED', $legacyDefault),
         'contract_url' => '/api/system/contracts',
     ],
 
@@ -122,6 +162,7 @@ return [
                 'GET /api/system/ready',
                 'GET /api/system/meta',
                 'GET /api/system/contracts',
+                'GET /api/system/openapi',
             ],
         ],
         'catalog' => [
@@ -191,15 +232,23 @@ return [
                 'POST /api/account/orders/{orderId}/reviews',
             ],
         ],
+        'backend_freeze' => [
+            'status' => 'ready',
+            'target_phase' => 16,
+            'source' => 'openapi-error-envelope-pagination-policies-indexes-staging-backup',
+            'schema' => '/api/system/openapi',
+            'legacy_production_default' => 'disabled',
+        ],
     ],
 
     'launch' => [
         'strategy' => 'complete-internal-work-before-external-activation',
-        'roadmap_version' => '2026-07-20-phase-15',
+        'roadmap_version' => '2026-07-20-phase-16',
         'internal_gates' => [
             'backend_complete' => [
-                'status' => 'in-progress',
+                'status' => 'ready',
                 'target_phase' => 16,
+                'contract_version' => '2026-07-20-phase-16',
             ],
             'frontend_integrated' => [
                 'status' => 'not-started',

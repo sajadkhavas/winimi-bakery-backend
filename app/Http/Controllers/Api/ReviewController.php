@@ -11,6 +11,7 @@ use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\ProductReview;
 use App\Support\ApiResponse;
+use App\Support\Pagination;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -21,14 +22,20 @@ class ReviewController extends Controller
 {
     public function index(Request $request, string $slug): JsonResponse
     {
+        $filters = $request->validate([
+            'page' => ['nullable', 'integer', 'min:1'],
+            'perPage' => ['nullable', 'integer', 'min:1', 'max:'.config('winimi.policies.pagination.account_max', 30)],
+        ]);
         $product = BakeryProduct::query()->where('slug', $slug)->where('is_active', true)->firstOrFail();
-        $perPage = min(30, max(1, (int) $request->integer('perPage', 10)));
         $reviews = ProductReview::query()
             ->approved()
             ->where('product_id', $product->getKey())
             ->with('customer:id,full_name')
             ->latest('published_at')
-            ->paginate($perPage);
+            ->paginate((int) ($filters['perPage'] ?? config(
+                'winimi.policies.pagination.account_default',
+                10,
+            )));
         $summary = ProductReview::query()
             ->approved()
             ->where('product_id', $product->getKey())
@@ -52,12 +59,7 @@ class ReviewController extends Controller
                     'count' => (int) ($summary?->review_count ?? 0),
                     'averageRating' => round((float) ($summary?->average_rating ?? 0), 2),
                 ],
-                'pagination' => [
-                    'page' => $reviews->currentPage(),
-                    'perPage' => $reviews->perPage(),
-                    'total' => $reviews->total(),
-                    'totalPages' => $reviews->lastPage(),
-                ],
+                'pagination' => Pagination::meta($reviews),
             ],
         );
     }

@@ -9,6 +9,7 @@ use App\Http\Resources\BakeryProductResource;
 use App\Models\BakeryCategory;
 use App\Models\BakeryProduct;
 use App\Support\ApiResponse;
+use App\Support\Pagination;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Http\JsonResponse;
@@ -26,7 +27,7 @@ class CatalogController extends Controller
             'inStock' => ['nullable', 'boolean'],
             'sort' => ['nullable', 'in:featured,newest,name,price-asc,price-desc'],
             'page' => ['nullable', 'integer', 'min:1'],
-            'perPage' => ['nullable', 'integer', 'min:1', 'max:48'],
+            'perPage' => ['nullable', 'integer', 'min:1', 'max:'.config('winimi.policies.pagination.catalog_max', 48)],
         ]);
 
         $featured = $request->has('featured')
@@ -78,18 +79,14 @@ class CatalogController extends Controller
 
         $this->applySort($query, $filters['sort'] ?? 'featured');
 
-        $paginator = $query->paginate((int) ($filters['perPage'] ?? 12));
+        $paginator = $query->paginate((int) ($filters['perPage'] ?? config(
+            'winimi.policies.pagination.catalog_default',
+            12,
+        )));
         $items = BakeryProductResource::collection($paginator->getCollection())->resolve($request);
 
         return ApiResponse::success($items, meta: [
-            'pagination' => [
-                'page' => $paginator->currentPage(),
-                'perPage' => $paginator->perPage(),
-                'total' => $paginator->total(),
-                'totalPages' => $paginator->lastPage(),
-                'from' => $paginator->firstItem(),
-                'to' => $paginator->lastItem(),
-            ],
+            'pagination' => Pagination::meta($paginator),
             'filters' => [
                 'category' => $filters['category'] ?? null,
                 'search' => $filters['search'] ?? null,

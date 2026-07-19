@@ -7,6 +7,7 @@ use App\Http\Resources\OrderResource;
 use App\Models\Order;
 use App\Services\Orders\OrderLifecycleService;
 use App\Support\ApiResponse;
+use App\Support\Pagination;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -14,23 +15,22 @@ class AccountOrderController extends Controller
 {
     public function index(Request $request): JsonResponse
     {
-        $perPage = min(30, max(1, (int) $request->integer('perPage', 10)));
+        $filters = $request->validate([
+            'page' => ['nullable', 'integer', 'min:1'],
+            'perPage' => ['nullable', 'integer', 'min:1', 'max:'.config('winimi.policies.pagination.account_max', 30)],
+        ]);
         $orders = Order::query()
             ->ownedBy($request->user('customer'))
             ->with(['items', 'paymentAttempts', 'deliveryZone'])
             ->latest('placed_at')
-            ->paginate($perPage);
+            ->paginate((int) ($filters['perPage'] ?? config(
+                'winimi.policies.pagination.account_default',
+                10,
+            )));
 
         return ApiResponse::success(
             OrderResource::collection($orders->getCollection())->resolve($request),
-            meta: [
-                'pagination' => [
-                    'page' => $orders->currentPage(),
-                    'perPage' => $orders->perPage(),
-                    'total' => $orders->total(),
-                    'totalPages' => $orders->lastPage(),
-                ],
-            ],
+            meta: ['pagination' => Pagination::meta($orders)],
         );
     }
 
