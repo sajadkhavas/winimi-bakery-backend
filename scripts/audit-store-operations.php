@@ -4,6 +4,9 @@ $errors = [];
 
 $files = [
     'migration' => 'database/migrations/2026_07_20_000000_create_store_operations_tables.php',
+    'orderItemMigration' => 'database/migrations/2026_07_20_001000_add_public_id_to_order_items.php',
+    'orderItem' => 'app/Models/OrderItem.php',
+    'orderItemResource' => 'app/Http/Resources/OrderItemResource.php',
     'address' => 'app/Models/CustomerAddress.php',
     'addressController' => 'app/Http/Controllers/Api/AccountAddressController.php',
     'delivery' => 'app/Services/Store/DeliveryConfigurationService.php',
@@ -11,6 +14,7 @@ $files = [
     'lifecycle' => 'app/Services/Orders/OrderLifecycleService.php',
     'content' => 'app/Http/Controllers/Api/StoreContentController.php',
     'review' => 'app/Http/Controllers/Api/ReviewController.php',
+    'reviewRequest' => 'app/Http/Requests/SubmitReviewRequest.php',
     'inquiry' => 'app/Http/Controllers/Api/InquiryController.php',
     'outbox' => 'app/Services/Notifications/NotificationOutboxService.php',
     'testingSms' => 'app/Services/Notifications/Providers/TestingSmsProvider.php',
@@ -81,8 +85,15 @@ foreach ([
     $require('migration', $field, "operations field {$field}");
 }
 
+$require('orderItemMigration', "char('public_id', 26)", 'public order-item identifier schema');
+$require('orderItemMigration', 'Str::ulid()', 'existing order-item public-ID backfill');
+$require('orderItem', '$item->public_id ??=', 'new order-item public IDs');
+$require('orderItemResource', "'id' => $this->public_id", 'public order-item ID response');
+$require('reviewRequest', "'orderItemId' => ['required', 'string', 'size:26']", 'public review item validation');
+$require('review', "->where('public_id', $request->validated('orderItemId'))", 'public review item lookup');
+
 $require('address', 'scopeOwnedBy', 'customer-owned address scope');
-$require('addressController', "->ownedBy($request->user('customer'))", 'server-side address ownership checks');
+$require('addressController', '->ownedBy($request->user(\'customer\'))', 'server-side address ownership checks');
 $require('checkout', 'resolveCustomerPayload', 'saved-address checkout resolution');
 $require('checkout', "'delivery_zone_id' =>", 'delivery zone snapshot');
 $require('delivery', 'StoreSetting::value', 'database operating settings');
@@ -98,10 +109,10 @@ $require('lifecycle', 'addInternalNote', 'internal order notes');
 $forbid('lifecycle', "'payment_status' => PaymentStatus::Refunded", 'false automatic refund marking');
 
 $require('review', 'OrderStatus::Delivered', 'delivered-order review eligibility');
-$require('review', "->ownedBy($request->user('customer'))", 'review order ownership');
+$require('review', '->ownedBy($request->user(\'customer\'))', 'review order ownership');
 $require('review', 'ReviewStatus::Pending', 'review moderation boundary');
 $require('inquiry', "hash_hmac('sha256'", 'hashed inquiry IP');
-$require('inquiry', 'where(\'created_at\', \'>=\', now()->subMinutes(5))', 'duplicate inquiry protection');
+$require('inquiry', "where('created_at', '>=', now()->subMinutes(5))", 'duplicate inquiry protection');
 
 $require('outbox', '! $this->providers->ready()', 'disabled provider pending guard');
 $require('outbox', 'lockForUpdate()', 'transactional outbox locks');
@@ -129,7 +140,6 @@ foreach ([
 }
 
 $require('config', "'store_operations' => [", 'store operations contract');
-$require('config', "'status' => 'implemented'", 'implemented contract status');
 $require('config', "'contract_version' => '2026-07-20-phase-15'", 'Phase 15 contract identity');
 $require('env', 'ORDER_SMS_PROVIDER=disabled', 'safe default order SMS provider');
 $forbid('env', 'VITE_KAVENEGAR', 'frontend SMS secret');
