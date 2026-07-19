@@ -48,7 +48,7 @@ Admin panel:
 http://localhost:8000/admin
 ```
 
-No production administrator password is documented or committed. Create or promote administrators through a controlled server-side process.
+No production admin password is documented or committed. Create or promote administrators through a controlled server-side process.
 
 ## Validation
 
