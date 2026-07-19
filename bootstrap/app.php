@@ -6,11 +6,13 @@ use App\Http\Middleware\CheckMaintenanceMode;
 use App\Http\Middleware\EnsureActiveCustomer;
 use App\Http\Middleware\HandleRedirects;
 use App\Http\Middleware\MarkLegacyApi;
+use App\Support\ApiExceptionRenderer;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Middleware\HandleCors;
 use Illuminate\Http\Request;
+use Throwable;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -37,4 +39,11 @@ return Application::configure(basePath: dirname(__DIR__))
         $exceptions->shouldRenderJsonWhen(
             static fn (Request $request, Throwable $exception): bool => $request->is('api/*') || $request->expectsJson(),
         );
+        $exceptions->render(static function (Throwable $exception, Request $request) {
+            if (! $request->is('api/*') && ! $request->expectsJson()) {
+                return null;
+            }
+
+            return ApiExceptionRenderer::render($exception);
+        });
     })->create();
