@@ -56,7 +56,7 @@ $requireText('README.md', 'No production administrator password or external cred
 $requireText('docs/API_CONTRACT.md', 'POST /api/auth/otp/request', 'frontend OTP contract');
 $requireText('docs/API_CONTRACT.md', 'POST /api/checkout', 'frontend checkout contract');
 $requireText('docs/API_CONTRACT.md', 'POST /api/payments/zarinpal/verify', 'frontend payment verification contract');
-$requireText('docs/PAYMENTS.md', 'only provider verification may mark an order paid', 'server-authoritative payment policy');
+$requireText('docs/PAYMENTS.md', 'Only provider verification may mark an order paid.', 'server-authoritative payment policy');
 
 $forbidText('composer.json', 'toolmaster/backend', 'ToolMaster Composer package identity');
 $forbidText('config/cors.php', 'toolmaster.com', 'ToolMaster production origin');
