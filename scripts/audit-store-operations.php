@@ -4,7 +4,7 @@ $errors = [];
 
 $files = [
     'migration' => 'database/migrations/2026_07_20_000000_create_store_operations_tables.php',
-    'orderItemMigration' => 'database/migrations/2026_07_20_010000_add_public_id_to_order_items.php',
+    'orderItemMigration' => 'database/migrations/2026_07_20_001000_add_public_id_to_order_items.php',
     'address' => 'app/Models/CustomerAddress.php',
     'orderItem' => 'app/Models/OrderItem.php',
     'orderItemResource' => 'app/Http/Resources/OrderItemResource.php',
@@ -100,7 +100,7 @@ $require('checkout', "'delivery_zone_id' =>", 'delivery zone snapshot');
 $require('delivery', 'StoreSetting::value', 'database operating settings');
 $require('deliveryZone', 'free_delivery_threshold_toman', 'free delivery threshold');
 $require('delivery', 'daily_order_limit', 'daily zone capacity');
-$require('deliveryZone', 'feeFor($method, $subtotalToman)', 'server-authoritative zone fee');
+$require('deliveryZone', 'feeFor(DeliveryMethod $method, int $subtotalToman)', 'server-authoritative zone fee');
 
 $require('lifecycle', 'allowedTargets', 'explicit fulfillment state machine');
 $require('lifecycle', 'InventoryReservationStatus::Restocked', 'one-time restock state');
