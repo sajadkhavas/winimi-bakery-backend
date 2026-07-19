@@ -91,7 +91,19 @@ jobs:
           retention-days: 3
 
       - name: Run database migrations
-        run: php artisan migrate:fresh --force
+        id: migrations
+        run: |
+          set -o pipefail
+          php artisan migrate:fresh --force 2>&1 | tee migrations.log
+
+      - name: Upload migration diagnostics
+        if: failure() && steps.migrations.outcome == 'failure'
+        uses: actions/upload-artifact@v4
+        with:
+          name: migration-diagnostics
+          path: migrations.log
+          if-no-files-found: error
+          retention-days: 3
 
       - name: Validate cached configuration and routes
         run: |
