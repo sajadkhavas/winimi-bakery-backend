@@ -10,7 +10,6 @@ use App\Models\BakeryCategory;
 use App\Models\BakeryProduct;
 use App\Models\BakeryProductVariant;
 use App\Models\Customer;
-use App\Models\Order;
 use App\Models\PaymentAttempt;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\Request;
@@ -274,14 +273,9 @@ class PaymentFlowTest extends TestCase
             ->assertJsonPath('data.verified', true)
             ->assertJsonPath('data.payment.referenceId', '987654321');
 
-        Http::assertSent(function (Request $request): bool {
-            if ($request->url() !== 'https://gateway.test/request') {
-                return true;
-            }
-
-            return $request['amount'] === 1_200_000
-                && $request['merchant_id'] === '00000000-0000-0000-0000-000000000000';
-        });
+        Http::assertSent(fn (Request $request): bool => $request->url() === 'https://gateway.test/request'
+            && $request['amount'] === 1_200_000
+            && $request['merchant_id'] === '00000000-0000-0000-0000-000000000000');
 
         $attempt = PaymentAttempt::query()->firstOrFail();
         $this->assertSame('[REDACTED]', $attempt->request_payload['merchant_id']);
