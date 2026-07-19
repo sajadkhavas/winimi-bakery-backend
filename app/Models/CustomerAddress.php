@@ -35,7 +35,7 @@ class CustomerAddress extends Model
 
             static::query()
                 ->where('customer_id', $address->customer_id)
-                ->whereKeyNot($address->getKey())
+                ->where('id', '!=', $address->getKey())
                 ->where('is_default', true)
                 ->update(['is_default' => false]);
         });
