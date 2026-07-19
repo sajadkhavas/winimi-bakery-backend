@@ -17,7 +17,7 @@ class AccountOrderController extends Controller
         $perPage = min(30, max(1, (int) $request->integer('perPage', 10)));
         $orders = Order::query()
             ->ownedBy($request->user('customer'))
-            ->with('items')
+            ->with(['items', 'paymentAttempts'])
             ->latest('placed_at')
             ->paginate($perPage);
 
@@ -39,7 +39,7 @@ class AccountOrderController extends Controller
         $order = Order::query()
             ->ownedBy($request->user('customer'))
             ->where('public_id', $orderId)
-            ->with(['items', 'reservations'])
+            ->with(['items', 'reservations', 'paymentAttempts'])
             ->firstOrFail();
 
         return ApiResponse::success([

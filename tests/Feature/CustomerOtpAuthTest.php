@@ -181,13 +181,17 @@ class CustomerOtpAuthTest extends TestCase
         $this->assertDatabaseCount('otp_challenges', 1);
     }
 
-    public function test_authentication_and_order_contracts_are_implemented_while_payments_remain_disabled(): void
+    public function test_authentication_orders_and_payments_contracts_are_implemented_with_external_activation_disabled(): void
     {
         $this->getJson('/api/system/contracts')
             ->assertOk()
             ->assertJsonPath('data.contracts.authentication.status', 'implemented')
             ->assertJsonPath('data.contracts.orders.status', 'implemented')
-            ->assertJsonPath('data.contracts.payments.status', 'contract-only');
+            ->assertJsonPath('data.contracts.payments.status', 'implemented')
+            ->assertJsonPath(
+                'data.contracts.payments.activation',
+                'disabled-until-external-credentials',
+            );
     }
 
     private function requestChallenge(string $mobile): array

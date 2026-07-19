@@ -28,8 +28,8 @@ class SystemApiTest extends TestCase
             ->assertOk()
             ->assertJsonPath('success', true)
             ->assertJsonPath('data.brand.nameEn', 'Winimi Bakery')
-            ->assertJsonPath('data.contractVersion', '2026-07-19-phase-13.5')
-            ->assertJsonPath('data.roadmapVersion', '2026-07-19-phase-13.5')
+            ->assertJsonPath('data.contractVersion', '2026-07-19-phase-14')
+            ->assertJsonPath('data.roadmapVersion', '2026-07-19-phase-14')
             ->assertJsonPath('data.legacyApiEnabled', true);
     }
 
@@ -46,7 +46,12 @@ class SystemApiTest extends TestCase
             ->assertJsonPath('data.contracts.authentication.source', 'customer-session-otp')
             ->assertJsonPath('data.contracts.orders.status', 'implemented')
             ->assertJsonPath('data.contracts.orders.source', 'transactional-order-reservations')
-            ->assertJsonPath('data.contracts.payments.status', 'contract-only')
+            ->assertJsonPath('data.contracts.payments.status', 'implemented')
+            ->assertJsonPath('data.contracts.payments.source', 'provider-ready-payment-attempts')
+            ->assertJsonPath(
+                'data.contracts.payments.activation',
+                'disabled-until-external-credentials',
+            )
             ->assertJsonPath('data.launch.strategy', 'complete-internal-work-before-external-activation')
             ->assertJsonPath('data.launch.internal_gates.backend_complete.target_phase', 16)
             ->assertJsonPath('data.launch.internal_gates.frontend_integrated.target_phase', 17)

@@ -67,8 +67,8 @@ $forbid('request', 'priceToman', 'client item price input');
 
 $require('lifecycle', 'InventoryReservationStatus::Released', 'customer cancellation release');
 $require('lifecycle', 'InventoryReservationStatus::Expired', 'payment timeout release');
-$require('lifecycle', 'InventoryReservationStatus::Consumed', 'payment consumption boundary');
-$require('lifecycle', "decrement('stock_quantity'", 'physical stock decrement after reservation consumption');
+$require('lifecycle', 'InventoryReservationStatus::Consumed', 'verified-payment consumption boundary');
+$require('lifecycle', "decrement('stock_quantity'", 'physical stock decrement after verified reservation consumption');
 $require('schedule', "Schedule::command('inventory:release-expired')", 'scheduled reservation cleanup');
 $require('schedule', 'withoutOverlapping()', 'non-overlapping cleanup');
 
@@ -79,10 +79,12 @@ $require('routes', "middleware(['auth:customer', 'customer.active'])", 'authenti
 $require('accountController', '->ownedBy($request->user(\'customer\'))', 'server-side order ownership scope');
 
 $require('config', "'orders' => [\n            'status' => 'implemented'", 'implemented order contract');
-$require('config', "'payments' => [\n            'status' => 'contract-only'", 'disabled payment contract');
+$require('config', "'payments' => [\n            'status' => 'implemented'", 'implemented payment contract');
 $require('env', 'CHECKOUT_ENABLED=false', 'secure checkout default');
 $require('env', 'DELIVERY_STANDARD_ENABLED=false', 'explicit delivery activation');
-$require('controller', "'available' => false", 'honest payment unavailable response');
+$require('controller', 'PaymentProviderManager $payments', 'separated payment readiness boundary');
+$require('controller', "'initiationEndpoint'", 'payment initiation handoff');
+$forbid('controller', 'ZARINPAL_MERCHANT_ID', 'payment credential access in checkout');
 
 foreach ([
     'test_checkout_uses_server_prices_snapshots_and_reserves_without_decrementing_physical_stock',

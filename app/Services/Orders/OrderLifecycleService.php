@@ -4,6 +4,7 @@ namespace App\Services\Orders;
 
 use App\Enums\InventoryReservationStatus;
 use App\Enums\OrderStatus;
+use App\Enums\PaymentStatus;
 use App\Exceptions\InventoryUnavailable;
 use App\Models\BakeryProductVariant;
 use App\Models\Customer;
@@ -44,7 +45,7 @@ final class OrderLifecycleService
             );
             $locked->forceFill(['cancelled_at' => now()])->save();
 
-            return $locked->fresh(['items', 'reservations']);
+            return $locked->fresh(['items', 'reservations', 'paymentAttempts']);
         }, 3);
     }
 
@@ -98,46 +99,92 @@ final class OrderLifecycleService
     {
         DB::transaction(function () use ($order): void {
             $lockedOrder = Order::query()->whereKey($order->getKey())->lockForUpdate()->firstOrFail();
-            $reservations = InventoryReservation::query()
-                ->where('order_id', $lockedOrder->getKey())
-                ->where('status', InventoryReservationStatus::Active->value)
-                ->orderBy('variant_id')
-                ->lockForUpdate()
-                ->get();
-
-            if ($reservations->isEmpty() || $reservations->contains(fn (InventoryReservation $reservation): bool => ! $reservation->isActive())) {
-                throw ValidationException::withMessages([
-                    'order' => ['رزرو موجودی سفارش معتبر نیست یا منقضی شده است.'],
-                ]);
-            }
-
-            $variants = BakeryProductVariant::query()
-                ->whereIn('id', $reservations->pluck('variant_id'))
-                ->orderBy('id')
-                ->lockForUpdate()
-                ->get()
-                ->keyBy('id');
-
-            foreach ($reservations as $reservation) {
-                /** @var BakeryProductVariant|null $variant */
-                $variant = $variants->get($reservation->variant_id);
-
-                if (! $variant || $variant->stock_quantity < $reservation->quantity) {
-                    throw new InventoryUnavailable(
-                        $variant?->public_id ?? 'deleted',
-                        $variant?->name ?? 'نامشخص',
-                        $reservation->quantity,
-                        $variant?->stock_quantity ?? 0,
-                    );
-                }
-
-                $variant->decrement('stock_quantity', $reservation->quantity);
-                $reservation->forceFill([
-                    'status' => InventoryReservationStatus::Consumed,
-                    'consumed_at' => now(),
-                ])->save();
-            }
+            $this->consumeReservationsLocked($lockedOrder);
         }, 3);
+    }
+
+    /**
+     * The caller must already hold a row lock on the order and be inside the
+     * same database transaction as the verified payment-attempt update.
+     */
+    public function markPaidFromVerifiedPaymentLocked(Order $order): void
+    {
+        if ($order->status === OrderStatus::Paid && $order->payment_status === PaymentStatus::Paid) {
+            return;
+        }
+
+        if ($order->status !== OrderStatus::AwaitingPayment) {
+            throw ValidationException::withMessages([
+                'order' => ['این سفارش دیگر در وضعیت قابل پرداخت نیست.'],
+            ]);
+        }
+
+        if (! $order->reservation_expires_at || $order->reservation_expires_at->isPast()) {
+            throw ValidationException::withMessages([
+                'order' => ['مهلت رزرو موجودی سفارش پایان یافته است.'],
+            ]);
+        }
+
+        $this->consumeReservationsLocked($order);
+        $order->forceFill([
+            'payment_status' => PaymentStatus::Paid,
+            'paid_at' => now(),
+        ])->save();
+        $this->transitionLocked(
+            $order,
+            OrderStatus::Paid,
+            'payment',
+            null,
+            'پرداخت توسط درگاه تأیید شد و رزرو موجودی به‌صورت اتمیک مصرف شد.',
+        );
+    }
+
+    private function consumeReservationsLocked(Order $lockedOrder): void
+    {
+        $reservations = InventoryReservation::query()
+            ->where('order_id', $lockedOrder->getKey())
+            ->where('status', InventoryReservationStatus::Active->value)
+            ->orderBy('variant_id')
+            ->lockForUpdate()
+            ->get();
+
+        if (
+            $reservations->isEmpty()
+            || $reservations->contains(
+                fn (InventoryReservation $reservation): bool => ! $reservation->isActive(),
+            )
+        ) {
+            throw ValidationException::withMessages([
+                'order' => ['رزرو موجودی سفارش معتبر نیست یا منقضی شده است.'],
+            ]);
+        }
+
+        $variants = BakeryProductVariant::query()
+            ->whereIn('id', $reservations->pluck('variant_id'))
+            ->orderBy('id')
+            ->lockForUpdate()
+            ->get()
+            ->keyBy('id');
+
+        foreach ($reservations as $reservation) {
+            /** @var BakeryProductVariant|null $variant */
+            $variant = $variants->get($reservation->variant_id);
+
+            if (! $variant || $variant->stock_quantity < $reservation->quantity) {
+                throw new InventoryUnavailable(
+                    $variant?->public_id ?? 'deleted',
+                    $variant?->name ?? 'نامشخص',
+                    $reservation->quantity,
+                    $variant?->stock_quantity ?? 0,
+                );
+            }
+
+            $variant->decrement('stock_quantity', $reservation->quantity);
+            $reservation->forceFill([
+                'status' => InventoryReservationStatus::Consumed,
+                'consumed_at' => now(),
+            ])->save();
+        }
     }
 
     private function releaseReservationsLocked(

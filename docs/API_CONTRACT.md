@@ -1,6 +1,6 @@
 # Winimi Frontend / Backend API Contract
 
-Contract version: `2026-07-19-phase-13`
+Contract version: `2026-07-19-phase-14`
 
 Frontend API origin example: `https://api.winimibakery.com`
 
@@ -13,7 +13,7 @@ Frontend API origin example: `https://api.winimibakery.com`
 - `X-Request-ID` is accepted and returned.
 - Public identifiers are ULIDs or other non-sequential identifiers.
 - Integer application prices are expressed in toman.
-- Client totals, inventory and ownership claims are never authoritative.
+- Client totals, inventory, ownership and payment-state claims are never authoritative.
 - Error responses never expose stack traces, provider secrets or raw provider payloads.
 
 ## Standard response envelope
@@ -94,9 +94,7 @@ Successful verification consumes the challenge, creates or updates the customer,
 }
 ```
 
-The mobile cannot be changed through the profile endpoint.
-
-Provider and deployment details are documented in `docs/CUSTOMER_AUTH.md`.
+The mobile cannot be changed through the profile endpoint. Provider and deployment details are documented in `docs/CUSTOMER_AUTH.md`.
 
 ## Orders contract — implemented in Phase 13
 
@@ -161,11 +159,13 @@ Success is HTTP 201. An exact idempotent replay is HTTP 200 with `meta.replayed=
         "grandTotalToman": 200000
       },
       "reservationExpiresAt": "2026-07-19T18:00:00+03:30",
-      "items": []
+      "items": [],
+      "payments": []
     },
     "payment": {
       "available": false,
-      "state": "not-configured"
+      "state": "disabled",
+      "initiationEndpoint": null
     }
   },
   "meta": {
@@ -173,6 +173,8 @@ Success is HTTP 201. An exact idempotent replay is HTTP 200 with `meta.replayed=
   }
 }
 ```
+
+When a configured provider is ready, `available=true` and `initiationEndpoint` contains `/api/orders/{orderId}/payments`. Checkout never initiates a payment itself.
 
 Server responsibilities:
 
@@ -187,11 +189,11 @@ Server responsibilities:
 
 ### Account order routes
 
-`GET /api/account/orders` returns only the authenticated customer's orders with pagination.
+`GET /api/account/orders` returns only the authenticated customer's orders with pagination and payment-attempt summaries.
 
 `GET /api/account/orders/{orderId}` returns 404 when the order does not belong to the authenticated customer.
 
-`POST /api/account/orders/{orderId}/cancel` is allowed only for unpaid `awaiting_payment` orders. It transitions the order to `cancelled` and releases active reservations in the same transaction.
+`POST /api/account/orders/{orderId}/cancel` is allowed only for `awaiting_payment` orders without a pending or verified payment. It transitions the order to `cancelled` and releases active reservations in the same transaction.
 
 ### Inventory reservation lifecycle
 
@@ -201,20 +203,116 @@ active -> released
 active -> expired
 ```
 
-- `consumed` is reserved for Phase 14 verified payment and decrements physical stock
+- `consumed` is used only by verified payment and decrements physical stock
 - `released` is used for customer cancellation
 - `expired` is used when the payment deadline passes
 
 The scheduled `inventory:release-expired` command runs every minute without overlap. Full details are in `docs/ORDERS_CHECKOUT.md`.
 
-## Payments contract — Phase 14, not implemented
+## Payments contract — implemented in Phase 14
 
 ```text
 POST /api/orders/{orderId}/payments
+POST /api/payments/verify
 POST /api/payments/zarinpal/verify
 ```
 
-Merchant credentials remain server-only. A payment attempt must exist before redirect. Verification must be idempotent and atomic, and only verified payment may consume inventory reservations and mark an order paid.
+All payment routes require the authenticated active customer who owns the order or attempt.
+
+### `POST /api/orders/{orderId}/payments`
+
+Required header:
+
+```text
+Idempotency-Key: a-unique-random-value-at-least-16-characters
+```
+
+Success is HTTP 201. Replaying the same key or requesting another initiation while an unexpired attempt is pending returns HTTP 200 with `meta.replayed=true` and the existing attempt.
+
+```json
+{
+  "success": true,
+  "data": {
+    "order": {
+      "id": "01K...ORDER",
+      "status": "awaiting_payment",
+      "paymentStatus": "pending"
+    },
+    "payment": {
+      "id": "01K...ATTEMPT",
+      "provider": "zarinpal",
+      "attemptNumber": 1,
+      "status": "pending",
+      "amountToman": 200000,
+      "currency": "IRR",
+      "authority": "A000...",
+      "referenceId": null,
+      "gatewayCode": "100",
+      "redirectUrl": "https://gateway.example/start/A000...",
+      "failure": null,
+      "expiresAt": "2026-07-19T18:00:00+03:30"
+    }
+  },
+  "meta": {
+    "replayed": false
+  }
+}
+```
+
+The server refuses paid, cancelled, expired or reservation-expired orders. It snapshots the immutable server total and never accepts a client amount.
+
+### `POST /api/payments/verify`
+
+The Zarinpal-specific route accepts the same payload and is maintained as a compatibility alias.
+
+```json
+{
+  "authority": "A000...",
+  "status": "OK"
+}
+```
+
+The callback status is only a hint. The backend selects the provider stored on the attempt and verifies the recorded authority and server amount with that provider.
+
+Verified response:
+
+```json
+{
+  "success": true,
+  "data": {
+    "verified": true,
+    "order": {
+      "status": "paid",
+      "paymentStatus": "paid",
+      "paidAt": "2026-07-19T18:05:00+03:30"
+    },
+    "payment": {
+      "status": "verified",
+      "referenceId": "987654321"
+    }
+  },
+  "meta": {
+    "replayed": false
+  }
+}
+```
+
+A repeated verified callback is HTTP 200 with `meta.replayed=true`; it never consumes inventory twice.
+
+Failed or cancelled verification returns `verified=false`. The order remains `awaiting_payment`, reservations remain active until their deadline, and a new attempt may be created with a new idempotency key.
+
+### Payment security rules
+
+- payment credentials are server-only
+- testing provider is forbidden in production
+- live Zarinpal refuses to run without Merchant ID
+- provider request and verification payloads are not exposed to storefront APIs
+- Merchant ID is redacted before persisted administrative metadata
+- card PAN and card hash are removed before persistence
+- only provider verification may mark an order paid
+- order, reservation, Variant and attempt updates commit atomically
+
+Full details are in `docs/PAYMENTS.md`.
 
 ## Legacy API policy
 
