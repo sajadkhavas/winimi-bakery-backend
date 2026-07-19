@@ -1,39 +1,36 @@
 <?php
-// ── FIX 2: config/cors.php ─────────────────────────────────────────────────────
-// فایل Laravel CORS config — جایگزین config/cors.php فعلیت کن
 
 return [
-    /*
-    |--------------------------------------------------------------------------
-    | Cross-Origin Resource Sharing (CORS) Configuration
-    |--------------------------------------------------------------------------
-    */
-
     'paths' => ['api/*', 'sanctum/csrf-cookie'],
 
-    'allowed_methods' => ['*'],
+    'allowed_methods' => ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
 
-    // ── FIX 2: آدرس‌های مجاز فرانت ────────────────────────────────────────────
-    // در production فقط دامنه اصلیت رو بذار:
-    'allowed_origins' => [
-        'http://localhost:8080',   // dev: Vite dev server
-        'http://localhost:5173',   // dev: Vite default
-        'http://localhost:3000',   // dev: CRA / Next
-        'https://toolmaster.com',  // prod: دامنه اصلی
-        'https://www.toolmaster.com', // prod: با www
-    ],
-
-    // یا برای development فقط:
-    // 'allowed_origins' => ['*'],  // ← فقط برای dev! هیچوقت production نذار
+    'allowed_origins' => config('winimi.frontend_origins', [
+        'http://localhost:5173',
+    ]),
 
     'allowed_origins_patterns' => [],
 
-    'allowed_headers' => ['*'],
+    'allowed_headers' => [
+        'Accept',
+        'Authorization',
+        'Content-Type',
+        'Idempotency-Key',
+        'Origin',
+        'X-Requested-With',
+        'X-CSRF-TOKEN',
+        'X-XSRF-TOKEN',
+        'X-Request-ID',
+    ],
 
-    'exposed_headers' => [],
+    'exposed_headers' => [
+        'X-API-Version',
+        'X-Request-ID',
+        'Deprecation',
+        'Link',
+    ],
 
-    'max_age' => 0,
+    'max_age' => 600,
 
-    // اگه از cookie / session استفاده میکنی true بذار:
-    'supports_credentials' => false,
+    'supports_credentials' => true,
 ];
