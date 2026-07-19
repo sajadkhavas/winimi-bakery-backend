@@ -18,6 +18,7 @@ class InventoryReservation extends Model
         'expires_at',
         'released_at',
         'consumed_at',
+        'restocked_at',
         'release_reason',
     ];
 
@@ -36,6 +37,7 @@ class InventoryReservation extends Model
             'expires_at' => 'datetime',
             'released_at' => 'datetime',
             'consumed_at' => 'datetime',
+            'restocked_at' => 'datetime',
         ];
     }
 
