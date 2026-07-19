@@ -22,7 +22,7 @@ class BakeryVariantResource extends JsonResource
             'salePriceToman' => $this->hasValidSalePrice()
                 ? $this->sale_price_toman
                 : null,
-            'stock' => $this->stock_quantity,
+            'stock' => $this->available_stock_quantity,
             'available' => $this->available,
             'lowStock' => $this->low_stock,
             'isDefault' => $this->is_default,
