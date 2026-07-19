@@ -91,7 +91,7 @@ $forbidText('customerAdmin', 'CreateCustomer', 'manual customer creation');
 $forbidText('customerAdmin', 'DeleteBulkAction', 'bulk customer deletion');
 
 $requirePattern('winimiConfig', "/'authentication'\s*=>\s*\[\s*'status'\s*=>\s*'implemented'/s", 'implemented authentication contract');
-$requirePattern('winimiConfig', "/'orders'\s*=>\s*\[\s*'status'\s*=>\s*'contract-only'/s", 'disabled order contract');
+$requirePattern('winimiConfig', "/'orders'\s*=>\s*\[\s*'status'\s*=>\s*'implemented'/s", 'implemented order contract');
 $requirePattern('winimiConfig', "/'payments'\s*=>\s*\[\s*'status'\s*=>\s*'contract-only'/s", 'disabled payment contract');
 $requireText('env', 'SMS_PROVIDER=disabled', 'secure default SMS provider');
 $requireText('env', 'OTP_EXPOSE_TEST_CODE=false', 'secure test-code default');
