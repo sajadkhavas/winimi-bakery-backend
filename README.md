@@ -2,7 +2,7 @@
 
 Laravel 12 + Filament 3 headless-commerce backend for the Winimi Bakery storefront.
 
-The production frontend lives in `sajadkhavas/cooci`. This repository owns the API, Filament administration, database, catalog, customer authentication, orders, inventory, content operations, notifications and payments.
+The production frontend lives in `sajadkhavas/cooci`. This repository owns the API, Filament administration, database, catalog, customer authentication, checkout, orders, inventory, payments, content operations and notifications.
 
 ## Current status
 
@@ -11,10 +11,10 @@ The production frontend lives in `sajadkhavas/cooci`. This repository owns the A
 | Laravel / Filament foundation | Implemented |
 | System health and contract endpoints | Implemented |
 | Bakery catalog, categories and Variants | Implemented in Phase 11 |
-| Customer OTP architecture, secure sessions and profile | Implemented in Phase 12 |
+| Customer OTP, secure sessions and profile | Implemented in Phase 12 |
 | Checkout, orders and inventory reservations | Implemented in Phase 13 |
 | Full internal launch roadmap | Locked in Phase 13.5 |
-| Provider-ready payment lifecycle | Phase 14 |
+| Provider-ready payment lifecycle | Implemented in Phase 14 |
 | Complete store operations backend | Phase 15 |
 | Backend completion and contract freeze | Phase 16 |
 | Full frontend integration | Phase 17 |
@@ -27,8 +27,6 @@ Machine-readable status:
 ```text
 GET /api/system/contracts
 ```
-
-The locked roadmap is documented in `docs/FULL_LAUNCH_ROADMAP.md`.
 
 ## Requirements
 
@@ -55,7 +53,7 @@ Admin panel:
 http://localhost:8000/admin
 ```
 
-No production admin password is documented or committed. Create or promote administrators through a controlled server-side process.
+No production administrator password or external credential is committed.
 
 ## Validation
 
@@ -63,27 +61,17 @@ No production admin password is documented or committed. Create or promote admin
 composer check
 ```
 
-Run only the locked launch-roadmap audit:
+Focused audits:
 
 ```bash
+composer audit:catalog
+composer audit:auth
+composer audit:orders
+composer audit:payments
 composer audit:launch
 ```
 
-GitHub Actions validates:
-
-- Composer metadata and dependency security
-- backend foundation, full-launch, catalog, customer-auth and order audits
-- scoped Laravel Pint formatting
-- complete fresh migrations on SQLite
-- cached configuration and routes
-- command and Filament resource discovery
-- OTP and session security behavior
-- server-authoritative checkout totals and immutable snapshots
-- Idempotency replay and conflict behavior
-- reservation-aware stock and Oversell prevention
-- customer order ownership, cancellation and expiration
-- exact three-item external activation boundary
-- Composer security audit
+GitHub Actions validates Composer metadata, fresh SQLite migrations, cached configuration/routes, Filament discovery, Pint formatting, all architecture audits, API/Filament tests and dependency security.
 
 ## Implemented APIs
 
@@ -104,7 +92,7 @@ GET /api/catalog/products
 GET /api/catalog/products/{slug}
 ```
 
-Catalog stock represents physical stock minus active unexpired order reservations.
+Catalog availability represents physical stock minus active unexpired reservations.
 
 ### Customer authentication
 
@@ -127,7 +115,7 @@ GET  /api/account/orders/{orderId}
 POST /api/account/orders/{orderId}/cancel
 ```
 
-Checkout accepts only Variant IDs and quantities as cart truth, calculates all prices and fees on the server, creates immutable item snapshots and reserves inventory without decrementing physical stock before verified payment.
+Checkout accepts only Variant IDs and quantities as cart truth, calculates prices and fees on the server, creates immutable snapshots and reserves inventory without decrementing physical stock.
 
 Expired reservations are released by:
 
@@ -135,26 +123,59 @@ Expired reservations are released by:
 php artisan inventory:release-expired
 ```
 
+### Payments
+
+```text
+POST /api/orders/{orderId}/payments
+POST /api/payments/verify
+POST /api/payments/zarinpal/verify
+```
+
+Phase 14 provides:
+
+- persistent payment attempts
+- provider-neutral initiation and verification contracts
+- disabled, deterministic testing and Zarinpal providers
+- customer ownership and idempotency enforcement
+- pending-attempt reuse and controlled retry
+- server-only amount and credential handling
+- atomic verified-payment, order and inventory transition
+- duplicate callback protection
+- read-only Filament payment inspection
+- sanitization of provider and card metadata
+
+Checkout and payment remain separate operations. A callback status never marks an order paid without provider verification.
+
 Detailed documentation:
 
 - `docs/API_CONTRACT.md`
 - `docs/CATALOG_API.md`
 - `docs/CUSTOMER_AUTH.md`
 - `docs/ORDERS_CHECKOUT.md`
+- `docs/PAYMENTS.md`
 - `docs/FULL_LAUNCH_ROADMAP.md`
 
 ## Safe defaults
-
-OTP, checkout and payment are disabled until their operating configuration is approved:
 
 ```env
 SMS_PROVIDER=disabled
 OTP_EXPOSE_TEST_CODE=false
 CHECKOUT_ENABLED=false
+PAYMENT_ENABLED=false
 PAYMENT_PROVIDER=disabled
+ZARINPAL_MERCHANT_ID=
 ```
 
 All delivery methods are also disabled by default. Backend secrets such as `KAVENEGAR_API_KEY` and `ZARINPAL_MERCHANT_ID` must never use `VITE_*` variables.
+
+Local payment flow testing can explicitly use:
+
+```env
+PAYMENT_ENABLED=true
+PAYMENT_PROVIDER=testing
+```
+
+The testing provider refuses production execution. Zarinpal refuses execution without a server-side Merchant ID.
 
 ## Filament management
 
@@ -164,12 +185,13 @@ The navigation group `فروشگاه وینیمی` currently contains:
 - محصولات بیکری
 - مشتریان
 - سفارش‌ها
+- تلاش‌های پرداخت
 
-Store operations, content, reviews, inquiries, notifications and controlled order actions are completed before the backend contract freeze in Phase 16.
+Payment attempts are read-only. They cannot be manually created, edited or bulk-deleted.
 
 ## Frontend integration boundary
 
-The frontend remains on its safe static/mock modes until the backend reaches `backend_complete=ready`. Phase 17 then replaces every production dynamic source with the frozen backend API.
+The frontend remains on safe static/mock modes until the backend reaches `backend_complete=ready` in Phase 16. Phase 17 then connects every production dynamic flow to the frozen API.
 
 ```env
 VITE_USE_BACKEND=true
@@ -178,7 +200,9 @@ VITE_AUTH_MODE=disabled
 VITE_PAYMENT_MODE=disabled
 ```
 
-## Production baseline
+No provider credential is exposed through frontend variables.
+
+## Production baseline before external activation
 
 ```env
 APP_ENV=production
@@ -193,7 +217,9 @@ SESSION_SAME_SITE=lax
 SESSION_ENCRYPT=true
 LEGACY_TOOLMASTER_API_ENABLED=false
 CHECKOUT_ENABLED=false
+PAYMENT_ENABLED=false
 PAYMENT_PROVIDER=disabled
+ZARINPAL_MERCHANT_ID=
 ```
 
 A production release must run at minimum:
@@ -205,7 +231,7 @@ php artisan optimize
 php artisan queue:restart
 ```
 
-The scheduler must run every minute. Production also requires HTTPS, persistent storage, queue workers, database backups, restore verification, logs, monitoring and a rollback procedure.
+The scheduler runs every minute. Production also requires persistent storage, queue workers, backups with restore verification, logs, monitoring and rollback.
 
 ## Locked phase roadmap
 
@@ -213,13 +239,13 @@ The scheduler must run every minute. Production also requires HTTPS, persistent 
 - Phase 11: bakery catalog and administration — complete
 - Phase 12: OTP authentication and customer account — complete
 - Phase 13: checkout, orders and inventory reservations — complete
-- Phase 13.5: full-launch audit and roadmap lock — current
-- Phase 14: provider-ready payment backend
-- Phase 15: complete store operations backend
+- Phase 13.5: full-launch audit and roadmap lock — complete
+- Phase 14: provider-ready payment backend — complete
+- Phase 15: complete store operations backend — next
 - Phase 16: backend completion and contract freeze
 - Phase 17: full frontend/backend integration
 - Phase 18: end-to-end completion
 - Phase 19: production server deployment
 - Phase 20: external activation only
 
-At the end of Phase 19, the only remaining inputs are the payment gateway credentials, eNAMAD badge code and SMS provider key/template.
+At the end of Phase 19, the only remaining inputs are payment gateway credentials, the eNAMAD badge code and the SMS provider key/template.
