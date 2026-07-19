@@ -24,21 +24,21 @@ class ViewOrder extends ViewRecord
                 ->color('success')
                 ->requiresConfirmation()
                 ->visible(fn (): bool => $this->order()->status === OrderStatus::Paid)
-                ->action(fn (): mixed => $this->transition(OrderStatus::Confirmed)),
+                ->action(fn (): null => $this->transition(OrderStatus::Confirmed)),
             Actions\Action::make('prepare')
                 ->label('شروع آماده‌سازی')
                 ->icon('heroicon-o-fire')
                 ->color('warning')
                 ->requiresConfirmation()
                 ->visible(fn (): bool => $this->order()->status === OrderStatus::Confirmed)
-                ->action(fn (): mixed => $this->transition(OrderStatus::Preparing)),
+                ->action(fn (): null => $this->transition(OrderStatus::Preparing)),
             Actions\Action::make('ready')
                 ->label('آماده شد')
                 ->icon('heroicon-o-gift')
                 ->color('success')
                 ->requiresConfirmation()
                 ->visible(fn (): bool => $this->order()->status === OrderStatus::Preparing)
-                ->action(fn (): mixed => $this->transition(OrderStatus::Ready)),
+                ->action(fn (): null => $this->transition(OrderStatus::Ready)),
             Actions\Action::make('dispatch')
                 ->label('ثبت ارسال')
                 ->icon('heroicon-o-truck')
@@ -52,7 +52,7 @@ class ViewOrder extends ViewRecord
                 ])
                 ->visible(fn (): bool => $this->order()->status === OrderStatus::Ready
                     && $this->order()->delivery_method !== DeliveryMethod::Pickup)
-                ->action(fn (array $data): mixed => $this->transition(
+                ->action(fn (array $data): null => $this->transition(
                     OrderStatus::Dispatched,
                     $data['note'] ?? null,
                     $data['trackingCode'] ?? null,
@@ -65,7 +65,7 @@ class ViewOrder extends ViewRecord
                 ->visible(fn (): bool => $this->order()->status === OrderStatus::Dispatched
                     || ($this->order()->status === OrderStatus::Ready
                         && $this->order()->delivery_method === DeliveryMethod::Pickup))
-                ->action(fn (): mixed => $this->transition(OrderStatus::Delivered)),
+                ->action(fn (): null => $this->transition(OrderStatus::Delivered)),
             Actions\Action::make('cancel')
                 ->label('لغو سفارش')
                 ->icon('heroicon-o-x-circle')
@@ -83,7 +83,7 @@ class ViewOrder extends ViewRecord
                     OrderStatus::Preparing,
                     OrderStatus::Ready,
                 ], true))
-                ->action(fn (array $data): mixed => $this->transition(
+                ->action(fn (array $data): null => $this->transition(
                     OrderStatus::Cancelled,
                     $data['note'] ?? null,
                 )),
@@ -96,14 +96,13 @@ class ViewOrder extends ViewRecord
                         ->required()
                         ->maxLength(3000),
                 ])
-                ->action(function (array $data): mixed {
+                ->action(function (array $data): void {
                     app(OrderLifecycleService::class)->addInternalNote(
                         $this->order(),
                         auth()->id(),
                         (string) $data['note'],
                     );
-
-                    return $this->reloadPage();
+                    $this->reloadPage();
                 }),
         ];
     }
@@ -112,7 +111,7 @@ class ViewOrder extends ViewRecord
         OrderStatus $target,
         ?string $note = null,
         ?string $trackingCode = null,
-    ): mixed {
+    ): null {
         app(OrderLifecycleService::class)->transitionByAdmin(
             $this->order(),
             $target,
@@ -120,13 +119,14 @@ class ViewOrder extends ViewRecord
             $note,
             $trackingCode,
         );
+        $this->reloadPage();
 
-        return $this->reloadPage();
+        return null;
     }
 
-    private function reloadPage(): mixed
+    private function reloadPage(): void
     {
-        return $this->redirect(OrderResource::getUrl('view', ['record' => $this->record]));
+        $this->redirect(OrderResource::getUrl('view', ['record' => $this->record]));
     }
 
     private function order(): Order
