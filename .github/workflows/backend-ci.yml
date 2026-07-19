@@ -31,9 +31,9 @@ env:
 
 jobs:
   validate:
-    name: Audit, launch, catalog, auth, orders, payments, migrate, Filament and test
+    name: Audit, catalog, auth, orders, payments, operations, migrate, Filament and test
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 25
 
     steps:
       - name: Checkout repository
@@ -91,6 +91,9 @@ jobs:
       - name: Payment architecture audit
         run: composer audit:payments
 
+      - name: Store operations audit
+        run: composer audit:operations
+
       - name: Pint formatting
         id: pint
         run: |
@@ -128,13 +131,23 @@ jobs:
           php artisan route:list --except-vendor
           php artisan route:list --path=api/auth
           php artisan route:list --path=api/checkout
+          php artisan route:list --path=api/account/addresses
           php artisan route:list --path=api/account/orders
+          php artisan route:list --path=api/delivery
+          php artisan route:list --path=api/store
+          php artisan route:list --path=api/inquiries
           php artisan route:list --path=api/orders
           php artisan route:list --path=api/payments
           php artisan route:list --path=admin/bakery
           php artisan route:list --path=admin/orders
           php artisan route:list --path=admin/payment-attempts
+          php artisan route:list --path=admin/delivery-zones
+          php artisan route:list --path=admin/store-settings
+          php artisan route:list --path=admin/product-reviews
+          php artisan route:list --path=admin/inquiries
+          php artisan route:list --path=admin/notification
           php artisan list --raw | grep '^inventory:release-expired'
+          php artisan list --raw | grep '^notifications:dispatch'
           if php artisan list --raw | grep -q '^filament:cache-components'; then
             php artisan filament:cache-components
             php artisan filament:clear-cached-components
