@@ -3,7 +3,6 @@
 namespace App\Services\Auth;
 
 use App\Exceptions\OtpDeliveryUnavailable;
-use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Http;
 use Throwable;
 
@@ -45,7 +44,7 @@ final class OtpSender
                     'template' => $template,
                 ])
                 ->throw();
-        } catch (ConnectionException|Throwable $exception) {
+        } catch (Throwable $exception) {
             report($exception);
 
             throw new OtpDeliveryUnavailable;
