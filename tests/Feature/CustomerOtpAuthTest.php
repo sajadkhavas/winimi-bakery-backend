@@ -87,6 +87,26 @@ class CustomerOtpAuthTest extends TestCase
             ->assertUnauthorized();
     }
 
+    public function test_disabling_customer_invalidates_an_existing_session(): void
+    {
+        $challenge = $this->requestChallenge('09123456785');
+
+        $this->stateful()->postJson('/api/auth/otp/verify', [
+            'mobile' => '09123456785',
+            'challengeId' => $challenge['challengeId'],
+            'code' => $challenge['code'],
+        ])->assertOk();
+
+        $customer = Customer::query()->where('mobile', '09123456785')->firstOrFail();
+        $customer->update(['is_active' => false]);
+
+        $this->stateful()->getJson('/api/auth/me')
+            ->assertUnauthorized()
+            ->assertJsonPath('success', false);
+
+        $this->assertGuest('customer');
+    }
+
     public function test_wrong_code_increments_attempts_and_consumed_code_cannot_be_reused(): void
     {
         $challenge = $this->requestChallenge('09123456781');
@@ -94,7 +114,7 @@ class CustomerOtpAuthTest extends TestCase
         $this->stateful()->postJson('/api/auth/otp/verify', [
             'mobile' => '09123456781',
             'challengeId' => $challenge['challengeId'],
-            'code' => '000000',
+            'code' => $this->wrongCode($challenge['code']),
         ])->assertUnprocessable();
 
         $this->assertSame(1, OtpChallenge::query()->firstOrFail()->attempts);
@@ -113,12 +133,13 @@ class CustomerOtpAuthTest extends TestCase
     {
         config(['winimi.otp.max_attempts' => 2]);
         $challenge = $this->requestChallenge('09123456782');
+        $wrongCode = $this->wrongCode($challenge['code']);
 
         for ($attempt = 0; $attempt < 2; $attempt++) {
             $this->stateful()->postJson('/api/auth/otp/verify', [
                 'mobile' => '09123456782',
                 'challengeId' => $challenge['challengeId'],
-                'code' => '111111',
+                'code' => $wrongCode,
             ])->assertUnprocessable();
         }
 
@@ -179,6 +200,11 @@ class CustomerOtpAuthTest extends TestCase
             'challengeId' => (string) $response->json('data.challengeId'),
             'code' => (string) $response->json('data.debugCode'),
         ];
+    }
+
+    private function wrongCode(string $code): string
+    {
+        return $code === '000000' ? '111111' : '000000';
     }
 
     private function stateful(): static
