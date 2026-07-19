@@ -76,7 +76,19 @@ jobs:
         run: php scripts/audit-backend-foundation.php
 
       - name: Pint formatting
-        run: composer format:check
+        id: pint
+        run: |
+          set -o pipefail
+          composer format:check 2>&1 | tee pint.log
+
+      - name: Upload Pint diagnostics
+        if: failure() && steps.pint.outcome == 'failure'
+        uses: actions/upload-artifact@v4
+        with:
+          name: pint-diagnostics
+          path: pint.log
+          if-no-files-found: error
+          retention-days: 3
 
       - name: Run database migrations
         run: php artisan migrate:fresh --force
