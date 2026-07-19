@@ -9,6 +9,7 @@ $files = [
     'orderItemResource' => 'app/Http/Resources/OrderItemResource.php',
     'address' => 'app/Models/CustomerAddress.php',
     'addressController' => 'app/Http/Controllers/Api/AccountAddressController.php',
+    'deliveryZone' => 'app/Models/DeliveryZone.php',
     'delivery' => 'app/Services/Store/DeliveryConfigurationService.php',
     'checkout' => 'app/Services/Orders/CheckoutService.php',
     'lifecycle' => 'app/Services/Orders/OrderLifecycleService.php',
@@ -97,7 +98,7 @@ $require('addressController', '->ownedBy($request->user(\'customer\'))', 'server
 $require('checkout', 'resolveCustomerPayload', 'saved-address checkout resolution');
 $require('checkout', "'delivery_zone_id' =>", 'delivery zone snapshot');
 $require('delivery', 'StoreSetting::value', 'database operating settings');
-$require('delivery', 'free_delivery_threshold_toman', 'free delivery threshold');
+$require('deliveryZone', 'free_delivery_threshold_toman', 'free delivery threshold');
 $require('delivery', 'daily_order_limit', 'daily zone capacity');
 $require('delivery', 'feeFor($method, $subtotalToman)', 'server-authoritative zone fee');
 
