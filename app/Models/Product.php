@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Cache\TaggableStore;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -43,7 +44,7 @@ class Product extends Model implements HasMedia
             Cache::forget("product.{$model->slug}");
             Cache::forget('products.featured');
 
-            if (Cache::getStore() instanceof \Illuminate\Cache\TaggableStore) {
+            if (Cache::getStore() instanceof TaggableStore) {
                 Cache::tags(['products'])->flush();
             }
         });
