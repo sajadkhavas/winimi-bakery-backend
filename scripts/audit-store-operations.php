@@ -4,18 +4,18 @@ $errors = [];
 
 $files = [
     'migration' => 'database/migrations/2026_07_20_000000_create_store_operations_tables.php',
-    'orderItemMigration' => 'database/migrations/2026_07_20_001000_add_public_id_to_order_items.php',
+    'orderItemMigration' => 'database/migrations/2026_07_20_010000_add_public_id_to_order_items.php',
+    'address' => 'app/Models/CustomerAddress.php',
     'orderItem' => 'app/Models/OrderItem.php',
     'orderItemResource' => 'app/Http/Resources/OrderItemResource.php',
-    'address' => 'app/Models/CustomerAddress.php',
+    'reviewRequest' => 'app/Http/Requests/SubmitReviewRequest.php',
     'addressController' => 'app/Http/Controllers/Api/AccountAddressController.php',
-    'deliveryZone' => 'app/Models/DeliveryZone.php',
     'delivery' => 'app/Services/Store/DeliveryConfigurationService.php',
+    'deliveryZone' => 'app/Models/DeliveryZone.php',
     'checkout' => 'app/Services/Orders/CheckoutService.php',
     'lifecycle' => 'app/Services/Orders/OrderLifecycleService.php',
     'content' => 'app/Http/Controllers/Api/StoreContentController.php',
     'review' => 'app/Http/Controllers/Api/ReviewController.php',
-    'reviewRequest' => 'app/Http/Requests/SubmitReviewRequest.php',
     'inquiry' => 'app/Http/Controllers/Api/InquiryController.php',
     'outbox' => 'app/Services/Notifications/NotificationOutboxService.php',
     'testingSms' => 'app/Services/Notifications/Providers/TestingSmsProvider.php',
@@ -91,7 +91,7 @@ $require('orderItemMigration', 'Str::ulid()', 'existing order-item public-ID bac
 $require('orderItem', '$item->public_id ??=', 'new order-item public IDs');
 $require('orderItemResource', "'id' => \$this->public_id", 'public order-item ID response');
 $require('reviewRequest', "'orderItemId' => ['required', 'string', 'size:26']", 'public review item validation');
-$require('review', '->where(\'public_id\', $request->validated(\'orderItemId\'))', 'public review item lookup');
+$require('review', "->where('public_id', \$request->validated('orderItemId'))", 'public review item lookup');
 
 $require('address', 'scopeOwnedBy', 'customer-owned address scope');
 $require('addressController', '->ownedBy($request->user(\'customer\'))', 'server-side address ownership checks');
@@ -100,7 +100,7 @@ $require('checkout', "'delivery_zone_id' =>", 'delivery zone snapshot');
 $require('delivery', 'StoreSetting::value', 'database operating settings');
 $require('deliveryZone', 'free_delivery_threshold_toman', 'free delivery threshold');
 $require('delivery', 'daily_order_limit', 'daily zone capacity');
-$require('delivery', 'feeFor($method, $subtotalToman)', 'server-authoritative zone fee');
+$require('deliveryZone', 'feeFor($method, $subtotalToman)', 'server-authoritative zone fee');
 
 $require('lifecycle', 'allowedTargets', 'explicit fulfillment state machine');
 $require('lifecycle', 'InventoryReservationStatus::Restocked', 'one-time restock state');
@@ -141,7 +141,8 @@ foreach ([
 }
 
 $require('config', "'store_operations' => [", 'store operations contract');
-$require('config', "'contract_version' => '2026-07-20-phase-15'", 'Phase 15 contract identity');
+$require('config', "'target_phase' => 15", 'Phase 15 ownership of store operations');
+$require('config', "'contract_version' => '2026-07-20-phase-16'", 'current frozen contract identity');
 $require('env', 'ORDER_SMS_PROVIDER=disabled', 'safe default order SMS provider');
 $forbid('env', 'VITE_KAVENEGAR', 'frontend SMS secret');
 $forbid('env', 'VITE_ENAMAD', 'frontend trust-code injection');
