@@ -10,6 +10,11 @@ Schedule::command('inventory:release-expired')
     ->everyMinute()
     ->withoutOverlapping()
     ->name('release-expired-inventory-reservations');
+Schedule::command('notifications:dispatch --limit=100')
+    ->everyMinute()
+    ->withoutOverlapping()
+    ->onOneServer()
+    ->name('dispatch-winimi-notification-outbox');
 
 Schedule::call(function (): void {
     OtpChallenge::query()
