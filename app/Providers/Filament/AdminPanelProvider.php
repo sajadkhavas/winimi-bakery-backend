@@ -3,6 +3,7 @@
 namespace App\Providers\Filament;
 
 use Awcodes\Curator\CuratorPlugin;
+use Awcodes\Curator\Resources\MediaResource;
 use BezhanSalleh\FilamentLanguageSwitch\LanguageSwitch;
 use BezhanSalleh\FilamentShield\FilamentShieldPlugin;
 use Filament\Http\Middleware\Authenticate;
@@ -71,7 +72,7 @@ class AdminPanelProvider extends PanelProvider
                     ->navigationIcon('heroicon-o-photo')
                     ->navigationGroup('محتوا')
                     ->navigationSort(5)
-                    ->resource(\Awcodes\Curator\Resources\MediaResource::class),
+                    ->resource(MediaResource::class),
             ])
             ->authMiddleware([Authenticate::class])
             ->navigationGroups([
