@@ -1,6 +1,6 @@
 # Winimi Frontend / Backend API Contract
 
-Contract version: `2026-07-19-phase-12`
+Contract version: `2026-07-19-phase-13`
 
 Frontend API origin example: `https://api.winimibakery.com`
 
@@ -29,17 +29,6 @@ Frontend API origin example: `https://api.winimibakery.com`
 }
 ```
 
-Validation error example:
-
-```json
-{
-  "message": "The given data was invalid.",
-  "errors": {
-    "mobile": ["شماره موبایل معتبر نیست."]
-  }
-}
-```
-
 ## System contract — implemented
 
 ```text
@@ -59,15 +48,21 @@ GET /api/catalog/products
 GET /api/catalog/products/{slug}
 ```
 
-Products use server-calculated Variant price, stock and availability. The inherited `/api/v1/products*` endpoints are legacy industrial endpoints and are not the Winimi storefront contract.
+Products use server-calculated Variant price and reservation-aware availability. The inherited `/api/v1/products*` endpoints are legacy industrial endpoints and are not the Winimi storefront contract.
 
 ## Customer authentication contract — implemented in Phase 12
 
-Customer accounts are independent from Filament administrator users.
+```text
+POST  /api/auth/otp/request
+POST  /api/auth/otp/verify
+GET   /api/auth/me
+POST  /api/auth/logout
+PATCH /api/account/profile
+```
+
+Customer accounts are independent from Filament administrator users. OTP challenges are short-lived, one-time, attempt-limited, hashed and rate-limited. Challenge mobile payloads are encrypted and customer sessions use the isolated `customer` guard.
 
 ### `POST /api/auth/otp/request`
-
-Request:
 
 ```json
 {
@@ -75,33 +70,9 @@ Request:
 }
 ```
 
-Accepted input may contain Persian or Arabic digits and `+98`, `0098`, `98` or leading-zero formats.
-
-Success response, HTTP 202:
-
-```json
-{
-  "success": true,
-  "data": {
-    "challengeId": "01K...ULID",
-    "expiresIn": 120,
-    "retryAfter": 60
-  },
-  "message": "اگر شماره قابل ارسال باشد، کد ورود ارسال شد."
-}
-```
-
-The response never reveals whether the mobile already belongs to a customer.
-
-Possible errors:
-
-- HTTP 422: invalid mobile format
-- HTTP 429: route rate limit or resend cooldown; includes `Retry-After`
-- HTTP 503: SMS provider disabled or unavailable
+Success is HTTP 202 and returns `challengeId`, `expiresIn` and `retryAfter`. Production never returns the code.
 
 ### `POST /api/auth/otp/verify`
-
-Request:
 
 ```json
 {
@@ -111,39 +82,9 @@ Request:
 }
 ```
 
-Success response:
-
-```json
-{
-  "success": true,
-  "data": {
-    "user": {
-      "id": "01K...ULID",
-      "mobile": "09123456789",
-      "fullName": null,
-      "email": null,
-      "mobileVerified": true,
-      "marketingConsent": false,
-      "createdAt": "2026-07-19T16:00:00.000000Z",
-      "updatedAt": "2026-07-19T16:00:00.000000Z"
-    }
-  }
-}
-```
-
 Successful verification consumes the challenge, creates or updates the customer, logs in through the `customer` guard and rotates the session ID.
 
-### `GET /api/auth/me`
-
-Requires an authenticated customer session. Returns the same `user` shape.
-
-### `POST /api/auth/logout`
-
-Requires an authenticated customer session. Logs out the `customer` guard, invalidates the session and rotates the CSRF token.
-
 ### `PATCH /api/account/profile`
-
-Requires an authenticated customer session.
 
 ```json
 {
@@ -153,45 +94,30 @@ Requires an authenticated customer session.
 }
 ```
 
-All fields are optional. The mobile cannot be changed through this endpoint.
-
-### Authentication security requirements
-
-- only a cryptographic hash of the OTP is stored
-- challenge mobile payload is encrypted at rest
-- mobile, IP and User-Agent lookup values use keyed hashes
-- challenges expire quickly and are one-time
-- failed attempts persist and enforce a maximum
-- requesting a new challenge consumes previous active challenges
-- request limits are keyed by IP and mobile
-- verification limits are keyed by IP and challenge ID
-- test codes may be exposed only in local/testing with an explicit flag
-- production codes are never returned or logged
-- disabled or failed SMS delivery removes the unused challenge
-- inactive or deleted customer accounts cannot log in
-- expired and consumed challenges are pruned automatically
+The mobile cannot be changed through the profile endpoint.
 
 Provider and deployment details are documented in `docs/CUSTOMER_AUTH.md`.
 
-## Orders contract — Phase 13, not implemented
-
-The following routes must remain unavailable until the order domain is complete:
+## Orders contract — implemented in Phase 13
 
 ```text
 POST /api/checkout
-GET /api/account/orders
-GET /api/account/orders/{orderId}
+GET  /api/account/orders
+GET  /api/account/orders/{orderId}
+POST /api/account/orders/{orderId}/cancel
 ```
 
-### Future `POST /api/checkout`
+All routes require an authenticated, active customer account.
+
+### `POST /api/checkout`
 
 Required header:
 
 ```text
-Idempotency-Key: CHK-random-token
+Idempotency-Key: a-unique-random-value-at-least-16-characters
 ```
 
-Target request:
+Request:
 
 ```json
 {
@@ -207,15 +133,79 @@ Target request:
   "deliveryMethod": "standard",
   "items": [
     {
-      "productId": "product-public-id",
-      "variantId": "variant-public-id",
+      "variantId": "01K...ULID",
       "quantity": 2
     }
   ]
 }
 ```
 
-The server will lock and validate stock, calculate all prices and fees, enforce chilled delivery and create one order per idempotency key.
+The request must not include authoritative item price, subtotal, delivery fee, discount or grand total fields.
+
+Success is HTTP 201. An exact idempotent replay is HTTP 200 with `meta.replayed=true`. Reusing the key for a different payload returns HTTP 409.
+
+```json
+{
+  "success": true,
+  "data": {
+    "order": {
+      "id": "01K...ULID",
+      "number": "WNM-260719-ABCDEFGH",
+      "status": "awaiting_payment",
+      "paymentStatus": "unpaid",
+      "totals": {
+        "subtotalToman": 160000,
+        "deliveryFeeToman": 30000,
+        "packagingFeeToman": 10000,
+        "discountToman": 0,
+        "grandTotalToman": 200000
+      },
+      "reservationExpiresAt": "2026-07-19T18:00:00+03:30",
+      "items": []
+    },
+    "payment": {
+      "available": false,
+      "state": "not-configured"
+    }
+  },
+  "meta": {
+    "replayed": false
+  }
+}
+```
+
+Server responsibilities:
+
+- lock all referenced Variant rows in a stable order
+- validate active category, product and Variant state
+- subtract active unexpired reservations from available stock
+- calculate current unit prices and every total on the server
+- enforce chilled delivery for cooling-required products
+- create immutable order-item snapshots
+- create one customer-scoped order per idempotency key
+- reserve stock temporarily without decrementing physical stock
+
+### Account order routes
+
+`GET /api/account/orders` returns only the authenticated customer's orders with pagination.
+
+`GET /api/account/orders/{orderId}` returns 404 when the order does not belong to the authenticated customer.
+
+`POST /api/account/orders/{orderId}/cancel` is allowed only for unpaid `awaiting_payment` orders. It transitions the order to `cancelled` and releases active reservations in the same transaction.
+
+### Inventory reservation lifecycle
+
+```text
+active -> consumed
+active -> released
+active -> expired
+```
+
+- `consumed` is reserved for Phase 14 verified payment and decrements physical stock
+- `released` is used for customer cancellation
+- `expired` is used when the payment deadline passes
+
+The scheduled `inventory:release-expired` command runs every minute without overlap. Full details are in `docs/ORDERS_CHECKOUT.md`.
 
 ## Payments contract — Phase 14, not implemented
 
@@ -224,7 +214,7 @@ POST /api/orders/{orderId}/payments
 POST /api/payments/zarinpal/verify
 ```
 
-Merchant credentials remain server-only. A payment attempt must exist before redirect and verification must be idempotent and atomic.
+Merchant credentials remain server-only. A payment attempt must exist before redirect. Verification must be idempotent and atomic, and only verified payment may consume inventory reservations and mark an order paid.
 
 ## Legacy API policy
 

@@ -1,7 +1,9 @@
 <?php
 
 use App\Http\Controllers\Api\AccountController;
+use App\Http\Controllers\Api\AccountOrderController;
 use App\Http\Controllers\Api\CatalogController;
+use App\Http\Controllers\Api\CheckoutController;
 use App\Http\Controllers\Api\OtpAuthController;
 use App\Http\Controllers\Api\PerformanceMetricController;
 use App\Http\Controllers\Api\SystemController;
@@ -47,8 +49,17 @@ Route::prefix('auth')->group(function () {
     });
 });
 
-Route::prefix('account')->middleware(['auth:customer', 'customer.active', 'throttle:60,1'])->group(function () {
-    Route::patch('profile', [AccountController::class, 'updateProfile']);
+Route::middleware(['auth:customer', 'customer.active'])->group(function () {
+    Route::post('checkout', [CheckoutController::class, 'store'])
+        ->middleware('throttle:20,1');
+
+    Route::prefix('account')->middleware('throttle:60,1')->group(function () {
+        Route::patch('profile', [AccountController::class, 'updateProfile']);
+        Route::get('orders', [AccountOrderController::class, 'index']);
+        Route::get('orders/{orderId}', [AccountOrderController::class, 'show']);
+        Route::post('orders/{orderId}/cancel', [AccountOrderController::class, 'cancel'])
+            ->middleware('throttle:10,1');
+    });
 });
 
 /*

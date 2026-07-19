@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Str;
 use InvalidArgumentException;
 
@@ -30,6 +31,7 @@ class BakeryProductVariant extends Model
         'sale_price_toman' => 'integer',
         'stock_quantity' => 'integer',
         'low_stock_threshold' => 'integer',
+        'active_reserved_quantity' => 'integer',
         'is_default' => 'boolean',
         'is_active' => 'boolean',
         'sort_order' => 'integer',
@@ -67,6 +69,11 @@ class BakeryProductVariant extends Model
         return $this->belongsTo(BakeryProduct::class, 'product_id');
     }
 
+    public function inventoryReservations(): HasMany
+    {
+        return $this->hasMany(InventoryReservation::class, 'variant_id');
+    }
+
     public function scopeActive(Builder $query): Builder
     {
         return $query->where('is_active', true);
@@ -79,15 +86,29 @@ class BakeryProductVariant extends Model
             : (int) $this->regular_price_toman;
     }
 
+    public function getReservedQuantityAttribute(): int
+    {
+        if (array_key_exists('active_reserved_quantity', $this->attributes)) {
+            return (int) ($this->attributes['active_reserved_quantity'] ?? 0);
+        }
+
+        return (int) $this->inventoryReservations()->active()->sum('quantity');
+    }
+
+    public function getAvailableStockQuantityAttribute(): int
+    {
+        return max(0, (int) $this->stock_quantity - $this->reserved_quantity);
+    }
+
     public function getAvailableAttribute(): bool
     {
-        return $this->is_active && $this->stock_quantity > 0;
+        return $this->is_active && $this->available_stock_quantity > 0;
     }
 
     public function getLowStockAttribute(): bool
     {
-        return $this->stock_quantity > 0
-            && $this->stock_quantity <= $this->low_stock_threshold;
+        return $this->available_stock_quantity > 0
+            && $this->available_stock_quantity <= $this->low_stock_threshold;
     }
 
     public function hasValidSalePrice(): bool

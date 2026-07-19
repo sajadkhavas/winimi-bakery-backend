@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Enums\InventoryReservationStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\BakeryCategoryResource;
 use App\Http\Resources\BakeryProductResource;
@@ -9,6 +10,7 @@ use App\Models\BakeryCategory;
 use App\Models\BakeryProduct;
 use App\Support\ApiResponse;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -39,7 +41,7 @@ class CatalogController extends Controller
 
         $query = BakeryProduct::query()
             ->active()
-            ->with(['category', 'activeVariants', 'media']);
+            ->with($this->catalogRelations());
 
         if (! empty($filters['category'])) {
             $query->whereHas(
@@ -66,10 +68,12 @@ class CatalogController extends Controller
         }
 
         if ($inStock) {
-            $query->whereHas(
-                'activeVariants',
-                fn (Builder $variant): Builder => $variant->where('stock_quantity', '>', 0),
-            );
+            $query->whereHas('activeVariants', function (Builder $variant): void {
+                $variant->whereRaw(
+                    'stock_quantity > COALESCE((SELECT SUM(quantity) FROM inventory_reservations WHERE inventory_reservations.variant_id = bakery_product_variants.id AND status = ? AND expires_at > ?), 0)',
+                    [InventoryReservationStatus::Active->value, now()],
+                );
+            });
         }
 
         $this->applySort($query, $filters['sort'] ?? 'featured');
@@ -101,7 +105,7 @@ class CatalogController extends Controller
     {
         $product = BakeryProduct::query()
             ->active()
-            ->with(['category', 'activeVariants', 'media'])
+            ->with($this->catalogRelations())
             ->where('slug', $slug)
             ->firstOrFail();
 
@@ -123,6 +127,17 @@ class CatalogController extends Controller
         return ApiResponse::success(
             BakeryCategoryResource::collection($categories)->resolve($request),
         );
+    }
+
+    private function catalogRelations(): array
+    {
+        return [
+            'category',
+            'media',
+            'activeVariants' => fn (HasMany $variants) => $variants->withSum([
+                'inventoryReservations as active_reserved_quantity' => fn (Builder $reservations): Builder => $reservations->active(),
+            ], 'quantity'),
+        ];
     }
 
     private function applySort(Builder $query, string $sort): void

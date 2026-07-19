@@ -2,7 +2,7 @@
 
 Laravel 12 + Filament 3 headless-commerce backend for the Winimi Bakery storefront.
 
-The production frontend lives in `sajadkhavas/cooci`. This repository owns the API, Filament administration, database, inventory, authentication, orders and payments.
+The production frontend lives in `sajadkhavas/cooci`. This repository owns the API, Filament administration, database, catalog, customer authentication, orders, inventory and payments.
 
 ## Current status
 
@@ -11,11 +11,10 @@ The production frontend lives in `sajadkhavas/cooci`. This repository owns the A
 | Laravel / Filament foundation | Implemented |
 | System health and contract endpoints | Implemented |
 | Bakery catalog, categories and Variants | Implemented in Phase 11 |
-| Bakery catalog Filament management | Implemented in Phase 11 |
-| Customer mobile OTP and secure sessions | Implemented in Phase 12 |
-| Customer profile and Filament management | Implemented in Phase 12 |
+| Customer OTP, secure sessions and profile | Implemented in Phase 12 |
+| Checkout, orders and inventory reservations | Implemented in Phase 13 |
+| Order inspection in Filament | Implemented in Phase 13 |
 | Legacy ToolMaster API | Preserved with deprecation headers |
-| Checkout, orders and inventory transactions | Planned for Phase 13 |
 | Zarinpal payment lifecycle | Planned for Phase 14 |
 
 Machine-readable status:
@@ -59,20 +58,22 @@ composer check
 
 GitHub Actions validates:
 
-- Composer metadata and patched dependencies
-- backend foundation audit
-- bakery catalog architecture audit
-- customer OTP/session security audit
+- Composer metadata and dependency security
+- backend foundation, catalog, customer-auth and order audits
 - scoped Laravel Pint formatting
 - complete fresh migrations on SQLite
 - cached configuration and routes
-- Filament resource/component discovery
-- catalog and authentication API behavior
-- OTP expiry, cooldown, attempt limits and one-time consumption
-- customer profile, session rotation and logout
+- command and Filament resource discovery
+- OTP and session security behavior
+- server-authoritative checkout totals and immutable snapshots
+- Idempotency replay and conflict behavior
+- reservation-aware stock and Oversell prevention
+- customer order ownership, cancellation and expiration
 - Composer security audit
 
-## System API
+## Implemented APIs
+
+### System
 
 ```text
 GET /api/system/health
@@ -81,9 +82,7 @@ GET /api/system/meta
 GET /api/system/contracts
 ```
 
-All API responses include `X-Request-ID` and `X-API-Version`.
-
-## Bakery catalog API
+### Bakery catalog
 
 ```text
 GET /api/catalog/categories
@@ -91,9 +90,9 @@ GET /api/catalog/products
 GET /api/catalog/products/{slug}
 ```
 
-The public bakery catalog uses `bakery_categories`, `bakery_products` and `bakery_product_variants`. Price and inventory belong to active Variants and are calculated by the server. Detailed documentation is in `docs/CATALOG_API.md`.
+Catalog stock represents physical stock minus active unexpired order reservations.
 
-## Customer authentication API
+### Customer authentication
 
 ```text
 POST  /api/auth/otp/request
@@ -103,24 +102,44 @@ POST  /api/auth/logout
 PATCH /api/account/profile
 ```
 
-Customer authentication is isolated from administrator authentication:
+Customers are isolated from administrator users. Storefront sessions use the `customer` guard and OTP challenges are hashed, encrypted, attempt-limited and rate-limited.
 
-- Filament administrators remain in `users` with the `web` guard
-- storefront customers live in `customers`
-- storefront sessions use the `customer` guard
-- OTP codes are stored only as secure hashes
-- challenge mobile payloads are encrypted
-- session IDs rotate after verification
-- logout invalidates the session and CSRF token
-- failed attempts, expiry, resend cooldown and one-time use are enforced
-- rate limits are independently keyed by IP, mobile and challenge
-- no trusted Bearer token is stored in LocalStorage
+### Checkout and orders
 
-Detailed documentation is in `docs/CUSTOMER_AUTH.md` and `docs/API_CONTRACT.md`.
+```text
+POST /api/checkout
+GET  /api/account/orders
+GET  /api/account/orders/{orderId}
+POST /api/account/orders/{orderId}/cancel
+```
 
-### Local OTP testing
+Checkout requires an authenticated active customer and a unique `Idempotency-Key` header. The server:
 
-External SMS is disabled by default. For local or automated testing only:
+- accepts only Variant IDs and quantities as cart truth
+- locks Variant rows in a stable order
+- calculates all prices and fees
+- creates immutable order-item snapshots
+- enforces cooling delivery rules
+- reserves inventory without decrementing physical stock
+- returns the same order for an exact idempotent replay
+- returns HTTP 409 when a key is reused for a different request
+
+Expired reservations are released automatically:
+
+```bash
+php artisan inventory:release-expired
+```
+
+Detailed documentation:
+
+- `docs/API_CONTRACT.md`
+- `docs/CATALOG_API.md`
+- `docs/CUSTOMER_AUTH.md`
+- `docs/ORDERS_CHECKOUT.md`
+
+## Safe local configuration
+
+OTP and checkout are disabled by default. Local OTP testing may use:
 
 ```env
 APP_ENV=local
@@ -128,18 +147,19 @@ SMS_PROVIDER=testing
 OTP_EXPOSE_TEST_CODE=true
 ```
 
-Production must never expose the code:
+Local checkout testing requires explicit activation and delivery choices:
 
 ```env
-APP_ENV=production
-APP_DEBUG=false
-SMS_PROVIDER=kavenegar
-OTP_EXPOSE_TEST_CODE=false
-SESSION_ENCRYPT=true
-SESSION_SECURE_COOKIE=true
+CHECKOUT_ENABLED=true
+DELIVERY_STANDARD_ENABLED=true
+DELIVERY_STANDARD_FEE_TOMAN=0
+DELIVERY_CHILLED_ENABLED=true
+DELIVERY_CHILLED_FEE_TOMAN=0
+DELIVERY_PICKUP_ENABLED=true
+DELIVERY_PICKUP_FEE_TOMAN=0
 ```
 
-Server-only keys such as `KAVENEGAR_API_KEY` and `ZARINPAL_MERCHANT_ID` must never use `VITE_*` variables.
+Production delivery methods and fees must be approved before activation. Payment remains unavailable until Phase 14.
 
 ## Filament management
 
@@ -148,12 +168,13 @@ The navigation group `فروشگاه وینیمی` contains:
 - دسته‌های بیکری
 - محصولات بیکری
 - مشتریان
+- سفارش‌ها
 
-Customer accounts cannot be manually created or bulk deleted from Filament. Mobile numbers are read-only because changing a mobile requires a dedicated verification flow. Administrators may inspect profile data and enable or disable an account.
+Orders are read-only in Phase 13. Operational status transitions will be expanded alongside verified payment and fulfillment rules.
 
 ## Frontend integration boundary
 
-The target frontend is `sajadkhavas/cooci`. Until the dedicated integration phase, frontend authentication remains disabled in production configuration even though the backend contract is implemented.
+The target frontend is `sajadkhavas/cooci`. Until the dedicated integration phase, production frontend modes remain disabled even though backend catalog, auth and order contracts are implemented.
 
 ```env
 VITE_USE_BACKEND=true
@@ -162,19 +183,9 @@ VITE_AUTH_MODE=disabled
 VITE_PAYMENT_MODE=disabled
 ```
 
-## CORS and session configuration
+Backend secrets such as SMS keys and Zarinpal Merchant ID must never use `VITE_*` variables.
 
-Local example:
-
-```env
-FRONTEND_URLS=http://localhost:5173,http://localhost:4173
-SANCTUM_STATEFUL_DOMAINS=localhost:5173,localhost:4173,localhost:8000
-SESSION_DOMAIN=null
-SESSION_SECURE_COOKIE=false
-SESSION_ENCRYPT=true
-```
-
-Production example:
+## Production session and checkout baseline
 
 ```env
 APP_ENV=production
@@ -188,11 +199,11 @@ SESSION_HTTP_ONLY=true
 SESSION_SAME_SITE=lax
 SESSION_ENCRYPT=true
 LEGACY_TOOLMASTER_API_ENABLED=false
+CHECKOUT_ENABLED=false
+PAYMENT_PROVIDER=disabled
 ```
 
-## Legacy API policy
-
-Existing `/api/v1/*` routes remain temporarily for incremental migration and return deprecation headers. No new Winimi commerce feature may be implemented under `/api/v1`.
+Keep checkout disabled until real delivery methods and fees are configured. Keep payment disabled until Phase 14 verification is deployed.
 
 ## Deployment principle
 
@@ -205,13 +216,13 @@ php artisan optimize
 php artisan queue:restart
 ```
 
-Production also requires HTTPS, a queue worker, scheduler, database backups, application/PHP logs, `APP_DEBUG=false` and server-only secrets.
+The scheduler must run every minute so expired inventory reservations are released. Production also requires HTTPS, a queue worker, database backups, application/PHP logs, `APP_DEBUG=false` and server-only secrets.
 
 ## Phase roadmap
 
 - Phase 10: foundation and migration boundary — complete
 - Phase 11: bakery catalog, Variants, stock and Filament resources — complete
 - Phase 12: OTP authentication, customer sessions and profile — complete
-- Phase 13: checkout, orders and inventory transactions
+- Phase 13: checkout, orders and inventory reservations — complete
 - Phase 14: Zarinpal payment lifecycle
 - Phase 15+: reviews, notifications, reporting and full frontend integration

@@ -30,7 +30,7 @@ env:
 
 jobs:
   validate:
-    name: Audit, catalog, auth, migrate, Filament and test
+    name: Audit, catalog, auth, orders, migrate, Filament and test
     runs-on: ubuntu-latest
     timeout-minutes: 20
 
@@ -81,6 +81,9 @@ jobs:
       - name: Customer authentication audit
         run: composer audit:auth
 
+      - name: Checkout and order audit
+        run: composer audit:orders
+
       - name: Pint formatting
         id: pint
         run: |
@@ -111,14 +114,17 @@ jobs:
           if-no-files-found: error
           retention-days: 3
 
-      - name: Validate cached configuration, routes and Filament discovery
+      - name: Validate cached configuration, routes, commands and Filament discovery
         run: |
           php artisan config:cache
           php artisan route:cache
           php artisan route:list --except-vendor
           php artisan route:list --path=api/auth
-          php artisan route:list --path=api/account
+          php artisan route:list --path=api/checkout
+          php artisan route:list --path=api/account/orders
           php artisan route:list --path=admin/bakery
+          php artisan route:list --path=admin/orders
+          php artisan list --raw | grep '^inventory:release-expired'
           if php artisan list --raw | grep -q '^filament:cache-components'; then
             php artisan filament:cache-components
             php artisan filament:clear-cached-components

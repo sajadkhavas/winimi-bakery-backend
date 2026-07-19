@@ -5,6 +5,11 @@ $frontendOrigins = array_values(array_filter(array_map(
     explode(',', (string) env('FRONTEND_URLS', env('FRONTEND_URL', 'http://localhost:5173'))),
 )));
 
+$boolean = static fn (string $key, bool $default = false): bool => filter_var(
+    env($key, $default),
+    FILTER_VALIDATE_BOOL,
+);
+
 return [
     'brand' => [
         'name' => env('WINIMI_BRAND_NAME', 'وینیمی بیکری'),
@@ -13,7 +18,7 @@ return [
 
     'api' => [
         'version' => '1',
-        'contract_version' => '2026-07-19-phase-12',
+        'contract_version' => '2026-07-19-phase-13',
         'request_id_header' => 'X-Request-ID',
     ],
 
@@ -25,7 +30,7 @@ return [
         'expires_seconds' => (int) env('OTP_EXPIRES_SECONDS', 120),
         'retry_after_seconds' => (int) env('OTP_RETRY_AFTER_SECONDS', 60),
         'max_attempts' => (int) env('OTP_MAX_ATTEMPTS', 5),
-        'expose_test_code' => (bool) env('OTP_EXPOSE_TEST_CODE', false),
+        'expose_test_code' => $boolean('OTP_EXPOSE_TEST_CODE'),
         'kavenegar' => [
             'api_key' => env('KAVENEGAR_API_KEY'),
             'template' => env('KAVENEGAR_TEMPLATE'),
@@ -33,8 +38,30 @@ return [
         ],
     ],
 
+    'checkout' => [
+        'enabled' => $boolean('CHECKOUT_ENABLED'),
+        'reservation_minutes' => (int) env('INVENTORY_RESERVATION_MINUTES', 20),
+        'max_quantity_per_line' => (int) env('CHECKOUT_MAX_QUANTITY_PER_LINE', 20),
+        'max_total_units' => (int) env('CHECKOUT_MAX_TOTAL_UNITS', 50),
+        'packaging_fee_toman' => (int) env('CHECKOUT_PACKAGING_FEE_TOMAN', 0),
+        'delivery_methods' => [
+            'standard' => [
+                'enabled' => $boolean('DELIVERY_STANDARD_ENABLED'),
+                'fee_toman' => (int) env('DELIVERY_STANDARD_FEE_TOMAN', 0),
+            ],
+            'chilled' => [
+                'enabled' => $boolean('DELIVERY_CHILLED_ENABLED'),
+                'fee_toman' => (int) env('DELIVERY_CHILLED_FEE_TOMAN', 0),
+            ],
+            'pickup' => [
+                'enabled' => $boolean('DELIVERY_PICKUP_ENABLED'),
+                'fee_toman' => (int) env('DELIVERY_PICKUP_FEE_TOMAN', 0),
+            ],
+        ],
+    ],
+
     'legacy' => [
-        'enabled' => (bool) env('LEGACY_TOOLMASTER_API_ENABLED', true),
+        'enabled' => $boolean('LEGACY_TOOLMASTER_API_ENABLED', true),
         'contract_url' => '/api/system/contracts',
     ],
 
@@ -71,12 +98,14 @@ return [
             ],
         ],
         'orders' => [
-            'status' => 'contract-only',
+            'status' => 'implemented',
             'target_phase' => 13,
+            'source' => 'transactional-order-reservations',
             'endpoints' => [
                 'POST /api/checkout',
                 'GET /api/account/orders',
                 'GET /api/account/orders/{orderId}',
+                'POST /api/account/orders/{orderId}/cancel',
             ],
         ],
         'payments' => [
