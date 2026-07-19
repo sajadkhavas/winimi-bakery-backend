@@ -81,7 +81,7 @@ class ReviewController extends Controller
 
             $item = OrderItem::query()
                 ->where('order_id', $order->getKey())
-                ->whereKey((int) $request->validated('orderItemId'))
+                ->where('public_id', $request->validated('orderItemId'))
                 ->lockForUpdate()
                 ->firstOrFail();
 
