@@ -5,7 +5,6 @@ namespace App\Console\Commands;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
-use JsonException;
 use Throwable;
 
 class BackendReadiness extends Command
@@ -87,7 +86,7 @@ class BackendReadiness extends Command
                 && ! isset($document['paths']['/api/v1/products']);
 
             return $this->check($valid, $path);
-        } catch (JsonException|Throwable $exception) {
+        } catch (Throwable $exception) {
             return $this->check(false, $exception->getMessage());
         }
     }
