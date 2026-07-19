@@ -63,6 +63,12 @@ No production admin password is documented or committed. Create or promote admin
 composer check
 ```
 
+Run only the locked launch-roadmap audit:
+
+```bash
+composer audit:launch
+```
+
 GitHub Actions validates:
 
 - Composer metadata and dependency security
