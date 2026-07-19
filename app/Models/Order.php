@@ -90,6 +90,11 @@ class Order extends Model
         return $this->hasMany(InventoryReservation::class);
     }
 
+    public function paymentAttempts(): HasMany
+    {
+        return $this->hasMany(PaymentAttempt::class)->latest('id');
+    }
+
     public function statusHistory(): HasMany
     {
         return $this->hasMany(OrderStatusHistory::class)->orderBy('created_at');
@@ -103,6 +108,6 @@ class Order extends Model
     public function canBeCancelledByCustomer(): bool
     {
         return $this->status === OrderStatus::AwaitingPayment
-            && $this->payment_status === PaymentStatus::Unpaid;
+            && in_array($this->payment_status, [PaymentStatus::Unpaid, PaymentStatus::Failed], true);
     }
 }
