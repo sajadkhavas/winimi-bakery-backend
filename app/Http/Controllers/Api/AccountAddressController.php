@@ -110,7 +110,7 @@ class AccountAddressController extends Controller
 
     private function mapInput(array $data): array
     {
-        return [
+        $mapped = [
             'title' => trim($data['title']),
             'recipient_name' => trim($data['recipientName']),
             'mobile' => IranianMobile::normalize($data['mobile']),
@@ -118,8 +118,13 @@ class AccountAddressController extends Controller
             'city' => trim($data['city']),
             'address_line' => trim($data['address']),
             'postal_code' => $this->nullableTrim($data['postalCode'] ?? null),
-            'is_default' => (bool) ($data['isDefault'] ?? false),
         ];
+
+        if (array_key_exists('isDefault', $data)) {
+            $mapped['is_default'] = (bool) $data['isDefault'];
+        }
+
+        return $mapped;
     }
 
     private function nullableTrim(mixed $value): ?string
