@@ -50,7 +50,19 @@ jobs:
         run: composer validate --no-check-publish --no-check-lock
 
       - name: Install Composer dependencies
-        run: composer install --prefer-dist --no-interaction --no-progress
+        id: composer_install
+        run: |
+          set -o pipefail
+          composer install --prefer-dist --no-interaction --no-progress 2>&1 | tee composer-install.log
+
+      - name: Upload Composer install diagnostics
+        if: failure() && steps.composer_install.outcome == 'failure'
+        uses: actions/upload-artifact@v4
+        with:
+          name: composer-install-diagnostics
+          path: composer-install.log
+          if-no-files-found: error
+          retention-days: 3
 
       - name: Prepare Laravel environment
         run: |
