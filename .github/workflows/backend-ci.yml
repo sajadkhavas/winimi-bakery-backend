@@ -31,7 +31,7 @@ env:
 
 jobs:
   validate:
-    name: Audit, catalog, auth, orders, payments, operations, migrate, Filament and test
+    name: Audit, freeze, migrate, seed, cache, Filament and test
     runs-on: ubuntu-latest
     timeout-minutes: 25
 
@@ -73,68 +73,77 @@ jobs:
           php artisan key:generate --force
           php artisan optimize:clear
 
-      - name: Backend foundation audit
-        run: php scripts/audit-backend-foundation.php
+      - name: Existing architecture audits
+        run: |
+          php scripts/audit-backend-foundation.php
+          composer audit:launch
+          composer audit:catalog
+          composer audit:auth
+          composer audit:orders
+          composer audit:payments
+          composer audit:operations
 
-      - name: Full-launch roadmap audit
-        run: composer audit:launch
-
-      - name: Bakery catalog audit
-        run: composer audit:catalog
-
-      - name: Customer authentication audit
-        run: composer audit:auth
-
-      - name: Checkout and order audit
-        run: composer audit:orders
-
-      - name: Payment architecture audit
-        run: composer audit:payments
-
-      - name: Store operations audit
-        id: operations_audit
+      - name: Backend contract freeze audit
+        id: freeze_audit
         run: |
           set -o pipefail
-          composer audit:operations 2>&1 | tee operations-audit.log
+          php scripts/audit-backend-freeze.php 2>&1 | tee backend-freeze-audit.log
 
-      - name: Upload store operations audit diagnostics
-        if: failure() && steps.operations_audit.outcome == 'failure'
+      - name: Upload backend freeze diagnostics
+        if: failure() && steps.freeze_audit.outcome == 'failure'
         uses: actions/upload-artifact@v4
         with:
-          name: store-operations-audit-diagnostics
-          path: operations-audit.log
+          name: backend-freeze-audit-diagnostics
+          path: backend-freeze-audit.log
           if-no-files-found: error
           retention-days: 3
 
-      - name: Apply canonical Pint formatting
+      - name: Pint formatting is clean
         id: pint
         run: |
           set -o pipefail
-          command="$(php -r '$composer = json_decode(file_get_contents("composer.json"), true, 512, JSON_THROW_ON_ERROR); echo str_replace(["@php ", " --test "], ["php ", " "], $composer["scripts"]["format:check"][0]);')"
-          eval "$command" 2>&1 | tee pint.log
-          git diff --name-only -z -- '*.php' | tar --null -T - -czf pint-formatted-files.tar.gz
+          composer format:check 2>&1 | tee pint-existing.log
+          php vendor/bin/pint --test \
+            app/Support/ApiExceptionRenderer.php \
+            app/Support/Pagination.php \
+            app/Console/Commands/BackendReadiness.php \
+            database/migrations/2026_07_20_120000_optimize_backend_contract_indexes.php \
+            database/seeders/DatabaseSeeder.php \
+            database/seeders/WinimiStagingSeeder.php \
+            tests/Feature/BackendContractFreezeTest.php \
+            tests/Feature/SystemApiTest.php \
+            scripts/audit-backend-freeze.php 2>&1 | tee pint-freeze.log
 
-      - name: Upload canonical Pint files
+      - name: Upload Pint diagnostics
+        if: failure() && steps.pint.outcome == 'failure'
         uses: actions/upload-artifact@v4
         with:
-          name: pint-formatted-files
-          path: pint-formatted-files.tar.gz
+          name: pint-diagnostics
+          path: |
+            pint-existing.log
+            pint-freeze.log
           if-no-files-found: error
           retention-days: 3
 
-      - name: Run database migrations
+      - name: Run database migrations and staging seed smoke
         id: migrations
         run: |
           set -o pipefail
           php artisan migrate:fresh --force 2>&1 | tee migrations.log
+          php artisan db:seed --class='Database\Seeders\WinimiStagingSeeder' --force 2>&1 | tee staging-seed.log
+          php artisan backend:readiness --json 2>&1 | tee backend-readiness-seeded.log
+          php artisan migrate:fresh --force
 
-      - name: Upload migration diagnostics
+      - name: Upload migration and seed diagnostics
         if: failure() && steps.migrations.outcome == 'failure'
         uses: actions/upload-artifact@v4
         with:
-          name: migration-diagnostics
-          path: migrations.log
-          if-no-files-found: error
+          name: migration-seed-diagnostics
+          path: |
+            migrations.log
+            staging-seed.log
+            backend-readiness-seeded.log
+          if-no-files-found: warn
           retention-days: 3
 
       - name: Validate cached configuration, routes, commands and Filament discovery
@@ -142,6 +151,7 @@ jobs:
           php artisan config:cache
           php artisan route:cache
           php artisan route:list --except-vendor
+          php artisan route:list --path=api/system/openapi
           php artisan route:list --path=api/auth
           php artisan route:list --path=api/checkout
           php artisan route:list --path=api/account/addresses
@@ -161,6 +171,8 @@ jobs:
           php artisan route:list --path=admin/notification
           php artisan list --raw | grep '^inventory:release-expired'
           php artisan list --raw | grep '^notifications:dispatch'
+          php artisan list --raw | grep '^backend:readiness'
+          php artisan backend:readiness --json
           if php artisan list --raw | grep -q '^filament:cache-components'; then
             php artisan filament:cache-components
             php artisan filament:clear-cached-components
