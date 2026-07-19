@@ -56,6 +56,26 @@ class Customer extends Authenticatable
         return $this->hasMany(Order::class)->latest('placed_at');
     }
 
+    public function addresses(): HasMany
+    {
+        return $this->hasMany(CustomerAddress::class)->latest('is_default')->latest('id');
+    }
+
+    public function reviews(): HasMany
+    {
+        return $this->hasMany(ProductReview::class)->latest('id');
+    }
+
+    public function inquiries(): HasMany
+    {
+        return $this->hasMany(Inquiry::class)->latest('id');
+    }
+
+    public function notifications(): HasMany
+    {
+        return $this->hasMany(NotificationOutbox::class)->latest('id');
+    }
+
     public function scopeActive(Builder $query): Builder
     {
         return $query->where('is_active', true);
