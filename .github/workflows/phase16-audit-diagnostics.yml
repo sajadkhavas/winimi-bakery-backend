@@ -1,0 +1,46 @@
+name: Phase 16 Audit Diagnostics
+
+on:
+  push:
+    branches:
+      - agent/phase-16-backend-freeze
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      APP_ENV: testing
+      APP_DEBUG: "true"
+      DB_CONNECTION: sqlite
+      DB_DATABASE: database/database.sqlite
+      CACHE_STORE: array
+      SESSION_DRIVER: array
+      QUEUE_CONNECTION: sync
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.3"
+          extensions: bcmath, ctype, curl, dom, fileinfo, gd, intl, mbstring, openssl, pdo_sqlite, sqlite3, tokenizer, xml, zip
+          coverage: none
+          tools: composer:v2
+      - run: composer install --prefer-dist --no-interaction --no-progress
+      - run: cp .env.example .env && touch database/database.sqlite && php artisan key:generate --force
+      - name: Foundation
+        run: php scripts/audit-backend-foundation.php
+      - name: Launch roadmap
+        run: composer audit:launch
+      - name: Catalog
+        run: composer audit:catalog
+      - name: Customer auth
+        run: composer audit:auth
+      - name: Checkout orders
+        run: composer audit:orders
+      - name: Payments
+        run: composer audit:payments
+      - name: Store operations
+        run: composer audit:operations
