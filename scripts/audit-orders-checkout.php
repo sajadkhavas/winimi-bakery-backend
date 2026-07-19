@@ -58,7 +58,7 @@ foreach (['product_name', 'variant_name', 'unit_price_toman', 'line_total_toman'
 $require('checkout', 'lockForUpdate()', 'transactional row locking');
 $require('checkout', "hash('sha256'", 'canonical request hash');
 $require('checkout', "where('idempotency_key'", 'idempotency lookup');
-$require('checkout', "InventoryReservationStatus::Active", 'active inventory reservation');
+$require('checkout', 'InventoryReservationStatus::Active', 'active inventory reservation');
 $require('checkout', '$variant->current_price_toman', 'server-authoritative price');
 $require('checkout', '$variant->stock_quantity - $reserved', 'reservation-aware stock calculation');
 $forbid('request', 'subtotal', 'client subtotal input');
