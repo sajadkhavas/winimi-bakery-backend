@@ -101,6 +101,13 @@ final class PaymentService
                     ];
                 }
 
+                $expiresAt = now()->addMinutes(
+                    max(1, (int) config('winimi.payment.attempt_ttl_minutes', 20)),
+                );
+                if ($lockedOrder->reservation_expires_at?->lt($expiresAt)) {
+                    $expiresAt = $lockedOrder->reservation_expires_at;
+                }
+
                 $attempt = PaymentAttempt::query()->create([
                     'order_id' => $lockedOrder->getKey(),
                     'customer_id' => $customer->getKey(),
@@ -115,6 +122,7 @@ final class PaymentService
                     'amount_provider' => $lockedOrder->grand_total_toman
                         * max(1, (int) config('winimi.payment.amount_multiplier', 10)),
                     'currency' => (string) config('winimi.payment.currency', 'IRR'),
+                    'expires_at' => $expiresAt,
                 ]);
 
                 $lockedOrder->forceFill(['payment_status' => PaymentStatus::Pending])->save();
@@ -168,15 +176,10 @@ final class PaymentService
                 ->whereKey($prepared['attempt']->getKey())
                 ->lockForUpdate()
                 ->firstOrFail();
-            $order = Order::query()->whereKey($locked->order_id)->lockForUpdate()->firstOrFail();
+            Order::query()->whereKey($locked->order_id)->lockForUpdate()->firstOrFail();
 
             if ($locked->status !== PaymentAttemptStatus::Initiated) {
                 return $locked;
-            }
-
-            $expiresAt = now()->addMinutes(max(1, (int) config('winimi.payment.attempt_ttl_minutes', 20)));
-            if ($order->reservation_expires_at?->lt($expiresAt)) {
-                $expiresAt = $order->reservation_expires_at;
             }
 
             $locked->forceFill([
@@ -186,7 +189,6 @@ final class PaymentService
                 'gateway_code' => $result->gatewayCode,
                 'request_payload' => $result->requestPayload,
                 'response_payload' => $result->responsePayload,
-                'expires_at' => $expiresAt,
             ])->save();
 
             return $locked;
