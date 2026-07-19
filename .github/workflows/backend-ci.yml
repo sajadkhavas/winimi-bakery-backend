@@ -128,4 +128,16 @@ jobs:
           retention-days: 3
 
       - name: Composer security audit
-        run: composer audit --no-interaction
+        id: security_audit
+        run: |
+          set -o pipefail
+          composer audit --no-interaction 2>&1 | tee composer-audit.log
+
+      - name: Upload Composer security diagnostics
+        if: failure() && steps.security_audit.outcome == 'failure'
+        uses: actions/upload-artifact@v4
+        with:
+          name: composer-audit-diagnostics
+          path: composer-audit.log
+          if-no-files-found: error
+          retention-days: 3
