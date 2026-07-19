@@ -1,46 +1,106 @@
 # Winimi Frontend / Backend API Contract
 
-Contract version: `2026-07-20-phase-15`
+Contract version: `2026-07-20-phase-16`
 
 Frontend API origin example: `https://api.winimibakery.com`
 
+Machine-readable OpenAPI 3.1 document:
+
+```text
+GET /api/system/openapi
+```
+
+Machine-readable implementation status:
+
+```text
+GET /api/system/contracts
+```
+
 ## General rules
 
-- All application requests and responses use JSON except media files and payment redirects.
+- Requests and responses use JSON except media files and gateway redirects.
 - Frontend requests use `credentials: include`.
-- Customer authentication uses a Laravel HttpOnly session cookie, not a LocalStorage Bearer token.
-- State-changing first-party requests follow Laravel Sanctum CSRF protection.
+- Customer authentication uses a Laravel HttpOnly session cookie, never LocalStorage bearer tokens.
+- Mutating first-party requests follow Laravel Sanctum CSRF protection.
 - `X-Request-ID` is accepted and returned.
 - Public domain identifiers are ULIDs or other non-sequential identifiers.
 - Integer application prices are expressed in toman.
 - Client totals, inventory, delivery fees, ownership, fulfillment and payment-state claims are never authoritative.
-- Error responses never expose stack traces, credentials, raw provider payloads, internal notes or unhashed IP addresses.
+- Errors never expose stack traces, credentials, raw provider payloads, internal notes or unhashed IP addresses.
+- The frontend must branch on stable `code` values rather than matching Persian error messages.
 
-## Standard response envelope
+## Frozen envelopes
+
+Success:
 
 ```json
 {
   "success": true,
   "data": {},
+  "message": "optional message",
   "meta": {
     "requestId": "uuid",
-    "apiVersion": "1"
+    "apiVersion": "1",
+    "contractVersion": "2026-07-20-phase-16"
   }
 }
 ```
 
-`GET /api/system/contracts` is the machine-readable source of truth for implementation status.
+Error:
 
-## System — implemented
+```json
+{
+  "success": false,
+  "code": "validation_failed",
+  "message": "اطلاعات ارسال‌شده معتبر نیست.",
+  "errors": {
+    "field": ["validation message"]
+  },
+  "meta": {
+    "requestId": "uuid",
+    "apiVersion": "1",
+    "contractVersion": "2026-07-20-phase-16"
+  }
+}
+```
+
+Stable codes and HTTP mappings are documented in `docs/API_ERRORS_AND_PAGINATION.md`.
+
+## Frozen pagination
+
+Paginated endpoints place items in `data` and use:
+
+```json
+{
+  "meta": {
+    "pagination": {
+      "page": 1,
+      "perPage": 12,
+      "total": 24,
+      "totalPages": 2,
+      "from": 1,
+      "to": 12,
+      "hasMore": true
+    }
+  }
+}
+```
+
+Catalog and posts default to 12, maximum 48. Account orders and reviews default to 10, maximum 30. Invalid values return `validation_failed`; they are not silently clamped.
+
+## System
 
 ```text
 GET /api/system/health
 GET /api/system/ready
 GET /api/system/meta
 GET /api/system/contracts
+GET /api/system/openapi
 ```
 
-## Catalog — implemented in Phase 11
+`GET /api/system/contracts` reports `backend_complete=ready`. The OpenAPI document excludes inherited `/api/v1` routes.
+
+## Catalog
 
 ```text
 GET /api/catalog/categories
@@ -49,9 +109,19 @@ GET /api/catalog/products/{slug}
 GET /api/catalog/products/{slug}/reviews
 ```
 
+Frozen product filters:
+
+- `category`
+- `search`, maximum 100 characters
+- `featured`
+- `requiresCooling`
+- `inStock`
+- `sort`: `featured`, `newest`, `name`, `price-asc`, `price-desc`
+- `page`, `perPage`
+
 Products use server-calculated Variant prices and reservation-aware stock. Public reviews include approved verified-purchase reviews only.
 
-## Customer authentication and account — implemented in Phases 12 and 15
+## Customer authentication and account
 
 ```text
 POST   /api/auth/otp/request
@@ -65,7 +135,7 @@ PUT    /api/account/addresses/{addressId}
 DELETE /api/account/addresses/{addressId}
 ```
 
-OTP challenges are short-lived, one-time, attempt-limited, hashed and rate-limited. Address identifiers are customer-owned public ULIDs. The server enforces ownership on every address lookup and keeps at most one default active address per customer.
+OTP challenges are short-lived, one-time, attempt-limited, hashed and rate-limited. Address identifiers are customer-owned public ULIDs. Missing and cross-customer resources both return HTTP 404 with `code=resource_not_found`.
 
 Address request:
 
@@ -82,7 +152,7 @@ Address request:
 }
 ```
 
-## Delivery and checkout — implemented in Phases 13 and 15
+## Delivery and checkout
 
 ```text
 GET  /api/delivery/options
@@ -92,7 +162,7 @@ GET  /api/account/orders/{orderId}
 POST /api/account/orders/{orderId}/cancel
 ```
 
-Delivery options accept optional `province`, `city`, `subtotalToman` and `requiresCooling` query parameters. The response describes the matched delivery zone, preparation window and enabled methods. It is informational; checkout recalculates everything.
+Delivery options accept optional `province`, `city`, `subtotalToman` and `requiresCooling`. The response is informational; checkout recalculates the matched zone and every fee.
 
 Checkout requires:
 
@@ -100,7 +170,7 @@ Checkout requires:
 Idempotency-Key: a-unique-random-value-at-least-16-characters
 ```
 
-Checkout may use a saved address:
+Saved-address checkout:
 
 ```json
 {
@@ -115,7 +185,7 @@ Checkout may use a saved address:
 }
 ```
 
-Or a one-time recipient snapshot:
+One-time recipient snapshot:
 
 ```json
 {
@@ -138,24 +208,23 @@ Or a one-time recipient snapshot:
 }
 ```
 
-The request must never include authoritative item price, subtotal, delivery fee, packaging fee, discount or grand total fields.
+The request must never include authoritative item price, subtotal, delivery fee, packaging fee, discount or grand total.
 
 The server:
 
-- locks referenced Variants in a stable order
-- checks active category/product/Variant state
-- subtracts active unexpired reservations from stock
-- calculates item totals
-- resolves the most specific active delivery zone
-- enforces cooling, minimum order and daily capacity rules
-- calculates free-delivery thresholds and packaging fees
-- snapshots the delivery zone and preparation min/max window
-- creates immutable item snapshots and active reservations
+- locks referenced Variants in stable order
+- validates active category/product/Variant state
+- subtracts active unexpired reservations
+- calculates item totals and all fees
+- resolves the most specific delivery zone
+- enforces cooling, minimum order and daily capacity
+- snapshots zone and preparation range
+- creates immutable items and active reservations
 - replays only an exact customer-scoped idempotent request
 
-Order resources include public fulfillment timestamps, delivery-zone summary and status timeline. They never include internal admin notes.
+Order resources expose public fulfillment timestamps, delivery-zone summary and timeline, never internal admin notes.
 
-## Payments — implemented in Phase 14
+## Payments
 
 ```text
 POST /api/orders/{orderId}/payments
@@ -163,21 +232,19 @@ POST /api/payments/verify
 POST /api/payments/zarinpal/verify
 ```
 
-Payment initiation uses a unique `Idempotency-Key`. Checkout never starts a gateway redirect itself. The callback status is a hint only; the backend verifies the recorded provider, authority and immutable server amount.
+Payment initiation requires `Idempotency-Key`. Checkout never starts a gateway redirect. Callback status is a hint only; the backend verifies the recorded provider, authority and immutable server amount.
 
 Only verified payment may atomically:
 
-- mark the payment attempt verified
+- mark the attempt verified
 - mark the order paid
 - consume reservations
 - decrement physical stock
-- queue the `order.paid` notification
+- queue `order.paid`
 
-Duplicate verified callbacks never consume inventory twice. Payment and Zarinpal credentials remain server-only and payment is disabled by default until Phase 20.
+Duplicate verified callbacks never consume inventory twice. Payment credentials remain server-only and disabled until Phase 20.
 
-Full details are in `docs/PAYMENTS.md`.
-
-## Store content and trust — implemented in Phase 15
+## Store content and trust
 
 ```text
 GET /api/store/settings
@@ -189,9 +256,11 @@ GET /api/store/posts/{slug}
 GET /api/store/cities/{slug}
 ```
 
-Only active or published bakery content is returned. The eNAMAD badge code is returned only when its admin setting is enabled and a non-empty external badge code exists; otherwise `badgeCode` is null.
+Posts support `category`, `search`, `page` and `perPage`. FAQ supports `category`. Only active or published bakery content is returned.
 
-## Verified-purchase reviews — implemented in Phase 15
+The eNAMAD badge code is returned only when its admin setting is enabled and a non-empty external badge code exists; otherwise `badgeCode` is null.
+
+## Verified-purchase reviews
 
 ```text
 GET  /api/catalog/products/{slug}/reviews
@@ -202,16 +271,16 @@ Review request:
 
 ```json
 {
-  "orderItemId": 123,
+  "orderItemId": "01K...ORDER_ITEM",
   "rating": 5,
   "title": "عالی",
   "body": "محصول تازه و باکیفیت بود."
 }
 ```
 
-The order must belong to the authenticated customer and be delivered. The item must belong to that order. One review per customer/order item is accepted. New reviews are pending and do not appear publicly before moderation.
+The order must belong to the customer and be delivered. The public order-item ULID must belong to that order. One review per customer/order item is accepted. New reviews stay pending until moderation.
 
-## Contact, gift and corporate inquiries — implemented in Phase 15
+## Contact, gift and corporate inquiries
 
 ```text
 POST /api/inquiries
@@ -232,11 +301,11 @@ POST /api/inquiries
 }
 ```
 
-Supported types are `contact`, `gift` and `corporate`. The route has rate limiting, honeypot validation, duplicate-message protection, normalized mobile data and HMAC-hashed IP storage.
+Supported types are `contact`, `gift` and `corporate`. The route has rate limiting, honeypot validation, duplicate protection, normalized mobile data and HMAC-hashed IP storage.
 
-## Fulfillment operations — implemented in Phase 15
+## Fulfillment operations
 
-Customer-facing state progression:
+Customer-facing state values:
 
 ```text
 awaiting_payment
@@ -250,32 +319,32 @@ cancelled
 expired
 ```
 
-Admin transitions are controlled by the backend state machine. Pickup orders move from ready directly to delivered. Other delivery methods require dispatched with a tracking code before delivered.
+Admin transitions are controlled by the backend state machine. Pickup moves from ready directly to delivered. Other methods require dispatched with a tracking code before delivered.
 
-Cancellation before payment releases reservations. Cancellation after payment restores consumed stock exactly once and marks the reservation `restocked`. It does not claim a financial refund occurred; `paymentStatus` stays paid until an actual refund is processed.
+Cancellation before payment releases reservations. Cancellation after payment restores consumed stock exactly once and marks reservations `restocked`. It does not claim that a financial refund occurred.
 
-## Notification outbox — implemented in Phase 15
+## Notification outbox
 
-Order events are queued transactionally and dispatched by the scheduled `notifications:dispatch` command. Destination values are encrypted at rest.
+Order events are queued transactionally and dispatched by `notifications:dispatch`. Destinations are encrypted at rest.
 
 Providers:
 
-- `disabled`: leaves pending rows untouched
-- `testing`: allowed only outside production
-- `kavenegar`: requires a server-side API key
+- `disabled`: leaves rows pending
+- `testing`: outside production only
+- `kavenegar`: requires a server-side key
 
-No SMS credential or raw provider response is exposed through the storefront contract.
-
-Full operational details are in `docs/STORE_OPERATIONS.md`.
+No SMS credential or raw provider response is exposed to the storefront.
 
 ## Legacy API policy
 
-All `/api/v1/*` routes are temporary ToolMaster compatibility endpoints and return:
+`/api/v1/*` is inherited ToolMaster compatibility only:
 
-```text
-Deprecation: true
-X-Winimi-Legacy-Domain: toolmaster
-Link: </api/system/contracts>; rel="deprecation"
-```
+- excluded from OpenAPI
+- prohibited for new Winimi functionality
+- disabled by default in production
+- when disabled, returns HTTP 404 with `code=legacy_api_disabled`
+- the Phase 17 frontend must never depend on it
 
-No new Winimi commerce feature may be implemented under `/api/v1`.
+## Contract change policy
+
+Phase 17 may implement a typed client against this contract. Any backend change to paths, required fields, stable error codes, pagination, sort values, ownership behavior, payment semantics or public identifiers requires a new explicit contract version and regression review; it must not be introduced silently during frontend work.
