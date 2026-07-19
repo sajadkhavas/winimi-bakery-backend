@@ -5,6 +5,7 @@ use App\Http\Controllers\Api\AccountOrderController;
 use App\Http\Controllers\Api\CatalogController;
 use App\Http\Controllers\Api\CheckoutController;
 use App\Http\Controllers\Api\OtpAuthController;
+use App\Http\Controllers\Api\PaymentController;
 use App\Http\Controllers\Api\PerformanceMetricController;
 use App\Http\Controllers\Api\SystemController;
 use App\Http\Controllers\Api\V1\AuthController;
@@ -51,6 +52,13 @@ Route::prefix('auth')->group(function () {
 
 Route::middleware(['auth:customer', 'customer.active'])->group(function () {
     Route::post('checkout', [CheckoutController::class, 'store'])
+        ->middleware('throttle:20,1');
+
+    Route::post('orders/{orderId}/payments', [PaymentController::class, 'store'])
+        ->middleware('throttle:10,1');
+    Route::post('payments/verify', [PaymentController::class, 'verify'])
+        ->middleware('throttle:20,1');
+    Route::post('payments/zarinpal/verify', [PaymentController::class, 'verify'])
         ->middleware('throttle:20,1');
 
     Route::prefix('account')->middleware('throttle:60,1')->group(function () {
