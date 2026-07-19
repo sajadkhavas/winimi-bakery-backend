@@ -76,6 +76,7 @@
             "@php artisan test"
         ],
         "check": [
+            "@php scripts/audit-backend-foundation.php",
             "@php vendor/bin/pint --test",
             "@php artisan route:list --except-vendor",
             "@php artisan test"
