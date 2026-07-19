@@ -38,6 +38,20 @@ final class NotificationOutboxService
 
     public function dispatchPending(int $limit = 50): int
     {
+        if (! $this->providers->ready()) {
+            return 0;
+        }
+
+        NotificationOutbox::query()
+            ->where('status', NotificationStatus::Processing->value)
+            ->where('updated_at', '<=', now()->subMinutes(10))
+            ->update([
+                'status' => NotificationStatus::Pending->value,
+                'available_at' => now(),
+                'last_error' => 'stale_processing_recovered',
+                'updated_at' => now(),
+            ]);
+
         $ids = NotificationOutbox::query()
             ->ready()
             ->orderBy('id')
@@ -56,6 +70,10 @@ final class NotificationOutboxService
 
     public function dispatchOne(int $id): bool
     {
+        if (! $this->providers->ready()) {
+            return false;
+        }
+
         $notification = DB::transaction(function () use ($id): ?NotificationOutbox {
             $locked = NotificationOutbox::query()->whereKey($id)->lockForUpdate()->first();
             if (! $locked || $locked->status !== NotificationStatus::Pending) {
