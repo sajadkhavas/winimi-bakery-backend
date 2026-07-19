@@ -49,7 +49,7 @@ $requireText('routes/api.php', "middleware('api.legacy')", 'legacy route boundar
 $requireText('bootstrap/app.php', '$middleware->statefulApi();', 'Sanctum stateful API middleware');
 $requireText('bootstrap/app.php', 'shouldRenderJsonWhen', 'JSON API exception rendering');
 $requireText('config/cors.php', "'supports_credentials' => true", 'credentialed CORS');
-$requireText('config/cors.php', "config('winimi.frontend_origins'", 'environment-driven frontend origins');
+$requireText('config/cors.php', "env('FRONTEND_URLS'", 'environment-driven frontend origins');
 $requireText('app/Models/Product.php', "config('winimi.brand.name_en'", 'Winimi product seller identity');
 $requireText('README.md', 'No production admin password is documented or committed.', 'admin credential policy');
 $requireText('docs/API_CONTRACT.md', 'POST /api/auth/otp/request', 'frontend OTP contract');
