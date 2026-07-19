@@ -31,7 +31,7 @@
         "spatie/laravel-medialibrary": "^11.0",
         "spatie/laravel-sitemap": "^7.2",
         "spatie/laravel-sluggable": "^3.5",
-        "tapp/filament-authentication-log": "^3.1",
+        "tapp/filament-authentication-log": "^4.0",
         "torann/geoip": "^3.0",
         "z3d0x/filament-fabricator": "^2.7"
     },
