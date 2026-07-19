@@ -2,7 +2,7 @@
 
 Laravel 12 + Filament 3 headless-commerce backend for the Winimi Bakery storefront.
 
-The production frontend lives in `sajadkhavas/cooci`. This repository owns the API, Filament administration, database, catalog, customer authentication, checkout, orders, inventory, payments, content operations and notifications.
+The production frontend lives in `sajadkhavas/cooci`. This repository owns the API, Filament administration, database, catalog, customer authentication, reusable addresses, delivery configuration, checkout, orders, inventory, payments, fulfillment, content, reviews, inquiries and notification outbox.
 
 ## Current status
 
@@ -15,7 +15,7 @@ The production frontend lives in `sajadkhavas/cooci`. This repository owns the A
 | Checkout, orders and inventory reservations | Implemented in Phase 13 |
 | Full internal launch roadmap | Locked in Phase 13.5 |
 | Provider-ready payment lifecycle | Implemented in Phase 14 |
-| Complete store operations backend | Phase 15 |
+| Complete store operations backend | Implemented in Phase 15 |
 | Backend completion and contract freeze | Phase 16 |
 | Full frontend integration | Phase 17 |
 | End-to-end completion | Phase 18 |
@@ -68,10 +68,11 @@ composer audit:catalog
 composer audit:auth
 composer audit:orders
 composer audit:payments
+composer audit:operations
 composer audit:launch
 ```
 
-GitHub Actions validates Composer metadata, fresh SQLite migrations, cached configuration/routes, Filament discovery, Pint formatting, all architecture audits, API/Filament tests and dependency security.
+GitHub Actions validates Composer metadata, all architecture audits, scoped Pint formatting, fresh SQLite migrations, cached configuration/routes, command and Filament discovery, all API/domain/admin tests and dependency security.
 
 ## Implemented APIs
 
@@ -84,38 +85,45 @@ GET /api/system/meta
 GET /api/system/contracts
 ```
 
-### Bakery catalog
+### Bakery catalog and reviews
 
 ```text
-GET /api/catalog/categories
-GET /api/catalog/products
-GET /api/catalog/products/{slug}
+GET  /api/catalog/categories
+GET  /api/catalog/products
+GET  /api/catalog/products/{slug}
+GET  /api/catalog/products/{slug}/reviews
+POST /api/account/orders/{orderId}/reviews
 ```
 
-Catalog availability represents physical stock minus active unexpired reservations.
+Catalog availability represents physical stock minus active unexpired reservations. Reviews are accepted only for delivered, customer-owned order items and require moderation.
 
-### Customer authentication
+### Customer authentication and addresses
 
 ```text
-POST  /api/auth/otp/request
-POST  /api/auth/otp/verify
-GET   /api/auth/me
-POST  /api/auth/logout
-PATCH /api/account/profile
+POST   /api/auth/otp/request
+POST   /api/auth/otp/verify
+GET    /api/auth/me
+POST   /api/auth/logout
+PATCH  /api/account/profile
+GET    /api/account/addresses
+POST   /api/account/addresses
+PUT    /api/account/addresses/{addressId}
+DELETE /api/account/addresses/{addressId}
 ```
 
-Customers are isolated from administrator users. Storefront sessions use the `customer` guard and OTP challenges are hashed, encrypted, attempt-limited and rate-limited.
+Customers are isolated from administrator users. OTP challenges are hashed, encrypted, attempt-limited and rate-limited. Address operations are customer-scoped and checkout can snapshot an owned saved address.
 
-### Checkout and orders
+### Delivery, checkout and orders
 
 ```text
+GET  /api/delivery/options
 POST /api/checkout
 GET  /api/account/orders
 GET  /api/account/orders/{orderId}
 POST /api/account/orders/{orderId}/cancel
 ```
 
-Checkout accepts only Variant IDs and quantities as cart truth, calculates prices and fees on the server, creates immutable snapshots and reserves inventory without decrementing physical stock.
+Delivery zones, methods, fees, minimum order values, free-delivery thresholds, preparation windows and daily limits are managed through Filament. Checkout remains server-authoritative and idempotent.
 
 Expired reservations are released by:
 
@@ -131,29 +139,51 @@ POST /api/payments/verify
 POST /api/payments/zarinpal/verify
 ```
 
-Phase 14 provides:
+Payment attempts are persistent, customer-owned and idempotent. Only provider verification atomically marks an order paid and consumes stock. Duplicate callbacks cannot decrement inventory twice.
 
-- persistent payment attempts
-- provider-neutral initiation and verification contracts
-- disabled, deterministic testing and Zarinpal providers
-- customer ownership and idempotency enforcement
-- pending-attempt reuse and controlled retry
-- server-only amount and credential handling
-- atomic verified-payment, order and inventory transition
-- duplicate callback protection
-- read-only Filament payment inspection
-- sanitization of provider and card metadata
+### Store content and inquiries
 
-Checkout and payment remain separate operations. A callback status never marks an order paid without provider verification.
+```text
+GET  /api/store/settings
+GET  /api/store/pages/{slug}
+GET  /api/store/faqs
+GET  /api/store/gallery
+GET  /api/store/posts
+GET  /api/store/posts/{slug}
+GET  /api/store/cities/{slug}
+POST /api/inquiries
+```
 
-Detailed documentation:
+The content domain is bakery-specific and separate from legacy ToolMaster `/api/v1`. Inquiries support contact, gift and corporate types with rate limit, honeypot, duplicate protection and HMAC-hashed IP storage.
 
-- `docs/API_CONTRACT.md`
-- `docs/CATALOG_API.md`
-- `docs/CUSTOMER_AUTH.md`
-- `docs/ORDERS_CHECKOUT.md`
-- `docs/PAYMENTS.md`
-- `docs/FULL_LAUNCH_ROADMAP.md`
+## Fulfillment and inventory safety
+
+Controlled transitions:
+
+```text
+paid -> confirmed -> preparing -> ready -> dispatched -> delivered
+                                  \-> delivered (pickup only)
+```
+
+Arbitrary status editing is disabled. Non-pickup dispatch requires a tracking code. Customer-facing order resources expose a public status timeline but never internal notes.
+
+Admin cancellation before payment releases reservations. Cancellation after payment restores consumed stock exactly once and changes reservations to `restocked`. It intentionally keeps `payment_status=paid` until a real financial refund is completed.
+
+## Notification outbox
+
+Order events are transactionally queued and dispatched by:
+
+```bash
+php artisan notifications:dispatch --limit=100
+```
+
+The scheduler runs this every minute without overlap. Destinations are encrypted at rest.
+
+Providers:
+
+- `disabled`: safe default and leaves rows pending
+- `testing`: deterministic outside production only
+- `kavenegar`: requires server-side credentials
 
 ## Safe defaults
 
@@ -164,43 +194,42 @@ CHECKOUT_ENABLED=false
 PAYMENT_ENABLED=false
 PAYMENT_PROVIDER=disabled
 ZARINPAL_MERCHANT_ID=
+ORDER_SMS_PROVIDER=disabled
+KAVENEGAR_API_KEY=
 ```
 
-All delivery methods are also disabled by default. Backend secrets such as `KAVENEGAR_API_KEY` and `ZARINPAL_MERCHANT_ID` must never use `VITE_*` variables.
+No payment or SMS credential may use a `VITE_*` variable. eNAMAD code is stored as a non-public setting and is returned only when explicitly enabled and supplied.
 
-Local payment flow testing can explicitly use:
+## Filament operations
 
-```env
-PAYMENT_ENABLED=true
-PAYMENT_PROVIDER=testing
-```
+The admin panel includes:
 
-The testing provider refuses production execution. Zarinpal refuses execution without a server-side Merchant ID.
+- bakery categories and products
+- customers and reusable-address inspection
+- delivery zones and operating fees
+- orders with controlled fulfillment actions, status history and internal notes
+- payment-attempt inspection
+- store settings and eNAMAD slot
+- legal/shipping/homepage pages, FAQ, gallery, bakery blog and city pages
+- verified-purchase review moderation
+- contact/gift/corporate inquiry tracking
+- notification templates and outbox inspection
 
-## Filament management
+Payment attempts and outbound notification records cannot be manually created.
 
-The navigation group `فروشگاه وینیمی` currently contains:
+## Documentation
 
-- دسته‌های بیکری
-- محصولات بیکری
-- مشتریان
-- سفارش‌ها
-- تلاش‌های پرداخت
-
-Payment attempts are read-only. They cannot be manually created, edited or bulk-deleted.
+- `docs/API_CONTRACT.md`
+- `docs/CATALOG_API.md`
+- `docs/CUSTOMER_AUTH.md`
+- `docs/ORDERS_CHECKOUT.md`
+- `docs/PAYMENTS.md`
+- `docs/STORE_OPERATIONS.md`
+- `docs/FULL_LAUNCH_ROADMAP.md`
 
 ## Frontend integration boundary
 
-The frontend remains on safe static/mock modes until the backend reaches `backend_complete=ready` in Phase 16. Phase 17 then connects every production dynamic flow to the frozen API.
-
-```env
-VITE_USE_BACKEND=true
-VITE_API_BASE_URL=https://api.winimibakery.com
-VITE_AUTH_MODE=disabled
-VITE_PAYMENT_MODE=disabled
-```
-
-No provider credential is exposed through frontend variables.
+The frontend remains on safe static/mock modes until the backend reaches `backend_complete=ready` in Phase 16. Phase 17 then connects every production dynamic flow to the frozen API. No provider credential is exposed to the frontend.
 
 ## Production baseline before external activation
 
@@ -219,7 +248,9 @@ LEGACY_TOOLMASTER_API_ENABLED=false
 CHECKOUT_ENABLED=false
 PAYMENT_ENABLED=false
 PAYMENT_PROVIDER=disabled
+ORDER_SMS_PROVIDER=disabled
 ZARINPAL_MERCHANT_ID=
+KAVENEGAR_API_KEY=
 ```
 
 A production release must run at minimum:
@@ -231,7 +262,7 @@ php artisan optimize
 php artisan queue:restart
 ```
 
-The scheduler runs every minute. Production also requires persistent storage, queue workers, backups with restore verification, logs, monitoring and rollback.
+Production also requires persistent storage, queue workers, one-minute scheduler, backups with restore verification, logs, monitoring and rollback.
 
 ## Locked phase roadmap
 
@@ -241,8 +272,8 @@ The scheduler runs every minute. Production also requires persistent storage, qu
 - Phase 13: checkout, orders and inventory reservations — complete
 - Phase 13.5: full-launch audit and roadmap lock — complete
 - Phase 14: provider-ready payment backend — complete
-- Phase 15: complete store operations backend — next
-- Phase 16: backend completion and contract freeze
+- Phase 15: complete store operations backend — complete
+- Phase 16: backend completion and contract freeze — next
 - Phase 17: full frontend/backend integration
 - Phase 18: end-to-end completion
 - Phase 19: production server deployment
