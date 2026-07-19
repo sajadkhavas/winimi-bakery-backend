@@ -6,6 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Support\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\File;
+use JsonException;
 use Throwable;
 
 class SystemController extends Controller
@@ -60,6 +62,7 @@ class SystemController extends Controller
                 'version' => app()->version(),
             ],
             'legacyApiEnabled' => (bool) config('winimi.legacy.enabled'),
+            'openApiUrl' => '/api/system/openapi',
         ]);
     }
 
@@ -69,11 +72,25 @@ class SystemController extends Controller
             'contractVersion' => (string) config('winimi.api.contract_version'),
             'contracts' => config('winimi.contracts', []),
             'launch' => config('winimi.launch', []),
+            'policies' => config('winimi.policies', []),
             'notes' => [
-                'مسیرهای /api/v1 متعلق به دامنه قدیمی ToolMaster هستند و موقتاً برای مهاجرت حفظ شده‌اند.',
-                'بک‌اند پیش از اتصال نهایی فرانت باید به وضعیت backend_complete=ready برسد.',
+                'مسیرهای /api/v1 متعلق به دامنه قدیمی ToolMaster هستند و در production به‌صورت پیش‌فرض غیرفعال‌اند.',
+                'قرارداد بک‌اند در فاز ۱۶ منجمد شده و آماده اتصال فرانت است.',
                 'پس از استقرار، فقط کد درگاه، کد اینماد و اطلاعات پنل پیامکی به‌عنوان ورودی خارجی باقی می‌مانند.',
             ],
         ]);
+    }
+
+    /** @throws JsonException */
+    public function openapi(): JsonResponse
+    {
+        $path = base_path('docs/openapi.json');
+        $document = json_decode(File::get($path), true, flags: JSON_THROW_ON_ERROR);
+        $etag = '"'.hash_file('sha256', $path).'"';
+
+        return response()
+            ->json($document)
+            ->header('Cache-Control', 'public, max-age=300')
+            ->header('ETag', $etag);
     }
 }
