@@ -14,7 +14,7 @@ class SubmitReviewRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'orderItemId' => ['required', 'integer', 'min:1'],
+            'orderItemId' => ['required', 'string', 'size:26'],
             'rating' => ['required', 'integer', 'between:1,5'],
             'title' => ['nullable', 'string', 'max:180'],
             'body' => ['nullable', 'string', 'max:3000'],
