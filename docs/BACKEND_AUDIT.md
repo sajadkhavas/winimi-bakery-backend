@@ -6,13 +6,13 @@ Target frontend: `sajadkhavas/cooci`
 
 ## Executive summary
 
-The repository is a Laravel 11 + Filament 3 application with useful operational infrastructure, but its domain model and public API were created for the previous ToolMaster industrial catalog and RFQ workflow.
+The repository was a Laravel 11 + Filament 3 application with useful operational infrastructure, but its domain model and public API were created for the previous ToolMaster industrial catalog and RFQ workflow.
 
-A full rewrite is not required. Phase 10 keeps the Laravel, Filament, Sanctum, media, audit-log, backup and monitoring foundations while quarantining the old public API as a legacy compatibility layer.
+A full rewrite is not required. Phase 10 keeps the Laravel, Filament, Sanctum, media, audit-log, backup and monitoring foundations while quarantining the old public API as a legacy compatibility layer. The framework and affected dependencies were upgraded to patched versions before this foundation was accepted.
 
 ## Reusable foundations
 
-- Laravel 11 and PHP 8.2+
+- Laravel 12 and PHP 8.2+
 - Filament 3 administration panel
 - Laravel Sanctum
 - Spatie Media Library
@@ -47,6 +47,10 @@ The following concepts do not match the Winimi storefront contract and must not 
 - unsafe unconditional use of cache tags with non-taggable cache drivers
 - ToolMaster seller identity in Product structured data
 - public legacy endpoints not marked as deprecated
+- duplicate inherited migrations for Sanctum and queue tables
+- missing Laravel runtime directories required during Composer package discovery
+- vulnerable locked versions of Laravel, Filament Forms, Guzzle and PSR-7
+- Laravel 11 incompatible authentication-log plugin constraint
 
 ### Deferred to later phases
 
