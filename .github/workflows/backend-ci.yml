@@ -92,7 +92,19 @@ jobs:
         run: composer audit:payments
 
       - name: Store operations audit
-        run: composer audit:operations
+        id: store_audit
+        run: |
+          set -o pipefail
+          composer audit:operations 2>&1 | tee store-operations-audit.log
+
+      - name: Upload store operations diagnostics
+        if: failure() && steps.store_audit.outcome == 'failure'
+        uses: actions/upload-artifact@v4
+        with:
+          name: store-operations-audit-diagnostics
+          path: store-operations-audit.log
+          if-no-files-found: error
+          retention-days: 3
 
       - name: Backend contract freeze audit
         id: freeze_audit
