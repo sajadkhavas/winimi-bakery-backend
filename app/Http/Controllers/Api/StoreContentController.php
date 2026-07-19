@@ -13,18 +13,21 @@ use App\Support\ApiResponse;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Arr;
 
 class StoreContentController extends Controller
 {
     public function settings(): JsonResponse
     {
-        $settings = StoreSetting::query()
+        $settings = [];
+        StoreSetting::query()
             ->public()
             ->orderBy('group')
             ->orderBy('key')
             ->get()
-            ->mapWithKeys(fn (StoreSetting $setting): array => [$setting->key => $setting->typedValue()])
-            ->all();
+            ->each(function (StoreSetting $setting) use (&$settings): void {
+                Arr::set($settings, $setting->key, $setting->typedValue());
+            });
         $enamadEnabled = (bool) StoreSetting::value('trust.enamad_enabled', false);
         $badgeCode = $enamadEnabled
             ? trim((string) StoreSetting::value('trust.enamad_badge_code', ''))
