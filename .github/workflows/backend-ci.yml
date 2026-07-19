@@ -113,7 +113,19 @@ jobs:
           php artisan optimize:clear
 
       - name: Run tests
-        run: php artisan test
+        id: tests
+        run: |
+          set -o pipefail
+          php artisan test 2>&1 | tee tests.log
+
+      - name: Upload test diagnostics
+        if: failure() && steps.tests.outcome == 'failure'
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-diagnostics
+          path: tests.log
+          if-no-files-found: error
+          retention-days: 3
 
       - name: Composer security audit
         run: composer audit --no-interaction
