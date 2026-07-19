@@ -27,6 +27,11 @@ class BackendFoundationTest extends TestCase
         $this->assertSame('customer-session-otp', $contracts['authentication']['source']);
         $this->assertSame('implemented', $contracts['orders']['status']);
         $this->assertSame('transactional-order-reservations', $contracts['orders']['source']);
-        $this->assertNotSame('implemented', $contracts['payments']['status']);
+        $this->assertSame('implemented', $contracts['payments']['status']);
+        $this->assertSame('provider-ready-payment-attempts', $contracts['payments']['source']);
+        $this->assertSame(
+            'disabled-until-external-credentials',
+            $contracts['payments']['activation'],
+        );
     }
 }
