@@ -9,7 +9,6 @@ use App\Support\IranianMobile;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Throwable;
 
@@ -87,25 +86,27 @@ final class OtpService
         $mobileHash = IranianMobile::hash($mobile);
         $code = $this->normalizeCode($rawCode);
 
-        return DB::transaction(function () use ($mobile, $mobileHash, $challengeId, $code, $request): Customer {
+        $customer = DB::transaction(function () use (
+            $mobile,
+            $mobileHash,
+            $challengeId,
+            $code,
+            $request,
+        ): ?Customer {
             $challenge = OtpChallenge::query()
                 ->where('public_id', $challengeId)
                 ->lockForUpdate()
                 ->first();
 
             if (! $challenge || ! hash_equals($challenge->mobile_hash, $mobileHash) || ! $challenge->isUsable()) {
-                throw ValidationException::withMessages([
-                    'code' => ['کد ورود معتبر نیست یا منقضی شده است.'],
-                ]);
+                return null;
             }
 
-            $challenge->increment('attempts');
-            $challenge->refresh();
+            $challenge->attempts++;
+            $challenge->save();
 
             if (! Hash::check($code, $challenge->code_hash)) {
-                throw ValidationException::withMessages([
-                    'code' => ['کد ورود معتبر نیست یا منقضی شده است.'],
-                ]);
+                return null;
             }
 
             $customer = Customer::withTrashed()->firstOrNew(['mobile' => $mobile]);
@@ -131,6 +132,14 @@ final class OtpService
 
             return $customer->fresh();
         });
+
+        if (! $customer) {
+            throw ValidationException::withMessages([
+                'code' => ['کد ورود معتبر نیست یا منقضی شده است.'],
+            ]);
+        }
+
+        return $customer;
     }
 
     private function normalizeCode(string $value): string
