@@ -1,0 +1,143 @@
+name: Backend CI
+
+on:
+  push:
+    branches:
+      - main
+      - "feature/**"
+  pull_request:
+    branches:
+      - main
+
+concurrency:
+  group: backend-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  APP_ENV: testing
+  APP_DEBUG: "true"
+  DB_CONNECTION: sqlite
+  DB_DATABASE: database/database.sqlite
+  CACHE_STORE: array
+  SESSION_DRIVER: array
+  QUEUE_CONNECTION: sync
+  MAIL_MAILER: array
+  TELESCOPE_ENABLED: "false"
+  PULSE_ENABLED: "false"
+
+jobs:
+  validate:
+    name: Audit, format, migrate, route cache and test
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.3"
+          extensions: bcmath, ctype, curl, dom, fileinfo, gd, intl, mbstring, openssl, pdo_sqlite, sqlite3, tokenizer, xml, zip
+          coverage: none
+          tools: composer:v2
+
+      - name: Validate Composer metadata
+        run: composer validate --no-check-publish --no-check-lock
+
+      - name: Install Composer dependencies
+        id: composer_install
+        run: |
+          set -o pipefail
+          composer install --prefer-dist --no-interaction --no-progress 2>&1 | tee composer-install.log
+
+      - name: Upload Composer install diagnostics
+        if: failure() && steps.composer_install.outcome == 'failure'
+        uses: actions/upload-artifact@v4
+        with:
+          name: composer-install-diagnostics
+          path: composer-install.log
+          if-no-files-found: error
+          retention-days: 3
+
+      - name: Prepare Laravel environment
+        run: |
+          cp .env.example .env
+          mkdir -p database
+          touch database/database.sqlite
+          php artisan key:generate --force
+          php artisan optimize:clear
+
+      - name: Backend foundation audit
+        run: php scripts/audit-backend-foundation.php
+
+      - name: Pint formatting
+        id: pint
+        run: |
+          set -o pipefail
+          composer format:check 2>&1 | tee pint.log
+
+      - name: Upload Pint diagnostics
+        if: failure() && steps.pint.outcome == 'failure'
+        uses: actions/upload-artifact@v4
+        with:
+          name: pint-diagnostics
+          path: pint.log
+          if-no-files-found: error
+          retention-days: 3
+
+      - name: Run database migrations
+        id: migrations
+        run: |
+          set -o pipefail
+          php artisan migrate:fresh --force 2>&1 | tee migrations.log
+
+      - name: Upload migration diagnostics
+        if: failure() && steps.migrations.outcome == 'failure'
+        uses: actions/upload-artifact@v4
+        with:
+          name: migration-diagnostics
+          path: migrations.log
+          if-no-files-found: error
+          retention-days: 3
+
+      - name: Validate cached configuration and routes
+        run: |
+          php artisan config:cache
+          php artisan route:cache
+          php artisan route:list --except-vendor
+          php artisan optimize:clear
+
+      - name: Run tests
+        id: tests
+        run: |
+          set -o pipefail
+          php artisan test 2>&1 | tee tests.log
+
+      - name: Upload test diagnostics
+        if: failure() && steps.tests.outcome == 'failure'
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-diagnostics
+          path: tests.log
+          if-no-files-found: error
+          retention-days: 3
+
+      - name: Composer security audit
+        id: security_audit
+        run: |
+          set -o pipefail
+          composer audit --no-interaction 2>&1 | tee composer-audit.log
+
+      - name: Upload Composer security diagnostics
+        if: failure() && steps.security_audit.outcome == 'failure'
+        uses: actions/upload-artifact@v4
+        with:
+          name: composer-audit-diagnostics
+          path: composer-audit.log
+          if-no-files-found: error
+          retention-days: 3

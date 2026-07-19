@@ -1,7 +1,7 @@
 {
-    "name": "toolmaster/backend",
+    "name": "winimi/bakery-backend",
     "type": "project",
-    "description": "ToolMaster Laravel + Filament backend (Headless API)",
+    "description": "Winimi Bakery Laravel 12 headless commerce backend with Filament administration",
     "license": "MIT",
     "require": {
         "php": "^8.2",
@@ -13,11 +13,11 @@
         "bezhansalleh/filament-shield": "^3.2",
         "coderflex/filament-turnstile": "^2.4",
         "dotswan/filament-laravel-pulse": "^1.1",
-        "filament/filament": "^3.2",
-        "filament/spatie-laravel-media-library-plugin": "^3.2",
-        "guzzlehttp/guzzle": "^7.2",
+        "filament/filament": "^3.3.53",
+        "filament/spatie-laravel-media-library-plugin": "^3.3.53",
+        "guzzlehttp/guzzle": "^7.12.1",
         "laravel/fortify": "^1.37",
-        "laravel/framework": "^11.0",
+        "laravel/framework": "^12.61.1",
         "laravel/pulse": "^1.7",
         "laravel/sanctum": "^4.0",
         "laravel/telescope": "^5.20",
@@ -31,7 +31,7 @@
         "spatie/laravel-medialibrary": "^11.0",
         "spatie/laravel-sitemap": "^7.2",
         "spatie/laravel-sluggable": "^3.5",
-        "tapp/filament-authentication-log": "^3.1",
+        "tapp/filament-authentication-log": "^4.0",
         "torann/geoip": "^3.0",
         "z3d0x/filament-fabricator": "^2.7"
     },
@@ -71,10 +71,24 @@
             "@php artisan key:generate --ansi",
             "@php -r \"file_exists('database/database.sqlite') || touch('database/database.sqlite');\"",
             "@php artisan migrate --graceful --ansi"
+        ],
+        "test": [
+            "@php artisan test"
+        ],
+        "format:check": [
+            "@php vendor/bin/pint --test app/Support app/Http/Middleware/AttachApiContext.php app/Http/Middleware/MarkLegacyApi.php app/Http/Controllers/Api/SystemController.php app/Models/Product.php app/Http/Resources/ProductResource.php bootstrap/app.php config/cors.php config/winimi.php routes/api.php database/migrations/2024_01_01_000000_create_personal_access_tokens_table.php database/migrations/2026_06_11_152702_create_jobs_table.php database/migrations/2026_06_11_154204_create_failed_jobs_table.php tests scripts/audit-backend-foundation.php"
+        ],
+        "check": [
+            "@php scripts/audit-backend-foundation.php",
+            "@format:check",
+            "@php artisan route:list --except-vendor",
+            "@php artisan test"
         ]
     },
     "extra": {
-        "laravel": { "dont-discover": [] }
+        "laravel": {
+            "dont-discover": []
+        }
     },
     "config": {
         "optimize-autoloader": true,

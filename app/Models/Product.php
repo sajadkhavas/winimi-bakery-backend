@@ -2,22 +2,23 @@
 
 namespace App\Models;
 
+use Illuminate\Cache\TaggableStore;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Facades\Cache;
+use Spatie\Activitylog\LogOptions;
+use Spatie\Activitylog\Traits\LogsActivity;
 use Spatie\MediaLibrary\HasMedia;
 use Spatie\MediaLibrary\InteractsWithMedia;
 use Spatie\Sluggable\HasSlug;
 use Spatie\Sluggable\SlugOptions;
-use Spatie\Activitylog\Traits\LogsActivity;
-use Spatie\Activitylog\LogOptions;
-use Illuminate\Support\Facades\Cache;
 
 class Product extends Model implements HasMedia
 {
-    use HasSlug, SoftDeletes, InteractsWithMedia, LogsActivity;
+    use HasSlug, InteractsWithMedia, LogsActivity, SoftDeletes;
 
     protected $fillable = [
         'name', 'model', 'slug', 'category_id', 'subcategory_id', 'brand_id',
@@ -29,24 +30,28 @@ class Product extends Model implements HasMedia
     ];
 
     protected $casts = [
-        'specs'        => 'array',
-        'usage'        => 'array',
+        'specs' => 'array',
+        'usage' => 'array',
         'applications' => 'array',
-        'gallery'      => 'array',
-        'in_stock'     => 'boolean',
-        'is_featured'  => 'boolean',
+        'gallery' => 'array',
+        'in_stock' => 'boolean',
+        'is_featured' => 'boolean',
     ];
 
     protected static function booted(): void
     {
         static::saved(function (self $model) {
             Cache::forget("product.{$model->slug}");
-            Cache::forget("products.featured");
-            Cache::tags(["products"])->flush();
+            Cache::forget('products.featured');
+
+            if (Cache::getStore() instanceof TaggableStore) {
+                Cache::tags(['products'])->flush();
+            }
         });
+
         static::deleted(function (self $model) {
             Cache::forget("product.{$model->slug}");
-            Cache::forget("products.featured");
+            Cache::forget('products.featured');
         });
     }
 
@@ -56,7 +61,7 @@ class Product extends Model implements HasMedia
             ->logOnly(['name', 'model', 'status', 'in_stock', 'is_featured'])
             ->logOnlyDirty()
             ->dontSubmitEmptyLogs()
-            ->setDescriptionForEvent(fn(string $eventName) => "محصول {$this->name} {$eventName} شد");
+            ->setDescriptionForEvent(fn (string $eventName) => "محصول {$this->name} {$eventName} شد");
     }
 
     public function registerMediaCollections(): void
@@ -80,48 +85,99 @@ class Product extends Model implements HasMedia
             ->saveSlugsTo('slug');
     }
 
-    public function category(): BelongsTo    { return $this->belongsTo(Category::class); }
-    public function subcategory(): BelongsTo { return $this->belongsTo(Subcategory::class); }
-    public function brand(): BelongsTo       { return $this->belongsTo(Brand::class); }
-    public function rfqItems(): HasMany      { return $this->hasMany(RfqItem::class); }
-
-    public function scopePublished(Builder $q): Builder { return $q->where('status', 'published'); }
-    public function scopeByCategory(Builder $q, string $slug): Builder { return $q->whereHas('category', fn($x) => $x->where('slug', $slug)); }
-    public function scopeByBrand(Builder $q, string $slug): Builder    { return $q->whereHas('brand', fn($x) => $x->where('slug', $slug)); }
-    public function scopeByType(Builder $q, string $slug): Builder     { return $q->whereHas('subcategory', fn($x) => $x->where('slug', $slug)); }
-
-    public function scopeFiltered(Builder $q, array $f): Builder
+    public function category(): BelongsTo
     {
-        if (!empty($f['category']))    $q->byCategory($f['category']);
-        if (!empty($f['brand']))       $q->byBrand($f['brand']);
-        if (!empty($f['type']))        $q->byType($f['type']);
-        if (!empty($f['country']))     $q->where('country', $f['country']);
-        if (!empty($f['price_range'])) $q->where('price_range', $f['price_range']);
-        if (isset($f['in_stock']))     $q->where('in_stock', filter_var($f['in_stock'], FILTER_VALIDATE_BOOL));
-        if (!empty($f['usage']))       $q->whereJsonContains('usage', $f['usage']);
-        if (!empty($f['search'])) {
-            $s = $f['search'];
-            $q->where(fn($x) => $x->where('name', 'like', "%{$s}%")
-                ->orWhere('model', 'like', "%{$s}%")
-                ->orWhere('description', 'like', "%{$s}%"));
+        return $this->belongsTo(Category::class);
+    }
+
+    public function subcategory(): BelongsTo
+    {
+        return $this->belongsTo(Subcategory::class);
+    }
+
+    public function brand(): BelongsTo
+    {
+        return $this->belongsTo(Brand::class);
+    }
+
+    public function rfqItems(): HasMany
+    {
+        return $this->hasMany(RfqItem::class);
+    }
+
+    public function scopePublished(Builder $query): Builder
+    {
+        return $query->where('status', 'published');
+    }
+
+    public function scopeByCategory(Builder $query, string $slug): Builder
+    {
+        return $query->whereHas('category', fn ($relation) => $relation->where('slug', $slug));
+    }
+
+    public function scopeByBrand(Builder $query, string $slug): Builder
+    {
+        return $query->whereHas('brand', fn ($relation) => $relation->where('slug', $slug));
+    }
+
+    public function scopeByType(Builder $query, string $slug): Builder
+    {
+        return $query->whereHas('subcategory', fn ($relation) => $relation->where('slug', $slug));
+    }
+
+    public function scopeFiltered(Builder $query, array $filters): Builder
+    {
+        if (! empty($filters['category'])) {
+            $query->byCategory($filters['category']);
         }
-        return $q;
+        if (! empty($filters['brand'])) {
+            $query->byBrand($filters['brand']);
+        }
+        if (! empty($filters['type'])) {
+            $query->byType($filters['type']);
+        }
+        if (! empty($filters['country'])) {
+            $query->where('country', $filters['country']);
+        }
+        if (! empty($filters['price_range'])) {
+            $query->where('price_range', $filters['price_range']);
+        }
+        if (isset($filters['in_stock'])) {
+            $query->where('in_stock', filter_var($filters['in_stock'], FILTER_VALIDATE_BOOL));
+        }
+        if (! empty($filters['usage'])) {
+            $query->whereJsonContains('usage', $filters['usage']);
+        }
+        if (! empty($filters['search'])) {
+            $search = $filters['search'];
+            $query->where(fn ($nested) => $nested
+                ->where('name', 'like', "%{$search}%")
+                ->orWhere('model', 'like', "%{$search}%")
+                ->orWhere('description', 'like', "%{$search}%"));
+        }
+
+        return $query;
     }
 
     public function getProductSchemaAttribute(): array
     {
         return [
-            '@context'    => 'https://schema.org',
-            '@type'       => 'Product',
-            'name'        => $this->name,
-            'model'       => $this->model,
+            '@context' => 'https://schema.org',
+            '@type' => 'Product',
+            'name' => $this->name,
+            'model' => $this->model,
             'description' => $this->description,
-            'brand'       => ['@type' => 'Brand', 'name' => $this->brand?->name],
-            'offers'      => [
-                '@type'         => 'Offer',
-                'availability'  => $this->in_stock ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock',
+            'brand' => ['@type' => 'Brand', 'name' => $this->brand?->name],
+            'offers' => [
+                '@type' => 'Offer',
+                'availability' => $this->in_stock
+                    ? 'https://schema.org/InStock'
+                    : 'https://schema.org/OutOfStock',
                 'priceCurrency' => 'IRR',
-                'seller'        => ['@type' => 'Organization', 'name' => 'ToolMaster'],
+                'seller' => [
+                    '@type' => 'Organization',
+                    'name' => config('winimi.brand.name_en', 'Winimi Bakery'),
+                ],
             ],
         ];
     }

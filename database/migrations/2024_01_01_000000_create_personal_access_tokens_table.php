@@ -1,26 +1,23 @@
 <?php
 
 use Illuminate\Database\Migrations\Migration;
-use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
-return new class extends Migration {
+return new class extends Migration
+{
     public function up(): void
     {
-        Schema::create('personal_access_tokens', function (Blueprint $table) {
-            $table->id();
-            $table->morphs('tokenable');
-            $table->string('name');
-            $table->string('token', 64)->unique();
-            $table->text('abilities')->nullable();
-            $table->timestamp('last_used_at')->nullable();
-            $table->timestamp('expires_at')->nullable()->index();
-            $table->timestamps();
-        });
+        // The canonical Sanctum table is already created by the 2019 migration.
+        // Keep this inherited duplicate migration as a safe no-op so existing
+        // migration histories remain valid without recreating the same table.
+        if (Schema::hasTable('personal_access_tokens')) {
+            return;
+        }
     }
 
     public function down(): void
     {
-        Schema::dropIfExists('personal_access_tokens');
+        // This compatibility migration does not own the canonical table and
+        // must never drop data created by the earlier Sanctum migration.
     }
 };

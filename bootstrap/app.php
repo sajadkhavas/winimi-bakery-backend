@@ -1,12 +1,15 @@
 <?php
 
+use App\Http\Middleware\AttachApiContext;
+use App\Http\Middleware\CheckIpBlacklist;
+use App\Http\Middleware\CheckMaintenanceMode;
+use App\Http\Middleware\HandleRedirects;
+use App\Http\Middleware\MarkLegacyApi;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Middleware\HandleCors;
-use App\Http\Middleware\HandleRedirects;
-use App\Http\Middleware\CheckIpBlacklist;
-use App\Http\Middleware\CheckMaintenanceMode;
+use Illuminate\Http\Request;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -16,13 +19,20 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware) {
-        $middleware->api(prepend: [HandleCors::class]);
+        $middleware->statefulApi();
+        $middleware->api(prepend: [HandleCors::class, AttachApiContext::class]);
         $middleware->web(prepend: [
             HandleRedirects::class,
             CheckMaintenanceMode::class,
             CheckIpBlacklist::class,
         ]);
+        $middleware->alias([
+            'api.context' => AttachApiContext::class,
+            'api.legacy' => MarkLegacyApi::class,
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {
-        //
+        $exceptions->shouldRenderJsonWhen(
+            static fn (Request $request, Throwable $exception): bool => $request->is('api/*') || $request->expectsJson(),
+        );
     })->create();
