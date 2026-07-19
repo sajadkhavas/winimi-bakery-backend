@@ -30,7 +30,7 @@ env:
 
 jobs:
   validate:
-    name: Audit, catalog, auth, orders, migrate, Filament and test
+    name: Audit, launch, catalog, auth, orders, migrate, Filament and test
     runs-on: ubuntu-latest
     timeout-minutes: 20
 
@@ -74,6 +74,9 @@ jobs:
 
       - name: Backend foundation audit
         run: php scripts/audit-backend-foundation.php
+
+      - name: Full-launch roadmap audit
+        run: composer audit:launch
 
       - name: Bakery catalog audit
         run: composer audit:catalog
