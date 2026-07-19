@@ -41,6 +41,9 @@ class OrderResource extends JsonResource
                 'notes' => $this->notes,
             ],
             'items' => OrderItemResource::collection($this->whenLoaded('items'))->resolve($request),
+            'payments' => PaymentAttemptResource::collection(
+                $this->whenLoaded('paymentAttempts'),
+            )->resolve($request),
             'reservationExpiresAt' => $this->reservation_expires_at?->toIso8601String(),
             'canCancel' => $this->canBeCancelledByCustomer(),
             'placedAt' => $this->placed_at?->toIso8601String(),
