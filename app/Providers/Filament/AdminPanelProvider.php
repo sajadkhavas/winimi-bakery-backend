@@ -83,7 +83,6 @@ class AdminPanelProvider extends PanelProvider
                 'سیستم',
             ])
             ->globalSearchKeyBindings(['command+k', 'ctrl+k'])
-            ->sidebarCollapsibleOnDesktop()
-            ->viteTheme('resources/css/filament/admin/theme.css');
+            ->sidebarCollapsibleOnDesktop();
     }
 }
