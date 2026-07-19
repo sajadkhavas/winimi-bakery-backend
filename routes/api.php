@@ -35,6 +35,7 @@ Route::prefix('system')->middleware('throttle:60,1')->group(function () {
     Route::get('ready', [SystemController::class, 'ready']);
     Route::get('meta', [SystemController::class, 'meta']);
     Route::get('contracts', [SystemController::class, 'contracts']);
+    Route::get('openapi', [SystemController::class, 'openapi']);
 });
 
 Route::prefix('catalog')->middleware('throttle:120,1')->group(function () {
