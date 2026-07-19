@@ -1,20 +1,21 @@
 # Winimi Bakery Backend
 
-Laravel 12 + Filament 3 backend for the Winimi Bakery storefront.
+Laravel 12 + Filament 3 headless-commerce backend for the Winimi Bakery storefront.
 
-> Phase 10 establishes the backend foundation and migration boundary. The previous ToolMaster catalog remains available temporarily under `/api/v1/*`, but it is not the final bakery commerce contract.
+The production frontend lives in `sajadkhavas/cooci`. This repository owns the API, Filament administration, database, inventory, authentication, orders and payments.
 
 ## Current status
 
 | Area | Status |
 |---|---|
-| Laravel / Filament foundation | Ready |
+| Laravel / Filament foundation | Implemented |
 | System health and contract endpoints | Implemented |
+| Bakery catalog, categories and Variants | Implemented in Phase 11 |
+| Bakery catalog Filament management | Implemented in Phase 11 |
 | Legacy ToolMaster API | Preserved with deprecation headers |
-| Bakery catalog and variants | Planned for Phase 11 |
 | Mobile OTP and account sessions | Planned for Phase 12 |
-| Checkout, orders and inventory | Planned for Phase 13 |
-| Zarinpal payment | Planned for Phase 14 |
+| Checkout, orders and inventory transactions | Planned for Phase 13 |
+| Zarinpal payment lifecycle | Planned for Phase 14 |
 
 Machine-readable status:
 
@@ -27,7 +28,7 @@ GET /api/system/contracts
 - PHP 8.2+
 - Composer 2
 - SQLite for local development or MySQL 8 / MariaDB 10.6+
-- required PHP extensions: bcmath, ctype, curl, dom, fileinfo, gd, intl, mbstring, openssl, pdo, tokenizer, xml, zip
+- PHP extensions: bcmath, ctype, curl, dom, fileinfo, gd, intl, mbstring, openssl, pdo, tokenizer, xml and zip
 
 ## Local setup
 
@@ -47,7 +48,7 @@ Admin panel:
 http://localhost:8000/admin
 ```
 
-No production admin password is documented or committed. Create or promote an administrator through a controlled server-side process.
+No production administrator password is documented or committed. Create or promote administrators through a controlled server-side process.
 
 ## Validation
 
@@ -55,29 +56,20 @@ No production admin password is documented or committed. Create or promote an ad
 composer check
 ```
 
-The CI pipeline validates:
+GitHub Actions validates:
 
-- Composer metadata and dependency security
-- Laravel boot and route cache
-- database migrations on SQLite
-- Pint formatting for Phase 10 foundation files
-- unit and feature tests
-- system API contract
-- absence of active ToolMaster identity in the Winimi foundation
+- Composer metadata and patched dependencies
+- backend foundation audit
+- bakery catalog architecture audit
+- scoped Laravel Pint formatting
+- complete fresh migrations on SQLite
+- cached configuration and routes
+- Filament resource/component discovery
+- public catalog API behavior
+- real Filament create-form rendering
+- Composer security audit
 
-## Security baseline
-
-Phase 10 upgrades the inherited dependency set to patched branches required by the current Composer security advisories:
-
-- Laravel Framework `12.61.1+`
-- Filament `3.3.53+`
-- Guzzle `7.12.1+`
-- PSR-7 `2.12.1+`
-- Laravel 12 compatible Filament Authentication Log plugin
-
-`composer audit` is a required CI step and cannot be skipped for merge.
-
-## System endpoints
+## System API
 
 ```text
 GET /api/system/health
@@ -86,20 +78,92 @@ GET /api/system/meta
 GET /api/system/contracts
 ```
 
-All system responses include:
+All API responses include:
 
 ```text
 X-Request-ID
 X-API-Version
 ```
 
-A caller-provided `X-Request-ID` is returned when valid; otherwise the server creates a UUID.
+## Bakery catalog API
 
-## Frontend integration
+```text
+GET /api/catalog/categories
+GET /api/catalog/products
+GET /api/catalog/products/{slug}
+```
+
+Supported product-list filters:
+
+```text
+category
+search
+featured
+requiresCooling
+inStock
+sort=featured|newest|name|price-asc|price-desc
+page
+perPage
+```
+
+The public bakery catalog is backed by independent commerce tables:
+
+```text
+bakery_categories
+bakery_products
+bakery_product_variants
+```
+
+The inherited industrial `products`, `categories`, `brands`, `subcategories` and RFQ tables are not used as bakery-commerce truth.
+
+Catalog rules:
+
+- public IDs are ULIDs rather than database sequence IDs
+- price and stock belong to Variants
+- current product price is calculated from active Variants
+- inventory is calculated by the server
+- inactive products and categories are not public
+- products require at least one active Variant to be public
+- ingredients, allergens and storage data are returned only after content verification
+- media carries its verification state
+- sale price must be lower than regular price
+
+Detailed catalog documentation:
+
+- `docs/CATALOG_API.md`
+- `docs/API_CONTRACT.md`
+- `docs/BACKEND_AUDIT.md`
+
+## Filament catalog management
+
+The admin navigation group `فروشگاه وینیمی` contains:
+
+- `دسته‌های بیکری`
+- `محصولات بیکری`
+
+Product management includes:
+
+- category, product code and slug
+- short and complete descriptions
+- cooling requirement and preparation time
+- active and featured states
+- ingredients and allergens
+- content and media verification
+- main image and gallery
+- SEO fields
+- Variant name and SKU
+- weight
+- regular and sale price
+- stock quantity and low-stock threshold
+- active and default Variant state
+
+The Filament panel uses the Winimi Bakery identity and no longer depends on the inherited frontend Vite manifest.
+
+## Frontend integration boundary
 
 The target frontend is `sajadkhavas/cooci`.
 
-Frontend production settings will eventually use:
+Production frontend variables will eventually use:
 
 ```env
 VITE_USE_BACKEND=true
@@ -108,13 +172,9 @@ VITE_AUTH_MODE=disabled
 VITE_PAYMENT_MODE=disabled
 ```
 
-Backend secrets such as SMS provider keys and Zarinpal Merchant ID must never use a `VITE_*` variable.
+Catalog data can be integrated after the dedicated frontend/backend integration phase. Authentication and payment must remain disabled until their server contracts are implemented.
 
-The exact contract is documented in:
-
-- `docs/API_CONTRACT.md`
-- `docs/BACKEND_AUDIT.md`
-- frontend document `docs/account-auth-api-contract.md` in `cooci`
+Backend secrets such as SMS provider keys and Zarinpal Merchant ID must never use `VITE_*` variables.
 
 ## Authentication architecture
 
@@ -125,15 +185,14 @@ The final customer flow will use:
 - Laravel server-managed sessions
 - HttpOnly cookies
 - session rotation after verification
-- explicit CORS origins
-- `credentials: include`
+- explicit credentialed CORS origins
 - no trusted Bearer token in LocalStorage
 
-The old email/password Bearer-token API under `/api/v1/auth/*` is legacy and must not be used by the new frontend.
+The inherited email/password Bearer-token endpoints under `/api/v1/auth/*` are legacy and must not be used by the new frontend.
 
 ## Legacy API policy
 
-Existing `/api/v1/*` routes are temporarily preserved to support incremental data migration. Their responses contain:
+Existing `/api/v1/*` routes are preserved temporarily for incremental migration. Responses contain:
 
 ```text
 Deprecation: true
@@ -141,7 +200,13 @@ X-Winimi-Legacy-Domain: toolmaster
 Link: </api/system/contracts>; rel="deprecation"
 ```
 
-Do not add new Winimi commerce features under `/api/v1`.
+Disable the legacy layer in production when migration no longer requires it:
+
+```env
+LEGACY_TOOLMASTER_API_ENABLED=false
+```
+
+No new Winimi commerce feature may be implemented under `/api/v1`.
 
 ## CORS and session configuration
 
@@ -169,11 +234,17 @@ SESSION_SAME_SITE=lax
 LEGACY_TOOLMASTER_API_ENABLED=false
 ```
 
-## Repository boundary
+## Security baseline
 
-This repository still contains frontend files inherited from the previous project. They are not the production Winimi frontend and are not part of the Laravel deployment contract. The production frontend lives in `sajadkhavas/cooci`.
+Required patched branches include:
 
-Removal of the inherited frontend snapshot will be completed after verifying that no custom Filament theme or build step depends on it.
+- Laravel Framework `12.61.1+`
+- Filament `3.3.53+`
+- Guzzle `7.12.1+`
+- PSR-7 `2.12.1+`
+- Laravel 12 compatible Filament Authentication Log plugin
+
+`composer audit` is mandatory in CI.
 
 ## Deployment principle
 
@@ -186,22 +257,13 @@ php artisan optimize
 php artisan queue:restart
 ```
 
-Also configure:
-
-- HTTPS
-- queue worker
-- scheduler
-- database backup
-- application and PHP logs
-- Redis where appropriate
-- `APP_DEBUG=false`
-- secret values only in the server environment
+Production also requires HTTPS, a queue worker, scheduler, database backups, application/PHP logs, `APP_DEBUG=false` and server-only secrets.
 
 ## Phase roadmap
 
-- Phase 10: foundation and migration boundary
-- Phase 11: bakery catalog, variants, stock and Filament resources
+- Phase 10: foundation and migration boundary — complete
+- Phase 11: bakery catalog, Variants, stock and Filament resources — complete
 - Phase 12: OTP authentication and customer account
 - Phase 13: checkout, orders and inventory transactions
 - Phase 14: Zarinpal payment lifecycle
-- Phase 15+: reviews, notifications, reporting and final frontend integration
+- Phase 15+: reviews, notifications, reporting and full frontend integration
