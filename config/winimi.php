@@ -10,6 +10,8 @@ $boolean = static fn (string $key, bool $default = false): bool => filter_var(
     FILTER_VALIDATE_BOOL,
 );
 
+$zarinpalSandbox = $boolean('ZARINPAL_SANDBOX', true);
+
 return [
     'brand' => [
         'name' => env('WINIMI_BRAND_NAME', 'وینیمی بیکری'),
@@ -18,7 +20,7 @@ return [
 
     'api' => [
         'version' => '1',
-        'contract_version' => '2026-07-19-phase-13.5',
+        'contract_version' => '2026-07-19-phase-14',
         'request_id_header' => 'X-Request-ID',
     ],
 
@@ -57,6 +59,41 @@ return [
                 'enabled' => $boolean('DELIVERY_PICKUP_ENABLED'),
                 'fee_toman' => (int) env('DELIVERY_PICKUP_FEE_TOMAN', 0),
             ],
+        ],
+    ],
+
+    'payment' => [
+        'enabled' => $boolean('PAYMENT_ENABLED'),
+        'provider' => env('PAYMENT_PROVIDER', 'disabled'),
+        'callback_url' => env(
+            'PAYMENT_CALLBACK_URL',
+            env('ZARINPAL_CALLBACK_URL', 'http://localhost:5173/payment/result'),
+        ),
+        'currency' => env('PAYMENT_CURRENCY', 'IRR'),
+        'amount_multiplier' => (int) env('PAYMENT_AMOUNT_MULTIPLIER', 10),
+        'attempt_ttl_minutes' => (int) env('PAYMENT_ATTEMPT_TTL_MINUTES', 20),
+        'timeout_seconds' => (int) env('PAYMENT_TIMEOUT_SECONDS', 10),
+        'zarinpal' => [
+            'merchant_id' => env('ZARINPAL_MERCHANT_ID'),
+            'sandbox' => $zarinpalSandbox,
+            'request_url' => env(
+                'ZARINPAL_REQUEST_URL',
+                $zarinpalSandbox
+                    ? 'https://sandbox.zarinpal.com/pg/v4/payment/request.json'
+                    : 'https://api.zarinpal.com/pg/v4/payment/request.json',
+            ),
+            'verify_url' => env(
+                'ZARINPAL_VERIFY_URL',
+                $zarinpalSandbox
+                    ? 'https://sandbox.zarinpal.com/pg/v4/payment/verify.json'
+                    : 'https://api.zarinpal.com/pg/v4/payment/verify.json',
+            ),
+            'start_pay_url' => env(
+                'ZARINPAL_START_PAY_URL',
+                $zarinpalSandbox
+                    ? 'https://sandbox.zarinpal.com/pg/StartPay'
+                    : 'https://www.zarinpal.com/pg/StartPay',
+            ),
         ],
     ],
 
@@ -109,10 +146,13 @@ return [
             ],
         ],
         'payments' => [
-            'status' => 'contract-only',
+            'status' => 'implemented',
             'target_phase' => 14,
+            'source' => 'provider-ready-payment-attempts',
+            'activation' => 'disabled-until-external-credentials',
             'endpoints' => [
                 'POST /api/orders/{orderId}/payments',
+                'POST /api/payments/verify',
                 'POST /api/payments/zarinpal/verify',
             ],
         ],
@@ -120,7 +160,7 @@ return [
 
     'launch' => [
         'strategy' => 'complete-internal-work-before-external-activation',
-        'roadmap_version' => '2026-07-19-phase-13.5',
+        'roadmap_version' => '2026-07-19-phase-14',
         'internal_gates' => [
             'backend_complete' => [
                 'status' => 'in-progress',
