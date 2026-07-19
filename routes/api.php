@@ -41,13 +41,13 @@ Route::prefix('auth')->group(function () {
     Route::post('otp/verify', [OtpAuthController::class, 'verify'])
         ->middleware('throttle:otp-verify');
 
-    Route::middleware(['auth:customer', 'throttle:60,1'])->group(function () {
+    Route::middleware(['auth:customer', 'customer.active', 'throttle:60,1'])->group(function () {
         Route::get('me', [OtpAuthController::class, 'me']);
         Route::post('logout', [OtpAuthController::class, 'logout']);
     });
 });
 
-Route::prefix('account')->middleware(['auth:customer', 'throttle:60,1'])->group(function () {
+Route::prefix('account')->middleware(['auth:customer', 'customer.active', 'throttle:60,1'])->group(function () {
     Route::patch('profile', [AccountController::class, 'updateProfile']);
 });
 
