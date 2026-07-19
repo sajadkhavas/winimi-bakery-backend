@@ -30,28 +30,38 @@ jobs:
 
       - name: Resolve secure dependency set
         id: composer_update
+        continue-on-error: true
         run: |
           set -o pipefail
           composer update --with-all-dependencies --no-interaction --no-progress --no-scripts 2>&1 | tee composer-update.log
 
-      - name: Upload dependency resolver diagnostics
-        if: failure() && steps.composer_update.outcome == 'failure'
-        uses: actions/upload-artifact@v4
-        with:
-          name: composer-update-diagnostics
-          path: composer-update.log
-          if-no-files-found: error
-          retention-days: 3
+      - name: Commit resolver diagnostics
+        if: steps.composer_update.outcome == 'failure'
+        run: |
+          {
+            echo "# Composer dependency resolution diagnostics"
+            echo
+            echo '```text'
+            tail -n 160 composer-update.log
+            echo '```'
+          } > docs/composer-update-diagnostics.md
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/composer-update-diagnostics.md
+          git commit -m "chore: record Composer dependency conflict"
+          git push origin HEAD:feature/phase-10-backend-foundation
+          exit 1
 
       - name: Commit lockfile
-        if: success()
+        if: steps.composer_update.outcome == 'success'
         run: |
-          if git diff --quiet -- composer.lock; then
+          rm -f docs/composer-update-diagnostics.md
+          if git diff --quiet -- composer.lock docs/composer-update-diagnostics.md; then
             echo "Composer lockfile is already synchronized."
             exit 0
           fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add composer.lock
+          git add composer.lock docs/composer-update-diagnostics.md
           git commit -m "security: update patched Composer dependencies"
           git push origin HEAD:feature/phase-10-backend-foundation
