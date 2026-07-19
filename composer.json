@@ -75,11 +75,15 @@
         "test": [
             "@php artisan test"
         ],
+        "audit:catalog": [
+            "@php scripts/audit-bakery-catalog.php"
+        ],
         "format:check": [
-            "@php vendor/bin/pint --test app/Support app/Http/Middleware/AttachApiContext.php app/Http/Middleware/MarkLegacyApi.php app/Http/Controllers/Api/SystemController.php app/Models/Product.php app/Http/Resources/ProductResource.php bootstrap/app.php config/cors.php config/winimi.php routes/api.php database/migrations/2024_01_01_000000_create_personal_access_tokens_table.php database/migrations/2026_06_11_152702_create_jobs_table.php database/migrations/2026_06_11_154204_create_failed_jobs_table.php tests scripts/audit-backend-foundation.php"
+            "@php vendor/bin/pint --test app/Support app/Http/Middleware/AttachApiContext.php app/Http/Middleware/MarkLegacyApi.php app/Http/Controllers/Api/SystemController.php app/Http/Controllers/Api/CatalogController.php app/Models/Product.php app/Models/BakeryCategory.php app/Models/BakeryProduct.php app/Models/BakeryProductVariant.php app/Http/Resources/ProductResource.php app/Http/Resources/BakeryCategoryResource.php app/Http/Resources/BakeryProductResource.php app/Http/Resources/BakeryVariantResource.php app/Filament/Resources/BakeryCategoryResource.php app/Filament/Resources/BakeryCategoryResource app/Filament/Resources/BakeryProductResource.php app/Filament/Resources/BakeryProductResource bootstrap/app.php config/cors.php config/winimi.php routes/api.php database/migrations/2024_01_01_000000_create_personal_access_tokens_table.php database/migrations/2026_06_11_152702_create_jobs_table.php database/migrations/2026_06_11_154204_create_failed_jobs_table.php database/migrations/2026_07_19_120000_create_bakery_catalog_tables.php tests scripts/audit-backend-foundation.php scripts/audit-bakery-catalog.php"
         ],
         "check": [
             "@php scripts/audit-backend-foundation.php",
+            "@audit:catalog",
             "@format:check",
             "@php artisan route:list --except-vendor",
             "@php artisan test"
