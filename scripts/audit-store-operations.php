@@ -88,9 +88,9 @@ foreach ([
 $require('orderItemMigration', "char('public_id', 26)", 'public order-item identifier schema');
 $require('orderItemMigration', 'Str::ulid()', 'existing order-item public-ID backfill');
 $require('orderItem', '$item->public_id ??=', 'new order-item public IDs');
-$require('orderItemResource', "'id' => $this->public_id", 'public order-item ID response');
+$require('orderItemResource', "'id' => \$this->public_id", 'public order-item ID response');
 $require('reviewRequest', "'orderItemId' => ['required', 'string', 'size:26']", 'public review item validation');
-$require('review', "->where('public_id', $request->validated('orderItemId'))", 'public review item lookup');
+$require('review', '->where(\'public_id\', $request->validated(\'orderItemId\'))', 'public review item lookup');
 
 $require('address', 'scopeOwnedBy', 'customer-owned address scope');
 $require('addressController', '->ownedBy($request->user(\'customer\'))', 'server-side address ownership checks');
