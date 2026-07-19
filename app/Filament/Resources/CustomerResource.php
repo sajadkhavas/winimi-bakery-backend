@@ -77,7 +77,8 @@ class CustomerResource extends Resource
                     ->toggleable(),
                 Tables\Columns\IconColumn::make('mobile_verified_at')
                     ->label('موبایل تأییدشده')
-                    ->boolean(fn (Customer $record): bool => $record->mobile_verified_at !== null),
+                    ->getStateUsing(fn (Customer $record): bool => $record->mobile_verified_at !== null)
+                    ->boolean(),
                 Tables\Columns\IconColumn::make('is_active')
                     ->label('فعال')
                     ->boolean(),
