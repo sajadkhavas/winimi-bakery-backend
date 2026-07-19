@@ -1,0 +1,60 @@
+name: Phase 10 Scoped Format
+
+on:
+  push:
+    branches:
+      - feature/phase-10-backend-foundation
+
+permissions:
+  contents: write
+
+jobs:
+  format:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v4
+        with:
+          ref: feature/phase-10-backend-foundation
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.3"
+          extensions: bcmath, ctype, curl, dom, fileinfo, gd, intl, mbstring, openssl, pdo_sqlite, sqlite3, tokenizer, xml, zip
+          coverage: none
+          tools: composer:v2
+
+      - name: Install dependencies
+        run: composer install --prefer-dist --no-interaction --no-progress
+
+      - name: Format Phase 10 files
+        run: >-
+          vendor/bin/pint
+          app/Support
+          app/Http/Middleware/AttachApiContext.php
+          app/Http/Middleware/MarkLegacyApi.php
+          app/Http/Controllers/Api/SystemController.php
+          app/Models/Product.php
+          app/Http/Resources/ProductResource.php
+          bootstrap/app.php
+          config/cors.php
+          config/winimi.php
+          routes/api.php
+          tests
+          scripts/audit-backend-foundation.php
+
+      - name: Commit formatting
+        run: |
+          if git diff --quiet; then
+            echo "No formatting changes required."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add app bootstrap config routes tests scripts
+          git commit -m "style: apply Laravel Pint to Phase 10 foundation"
+          git push origin HEAD:feature/phase-10-backend-foundation
