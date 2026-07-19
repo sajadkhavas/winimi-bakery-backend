@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources;
 
+use App\Models\BakeryProductVariant;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 use Illuminate\Support\Collection;
@@ -10,7 +11,7 @@ class BakeryProductResource extends JsonResource
 {
     public function toArray(Request $request): array
     {
-        /** @var Collection<int, \App\Models\BakeryProductVariant> $variants */
+        /** @var Collection<int, BakeryProductVariant> $variants */
         $variants = $this->resource->relationLoaded('activeVariants')
             ? $this->activeVariants
             : collect();
