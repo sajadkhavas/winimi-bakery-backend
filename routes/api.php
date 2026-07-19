@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\CatalogController;
 use App\Http\Controllers\Api\PerformanceMetricController;
 use App\Http\Controllers\Api\SystemController;
 use App\Http\Controllers\Api\V1\AuthController;
@@ -24,6 +25,12 @@ Route::prefix('system')->middleware('throttle:60,1')->group(function () {
     Route::get('ready', [SystemController::class, 'ready']);
     Route::get('meta', [SystemController::class, 'meta']);
     Route::get('contracts', [SystemController::class, 'contracts']);
+});
+
+Route::prefix('catalog')->middleware('throttle:120,1')->group(function () {
+    Route::get('products', [CatalogController::class, 'products']);
+    Route::get('products/{slug}', [CatalogController::class, 'product']);
+    Route::get('categories', [CatalogController::class, 'categories']);
 });
 
 /*

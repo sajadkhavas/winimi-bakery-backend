@@ -16,12 +16,13 @@ class BackendFoundationTest extends TestCase
         $this->assertTrue((bool) config('cors.supports_credentials'));
     }
 
-    public function test_new_commerce_contracts_are_not_reported_as_implemented_early(): void
+    public function test_only_completed_commerce_contracts_are_reported_as_implemented(): void
     {
         $contracts = config('winimi.contracts');
 
         $this->assertSame('implemented', $contracts['system']['status']);
-        $this->assertNotSame('implemented', $contracts['catalog']['status']);
+        $this->assertSame('implemented', $contracts['catalog']['status']);
+        $this->assertSame('bakery-catalog', $contracts['catalog']['source']);
         $this->assertNotSame('implemented', $contracts['authentication']['status']);
         $this->assertNotSame('implemented', $contracts['orders']['status']);
         $this->assertNotSame('implemented', $contracts['payments']['status']);

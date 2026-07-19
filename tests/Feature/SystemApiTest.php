@@ -28,18 +28,19 @@ class SystemApiTest extends TestCase
             ->assertOk()
             ->assertJsonPath('success', true)
             ->assertJsonPath('data.brand.nameEn', 'Winimi Bakery')
-            ->assertJsonPath('data.contractVersion', '2026-07-19')
+            ->assertJsonPath('data.contractVersion', '2026-07-19-phase-11')
             ->assertJsonPath('data.legacyApiEnabled', true);
     }
 
-    public function test_contract_endpoint_does_not_claim_unimplemented_features_are_active(): void
+    public function test_contract_endpoint_reports_only_completed_contracts_as_implemented(): void
     {
         $response = $this->getJson('/api/system/contracts');
 
         $response
             ->assertOk()
             ->assertJsonPath('data.contracts.system.status', 'implemented')
-            ->assertJsonPath('data.contracts.catalog.status', 'legacy-adapter')
+            ->assertJsonPath('data.contracts.catalog.status', 'implemented')
+            ->assertJsonPath('data.contracts.catalog.source', 'bakery-catalog')
             ->assertJsonPath('data.contracts.authentication.status', 'contract-only')
             ->assertJsonPath('data.contracts.orders.status', 'contract-only')
             ->assertJsonPath('data.contracts.payments.status', 'contract-only');
