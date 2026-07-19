@@ -34,6 +34,7 @@ $requiredFiles = [
     'app/Http/Controllers/Api/SystemController.php',
     'docs/API_CONTRACT.md',
     'docs/BACKEND_AUDIT.md',
+    'docs/PAYMENTS.md',
     'tests/Feature/SystemApiTest.php',
     'tests/Unit/BackendFoundationTest.php',
 ];
@@ -51,10 +52,11 @@ $requireText('bootstrap/app.php', 'shouldRenderJsonWhen', 'JSON API exception re
 $requireText('config/cors.php', "'supports_credentials' => true", 'credentialed CORS');
 $requireText('config/cors.php', "env('FRONTEND_URLS'", 'environment-driven frontend origins');
 $requireText('app/Models/Product.php', "config('winimi.brand.name_en'", 'Winimi product seller identity');
-$requireText('README.md', 'No production admin password is documented or committed.', 'admin credential policy');
+$requireText('README.md', 'No production administrator password or external credential is committed.', 'administrator and external credential policy');
 $requireText('docs/API_CONTRACT.md', 'POST /api/auth/otp/request', 'frontend OTP contract');
 $requireText('docs/API_CONTRACT.md', 'POST /api/checkout', 'frontend checkout contract');
 $requireText('docs/API_CONTRACT.md', 'POST /api/payments/zarinpal/verify', 'frontend payment verification contract');
+$requireText('docs/PAYMENTS.md', 'only provider verification may mark an order paid', 'server-authoritative payment policy');
 
 $forbidText('composer.json', 'toolmaster/backend', 'ToolMaster Composer package identity');
 $forbidText('config/cors.php', 'toolmaster.com', 'ToolMaster production origin');
