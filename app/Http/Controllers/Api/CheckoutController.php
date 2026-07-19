@@ -8,6 +8,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\CheckoutRequest;
 use App\Http\Resources\OrderResource;
 use App\Services\Orders\CheckoutService;
+use App\Services\Payments\PaymentProviderManager;
 use App\Support\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use InvalidArgumentException;
@@ -15,8 +16,11 @@ use JsonException;
 
 class CheckoutController extends Controller
 {
-    public function store(CheckoutRequest $request, CheckoutService $checkout): JsonResponse
-    {
+    public function store(
+        CheckoutRequest $request,
+        CheckoutService $checkout,
+        PaymentProviderManager $payments,
+    ): JsonResponse {
         if (! config('winimi.checkout.enabled', false)) {
             return ApiResponse::error('ثبت سفارش در حال حاضر فعال نیست.', 503);
         }
@@ -62,12 +66,16 @@ class CheckoutController extends Controller
         }
 
         $status = $result['replayed'] ? 200 : 201;
+        $paymentReady = $payments->ready();
 
         return ApiResponse::success([
             'order' => (new OrderResource($result['order']))->resolve($request),
             'payment' => [
-                'available' => false,
-                'state' => 'not-configured',
+                'available' => $paymentReady,
+                'state' => $paymentReady ? 'ready' : 'disabled',
+                'initiationEndpoint' => $paymentReady
+                    ? "/api/orders/{$result['order']->public_id}/payments"
+                    : null,
             ],
         ], $result['replayed'] ? 'سفارش قبلی بازیابی شد.' : 'سفارش ثبت و موجودی موقتاً رزرو شد.', $status, [
             'replayed' => $result['replayed'],
