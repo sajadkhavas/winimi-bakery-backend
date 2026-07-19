@@ -30,7 +30,7 @@ env:
 
 jobs:
   validate:
-    name: Audit, catalog, migrate, Filament and test
+    name: Audit, catalog, auth, migrate, Filament and test
     runs-on: ubuntu-latest
     timeout-minutes: 20
 
@@ -78,6 +78,9 @@ jobs:
       - name: Bakery catalog audit
         run: composer audit:catalog
 
+      - name: Customer authentication audit
+        run: composer audit:auth
+
       - name: Pint formatting
         id: pint
         run: |
@@ -113,6 +116,8 @@ jobs:
           php artisan config:cache
           php artisan route:cache
           php artisan route:list --except-vendor
+          php artisan route:list --path=api/auth
+          php artisan route:list --path=api/account
           php artisan route:list --path=admin/bakery
           if php artisan list --raw | grep -q '^filament:cache-components'; then
             php artisan filament:cache-components
