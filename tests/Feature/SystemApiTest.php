@@ -19,7 +19,8 @@ class SystemApiTest extends TestCase
             ->assertJsonPath('success', true)
             ->assertJsonPath('data.status', 'ok')
             ->assertJsonPath('data.service', 'winimi-bakery-backend')
-            ->assertJsonPath('meta.requestId', 'test-request-id');
+            ->assertJsonPath('meta.requestId', 'test-request-id')
+            ->assertJsonPath('meta.contractVersion', '2026-07-20-phase-16');
     }
 
     public function test_meta_endpoint_exposes_the_current_contract_identity(): void
@@ -28,12 +29,13 @@ class SystemApiTest extends TestCase
             ->assertOk()
             ->assertJsonPath('success', true)
             ->assertJsonPath('data.brand.nameEn', 'Winimi Bakery')
-            ->assertJsonPath('data.contractVersion', '2026-07-20-phase-15')
-            ->assertJsonPath('data.roadmapVersion', '2026-07-20-phase-15')
+            ->assertJsonPath('data.contractVersion', '2026-07-20-phase-16')
+            ->assertJsonPath('data.roadmapVersion', '2026-07-20-phase-16')
+            ->assertJsonPath('data.openApiUrl', '/api/system/openapi')
             ->assertJsonPath('data.legacyApiEnabled', true);
     }
 
-    public function test_contract_endpoint_reports_completed_contracts_and_locked_launch_strategy(): void
+    public function test_contract_endpoint_reports_frozen_backend_and_locked_launch_strategy(): void
     {
         $response = $this->getJson('/api/system/contracts');
 
@@ -57,11 +59,10 @@ class SystemApiTest extends TestCase
                 'data.contracts.store_operations.source',
                 'delivery-content-reviews-inquiries-notification-outbox',
             )
-            ->assertJsonPath(
-                'data.contracts.store_operations.activation',
-                'sms-disabled-until-external-credentials',
-            )
+            ->assertJsonPath('data.contracts.backend_freeze.status', 'ready')
+            ->assertJsonPath('data.contracts.backend_freeze.schema', '/api/system/openapi')
             ->assertJsonPath('data.launch.strategy', 'complete-internal-work-before-external-activation')
+            ->assertJsonPath('data.launch.internal_gates.backend_complete.status', 'ready')
             ->assertJsonPath('data.launch.internal_gates.backend_complete.target_phase', 16)
             ->assertJsonPath('data.launch.internal_gates.frontend_integrated.target_phase', 17)
             ->assertJsonPath('data.launch.internal_gates.end_to_end_verified.target_phase', 18)
@@ -72,10 +73,12 @@ class SystemApiTest extends TestCase
             ->assertJsonCount(3, 'data.launch.external_only');
     }
 
-    public function test_unknown_api_routes_render_json(): void
+    public function test_unknown_api_routes_render_frozen_json_error(): void
     {
         $this->getJson('/api/does-not-exist')
             ->assertNotFound()
-            ->assertJsonStructure(['message']);
+            ->assertJsonPath('success', false)
+            ->assertJsonPath('code', 'resource_not_found')
+            ->assertJsonPath('meta.contractVersion', '2026-07-20-phase-16');
     }
 }
