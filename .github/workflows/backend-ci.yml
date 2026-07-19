@@ -169,10 +169,14 @@ jobs:
           if-no-files-found: warn
           retention-days: 3
 
-      - name: Validate cached configuration, routes, commands and Filament discovery
+      - name: Cache configuration
+        run: php artisan config:cache
+
+      - name: Cache routes
+        run: php artisan route:cache
+
+      - name: Discover API and admin routes
         run: |
-          php artisan config:cache
-          php artisan route:cache
           php artisan route:list --except-vendor
           php artisan route:list --path=api/system/openapi
           php artisan route:list --path=api/auth
@@ -192,10 +196,16 @@ jobs:
           php artisan route:list --path=admin/product-reviews
           php artisan route:list --path=admin/inquiries
           php artisan route:list --path=admin/notification
+
+      - name: Validate commands and backend readiness
+        run: |
           php artisan list --raw | grep '^inventory:release-expired'
           php artisan list --raw | grep '^notifications:dispatch'
           php artisan list --raw | grep '^backend:readiness'
           php artisan backend:readiness --json
+
+      - name: Validate Filament discovery and clear caches
+        run: |
           if php artisan list --raw | grep -q '^filament:cache-components'; then
             php artisan filament:cache-components
             php artisan filament:clear-cached-components
