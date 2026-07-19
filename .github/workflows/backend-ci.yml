@@ -170,7 +170,19 @@ jobs:
           retention-days: 3
 
       - name: Cache configuration
-        run: php artisan config:cache
+        id: config_cache
+        run: |
+          set -o pipefail
+          php artisan config:cache 2>&1 | tee config-cache.log
+
+      - name: Upload configuration cache diagnostics
+        if: failure() && steps.config_cache.outcome == 'failure'
+        uses: actions/upload-artifact@v4
+        with:
+          name: config-cache-diagnostics
+          path: config-cache.log
+          if-no-files-found: error
+          retention-days: 3
 
       - name: Cache routes
         run: php artisan route:cache
