@@ -14,11 +14,17 @@ use Filament\Tables\Table;
 class NotificationOutboxResource extends Resource
 {
     protected static ?string $model = NotificationOutbox::class;
+
     protected static ?string $navigationIcon = 'heroicon-o-paper-airplane';
+
     protected static ?string $navigationLabel = 'صف اعلان‌ها';
+
     protected static ?string $modelLabel = 'اعلان';
+
     protected static ?string $pluralModelLabel = 'صف اعلان‌ها';
+
     protected static ?string $navigationGroup = 'فروشگاه وینیمی';
+
     protected static ?int $navigationSort = 9;
 
     public static function form(Form $form): Form

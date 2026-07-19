@@ -13,11 +13,17 @@ use Filament\Tables\Table;
 class BakeryPostResource extends Resource
 {
     protected static ?string $model = BakeryPost::class;
+
     protected static ?string $navigationIcon = 'heroicon-o-newspaper';
+
     protected static ?string $navigationLabel = 'وبلاگ بیکری';
+
     protected static ?string $modelLabel = 'مقاله';
+
     protected static ?string $pluralModelLabel = 'وبلاگ بیکری';
+
     protected static ?string $navigationGroup = 'محتوا';
+
     protected static ?int $navigationSort = 5;
 
     public static function form(Form $form): Form

@@ -14,11 +14,17 @@ use Filament\Tables\Table;
 class NotificationTemplateResource extends Resource
 {
     protected static ?string $model = NotificationTemplate::class;
+
     protected static ?string $navigationIcon = 'heroicon-o-chat-bubble-left-right';
+
     protected static ?string $navigationLabel = 'قالب‌های اعلان';
+
     protected static ?string $modelLabel = 'قالب اعلان';
+
     protected static ?string $pluralModelLabel = 'قالب‌های اعلان';
+
     protected static ?string $navigationGroup = 'تنظیمات';
+
     protected static ?int $navigationSort = 2;
 
     public static function form(Form $form): Form

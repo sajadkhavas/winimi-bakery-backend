@@ -14,11 +14,17 @@ use Filament\Tables\Table;
 class ProductReviewResource extends Resource
 {
     protected static ?string $model = ProductReview::class;
+
     protected static ?string $navigationIcon = 'heroicon-o-star';
+
     protected static ?string $navigationLabel = 'نظرات محصولات';
+
     protected static ?string $modelLabel = 'نظر محصول';
+
     protected static ?string $pluralModelLabel = 'نظرات محصولات';
+
     protected static ?string $navigationGroup = 'فروشگاه وینیمی';
+
     protected static ?int $navigationSort = 7;
 
     public static function form(Form $form): Form

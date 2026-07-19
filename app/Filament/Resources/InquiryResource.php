@@ -15,11 +15,17 @@ use Filament\Tables\Table;
 class InquiryResource extends Resource
 {
     protected static ?string $model = Inquiry::class;
+
     protected static ?string $navigationIcon = 'heroicon-o-inbox-arrow-down';
+
     protected static ?string $navigationLabel = 'درخواست‌ها';
+
     protected static ?string $modelLabel = 'درخواست';
+
     protected static ?string $pluralModelLabel = 'درخواست‌های مشتریان';
+
     protected static ?string $navigationGroup = 'فروشگاه وینیمی';
+
     protected static ?int $navigationSort = 8;
 
     public static function form(Form $form): Form

@@ -13,11 +13,17 @@ use Filament\Tables\Table;
 class CustomerAddressResource extends Resource
 {
     protected static ?string $model = CustomerAddress::class;
+
     protected static ?string $navigationIcon = 'heroicon-o-map';
+
     protected static ?string $navigationLabel = 'آدرس‌های مشتریان';
+
     protected static ?string $modelLabel = 'آدرس مشتری';
+
     protected static ?string $pluralModelLabel = 'آدرس‌های مشتریان';
+
     protected static ?string $navigationGroup = 'فروشگاه وینیمی';
+
     protected static ?int $navigationSort = 10;
 
     public static function form(Form $form): Form

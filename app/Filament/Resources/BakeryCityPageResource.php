@@ -13,11 +13,17 @@ use Filament\Tables\Table;
 class BakeryCityPageResource extends Resource
 {
     protected static ?string $model = BakeryCityPage::class;
+
     protected static ?string $navigationIcon = 'heroicon-o-map-pin';
+
     protected static ?string $navigationLabel = 'صفحات شهری';
+
     protected static ?string $modelLabel = 'صفحه شهری';
+
     protected static ?string $pluralModelLabel = 'صفحات شهری';
+
     protected static ?string $navigationGroup = 'محتوا';
+
     protected static ?int $navigationSort = 4;
 
     public static function form(Form $form): Form
