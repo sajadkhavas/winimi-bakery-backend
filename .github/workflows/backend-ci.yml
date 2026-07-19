@@ -5,6 +5,7 @@ on:
     branches:
       - main
       - "feature/**"
+      - "agent/**"
   pull_request:
     branches:
       - main
@@ -30,7 +31,7 @@ env:
 
 jobs:
   validate:
-    name: Audit, launch, catalog, auth, orders, migrate, Filament and test
+    name: Audit, launch, catalog, auth, orders, payments, migrate, Filament and test
     runs-on: ubuntu-latest
     timeout-minutes: 20
 
@@ -87,6 +88,9 @@ jobs:
       - name: Checkout and order audit
         run: composer audit:orders
 
+      - name: Payment architecture audit
+        run: composer audit:payments
+
       - name: Pint formatting
         id: pint
         run: |
@@ -125,8 +129,11 @@ jobs:
           php artisan route:list --path=api/auth
           php artisan route:list --path=api/checkout
           php artisan route:list --path=api/account/orders
+          php artisan route:list --path=api/orders
+          php artisan route:list --path=api/payments
           php artisan route:list --path=admin/bakery
           php artisan route:list --path=admin/orders
+          php artisan route:list --path=admin/payment-attempts
           php artisan list --raw | grep '^inventory:release-expired'
           if php artisan list --raw | grep -q '^filament:cache-components'; then
             php artisan filament:cache-components
