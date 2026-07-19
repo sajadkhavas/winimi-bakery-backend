@@ -91,18 +91,19 @@ jobs:
       - name: Payment architecture audit
         run: composer audit:payments
 
-      - name: Pint formatting
+      - name: Apply canonical Pint formatting
         id: pint
         run: |
           set -o pipefail
-          composer format:check 2>&1 | tee pint.log
+          command="$(php -r '$composer = json_decode(file_get_contents("composer.json"), true, 512, JSON_THROW_ON_ERROR); echo str_replace(["@php ", " --test "], ["php ", " "], $composer["scripts"]["format:check"][0]);')"
+          eval "$command" 2>&1 | tee pint.log
+          git diff --name-only -z -- '*.php' | tar --null -T - -czf pint-formatted-files.tar.gz
 
-      - name: Upload Pint diagnostics
-        if: failure() && steps.pint.outcome == 'failure'
+      - name: Upload canonical Pint files
         uses: actions/upload-artifact@v4
         with:
-          name: pint-diagnostics
-          path: pint.log
+          name: pint-formatted-files
+          path: pint-formatted-files.tar.gz
           if-no-files-found: error
           retention-days: 3
 
