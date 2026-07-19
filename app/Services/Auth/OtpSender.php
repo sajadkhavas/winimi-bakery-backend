@@ -44,9 +44,7 @@ final class OtpSender
                     'template' => $template,
                 ])
                 ->throw();
-        } catch (Throwable $exception) {
-            report($exception);
-
+        } catch (Throwable) {
             throw new OtpDeliveryUnavailable;
         }
     }
