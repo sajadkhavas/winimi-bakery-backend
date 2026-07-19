@@ -37,6 +37,7 @@ class OrderResource extends JsonResource
                 'grandTotalToman' => $this->grand_total_toman,
             ],
             'itemCount' => $this->item_count,
+            'preparationTimeDays' => $this->preparation_time_days,
             'preparation' => [
                 'minDays' => $this->preparation_time_days,
                 'maxDays' => max($this->preparation_time_days, $this->preparation_max_days),
