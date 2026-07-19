@@ -10,6 +10,7 @@ use App\Models\BakeryCategory;
 use App\Models\BakeryProduct;
 use App\Support\ApiResponse;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -133,7 +134,7 @@ class CatalogController extends Controller
         return [
             'category',
             'media',
-            'activeVariants' => fn (Builder $variants): Builder => $variants->withSum([
+            'activeVariants' => fn (HasMany $variants) => $variants->withSum([
                 'inventoryReservations as active_reserved_quantity' => fn (Builder $reservations): Builder => $reservations->active(),
             ], 'quantity'),
         ];
