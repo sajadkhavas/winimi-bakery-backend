@@ -76,7 +76,7 @@
             "@php artisan test"
         ],
         "format:check": [
-            "@php vendor/bin/pint --test app/Support app/Http/Middleware/AttachApiContext.php app/Http/Middleware/MarkLegacyApi.php app/Http/Controllers/Api/SystemController.php app/Models/Product.php app/Http/Resources/ProductResource.php bootstrap/app.php config/cors.php config/winimi.php routes/api.php database/migrations/2024_01_01_000000_create_personal_access_tokens_table.php tests scripts/audit-backend-foundation.php"
+            "@php vendor/bin/pint --test app/Support app/Http/Middleware/AttachApiContext.php app/Http/Middleware/MarkLegacyApi.php app/Http/Controllers/Api/SystemController.php app/Models/Product.php app/Http/Resources/ProductResource.php bootstrap/app.php config/cors.php config/winimi.php routes/api.php database/migrations/2024_01_01_000000_create_personal_access_tokens_table.php database/migrations/2026_06_11_152702_create_jobs_table.php tests scripts/audit-backend-foundation.php"
         ],
         "check": [
             "@php scripts/audit-backend-foundation.php",
