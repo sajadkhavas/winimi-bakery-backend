@@ -75,9 +75,12 @@
         "test": [
             "@php artisan test"
         ],
+        "format:check": [
+            "@php vendor/bin/pint --test app/Support app/Http/Middleware/AttachApiContext.php app/Http/Middleware/MarkLegacyApi.php app/Http/Controllers/Api/SystemController.php app/Models/Product.php app/Http/Resources/ProductResource.php bootstrap/app.php config/cors.php config/winimi.php routes/api.php tests scripts/audit-backend-foundation.php"
+        ],
         "check": [
             "@php scripts/audit-backend-foundation.php",
-            "@php vendor/bin/pint --test",
+            "@format:check",
             "@php artisan route:list --except-vendor",
             "@php artisan test"
         ]
