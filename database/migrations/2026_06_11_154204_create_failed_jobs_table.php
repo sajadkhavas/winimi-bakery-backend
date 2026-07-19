@@ -1,32 +1,22 @@
 <?php
 
 use Illuminate\Database\Migrations\Migration;
-use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    /**
-     * Run the migrations.
-     */
     public function up(): void
     {
-        Schema::create('failed_jobs', function (Blueprint $table) {
-            $table->id();
-            $table->string('uuid')->unique();
-            $table->text('connection');
-            $table->text('queue');
-            $table->longText('payload');
-            $table->longText('exception');
-            $table->timestamp('failed_at')->useCurrent();
-        });
+        // Laravel's base queue migration already owns the failed_jobs table.
+        // Retain this inherited migration as a safe no-op for installations
+        // whose migration history already references this filename.
+        if (Schema::hasTable('failed_jobs')) {
+            return;
+        }
     }
 
-    /**
-     * Reverse the migrations.
-     */
     public function down(): void
     {
-        Schema::dropIfExists('failed_jobs');
+        // This compatibility migration must not drop the canonical table.
     }
 };
