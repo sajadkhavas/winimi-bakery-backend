@@ -73,15 +73,26 @@ jobs:
           php artisan key:generate --force
           php artisan optimize:clear
 
-      - name: Existing architecture audits
-        run: |
-          php scripts/audit-backend-foundation.php
-          composer audit:launch
-          composer audit:catalog
-          composer audit:auth
-          composer audit:orders
-          composer audit:payments
-          composer audit:operations
+      - name: Backend foundation audit
+        run: php scripts/audit-backend-foundation.php
+
+      - name: Full launch roadmap audit
+        run: composer audit:launch
+
+      - name: Bakery catalog audit
+        run: composer audit:catalog
+
+      - name: Customer authentication audit
+        run: composer audit:auth
+
+      - name: Checkout and order audit
+        run: composer audit:orders
+
+      - name: Payment architecture audit
+        run: composer audit:payments
+
+      - name: Store operations audit
+        run: composer audit:operations
 
       - name: Backend contract freeze audit
         id: freeze_audit
