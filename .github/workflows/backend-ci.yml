@@ -30,7 +30,7 @@ env:
 
 jobs:
   validate:
-    name: Audit, format, migrate, route cache and test
+    name: Audit, catalog, migrate, Filament and test
     runs-on: ubuntu-latest
     timeout-minutes: 20
 
@@ -75,6 +75,9 @@ jobs:
       - name: Backend foundation audit
         run: php scripts/audit-backend-foundation.php
 
+      - name: Bakery catalog audit
+        run: composer audit:catalog
+
       - name: Pint formatting
         id: pint
         run: |
@@ -105,11 +108,16 @@ jobs:
           if-no-files-found: error
           retention-days: 3
 
-      - name: Validate cached configuration and routes
+      - name: Validate cached configuration, routes and Filament discovery
         run: |
           php artisan config:cache
           php artisan route:cache
           php artisan route:list --except-vendor
+          php artisan route:list --path=admin/bakery
+          if php artisan list --raw | grep -q '^filament:cache-components'; then
+            php artisan filament:cache-components
+            php artisan filament:clear-cached-components
+          fi
           php artisan optimize:clear
 
       - name: Run tests
