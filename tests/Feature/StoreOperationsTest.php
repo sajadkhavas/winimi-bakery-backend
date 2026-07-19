@@ -17,10 +17,10 @@ use App\Models\BakeryProductVariant;
 use App\Models\Customer;
 use App\Models\DeliveryZone;
 use App\Models\Order;
-use App\Models\OrderItem;
 use App\Models\ProductReview;
 use App\Models\StoreSetting;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
 class StoreOperationsTest extends TestCase
@@ -241,7 +241,7 @@ class StoreOperationsTest extends TestCase
 
         $this->actingAs($other, 'customer')
             ->postJson("/api/account/orders/{$order->public_id}/reviews", [
-                'orderItemId' => $item->getKey(),
+                'orderItemId' => $item->public_id,
                 'rating' => 5,
                 'body' => 'نظر غیرمجاز کاربر دیگر',
             ])
@@ -249,7 +249,7 @@ class StoreOperationsTest extends TestCase
 
         $this->actingAs($this->customer, 'customer')
             ->postJson("/api/account/orders/{$order->public_id}/reviews", [
-                'orderItemId' => $item->getKey(),
+                'orderItemId' => $item->public_id,
                 'rating' => 5,
                 'title' => 'عالی',
                 'body' => 'کوکی تازه و باکیفیت بود.',
@@ -259,7 +259,7 @@ class StoreOperationsTest extends TestCase
 
         $this->actingAs($this->customer, 'customer')
             ->postJson("/api/account/orders/{$order->public_id}/reviews", [
-                'orderItemId' => $item->getKey(),
+                'orderItemId' => $item->public_id,
                 'rating' => 4,
             ])
             ->assertUnprocessable();
@@ -308,7 +308,7 @@ class StoreOperationsTest extends TestCase
         ])->assertUnprocessable();
 
         $this->assertDatabaseCount('inquiries', 1);
-        $this->assertNotNull((string) \DB::table('inquiries')->value('ip_hash'));
+        $this->assertNotNull((string) DB::table('inquiries')->value('ip_hash'));
     }
 
     private function createDeliveredOrder(): Order
