@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Models\Customer;
 use App\Support\ApiResponse;
 use Closure;
 use Illuminate\Http\Request;
@@ -13,8 +14,12 @@ class EnsureActiveCustomer
     public function handle(Request $request, Closure $next): Response
     {
         $customer = $request->user('customer');
+        $isActive = $customer && Customer::query()
+            ->whereKey($customer->getAuthIdentifier())
+            ->where('is_active', true)
+            ->exists();
 
-        if (! $customer || ! $customer->is_active) {
+        if (! $isActive) {
             Auth::guard('customer')->logout();
 
             if ($request->hasSession()) {
