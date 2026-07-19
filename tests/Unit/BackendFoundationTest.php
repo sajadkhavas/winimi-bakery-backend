@@ -33,5 +33,14 @@ class BackendFoundationTest extends TestCase
             'disabled-until-external-credentials',
             $contracts['payments']['activation'],
         );
+        $this->assertSame('implemented', $contracts['store_operations']['status']);
+        $this->assertSame(
+            'delivery-content-reviews-inquiries-notification-outbox',
+            $contracts['store_operations']['source'],
+        );
+        $this->assertSame(
+            'sms-disabled-until-external-credentials',
+            $contracts['store_operations']['activation'],
+        );
     }
 }
