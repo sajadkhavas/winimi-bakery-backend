@@ -1,6 +1,6 @@
 # Winimi Bakery Full Launch Roadmap
 
-Roadmap lock: `2026-07-19-phase-13.5`
+Roadmap lock: `2026-07-20-phase-15`
 
 ## Delivery rule
 
@@ -20,67 +20,71 @@ The backend is completed and contract-frozen before the frontend integration pha
 - Phase 12: customer OTP architecture, secure sessions and profile
 - Phase 13: checkout, orders, immutable snapshots and inventory reservations
 - Phase 13.5: repository audit and full-launch roadmap lock
+- Phase 14: provider-ready payment backend
+- Phase 15: complete store operations backend
 
 ## Phase 14 — Provider-ready payment backend
 
-The payment lifecycle is implemented without requiring live credentials:
+Completed without requiring live credentials:
 
-- `payment_attempts` and immutable provider request/response metadata
-- payment provider interface and deterministic testing provider
-- Zarinpal request and verify adapter with live mode disabled by default
-- retry payment for an existing eligible order
-- idempotent initiation and verification
-- authority, reference ID, gateway code and failure classification
-- atomic verified-payment transition
-- inventory reservation consumption only after verified payment
-- safe handling for cancelled, expired, failed and already-verified callbacks
-- Filament payment inspection
-- provider logs with secrets and personal data redacted
-- complete feature tests using the testing provider
+- persistent `payment_attempts`
+- provider-neutral interface and deterministic testing provider
+- Zarinpal request and verification adapter disabled by default
+- idempotent initiation, callback replay and controlled retry
+- atomic verified-payment, order, reservation and stock transition
+- Filament inspection and redacted provider metadata
+- full payment and inventory regression tests
 
-At the end of Phase 14, only the real Merchant ID is missing from payment activation.
+Only the real Merchant ID remains missing from payment activation.
 
 ## Phase 15 — Complete store operations backend
 
-All non-payment backend work is completed before integration:
+Completed before frontend integration:
 
 ### Customer and delivery
 
-- reusable customer addresses
-- province/city/delivery-zone configuration
-- standard, chilled and pickup availability rules
-- delivery and packaging fees managed through Filament instead of hardcoded frontend values
-- preparation windows and operating limits
+- reusable customer-owned addresses with one default address
+- province/city delivery-zone resolution with wildcard fallback
+- standard, chilled and pickup rules
+- delivery and packaging fees managed through Filament
+- minimum order, free-delivery threshold, preparation windows and daily limits
+- checkout snapshot of zone, fees and preparation range
 
 ### Order operations
 
-- controlled fulfillment state machine
-- admin actions for confirm, prepare, dispatch, deliver and cancel
-- stock and reservation safety for every transition
-- internal notes and status history
-- order search, filters and export-ready data
+- controlled `paid -> confirmed -> preparing -> ready -> dispatched -> delivered` state machine
+- pickup-specific ready-to-delivered path
+- tracking-code requirement for dispatched orders
+- row-locked status history and timestamps
+- private internal notes
+- one-time restock after paid-order cancellation
+- customer-safe public timeline without internal notes
+- searchable and filterable Filament order operations console
 
 ### Content and trust
 
-- bakery-specific site settings
-- contact information and social links
-- FAQ, legal pages, shipping policy and homepage content
-- blog, gallery and city-page content source
-- eNAMAD placeholder/slot with the real badge code disabled until supplied
+- bakery-specific public settings
+- contact and social data
+- FAQ, legal, shipping and homepage content
+- bakery blog, gallery and city pages
+- eNAMAD placeholder/slot disabled until the external badge code is supplied
 
 ### Reviews and forms
 
-- verified-purchase review submission and moderation
+- verified-purchase review submission after delivery
+- moderation and public approved-review summaries
 - contact, gift and corporate inquiry storage
-- spam/rate-limit protection
-- admin review and inquiry resources
+- honeypot, rate limit, duplicate protection and hashed IP storage
+- Filament review and inquiry resources
 
 ### Notifications
 
-- notification outbox and delivery state
-- OTP/order SMS templates
-- testing/disabled SMS provider and Kavenegar-ready adapter
-- no production SMS is sent without the external key and approved template
+- transactional notification outbox
+- order SMS templates
+- disabled and testing providers plus Kavenegar-ready adapter
+- encrypted destinations, retries and stale-processing recovery
+- one-minute non-overlapping scheduler
+- no production SMS without the external key
 
 ## Phase 16 — Backend completion and contract freeze
 
@@ -90,7 +94,7 @@ The backend becomes ready to transfer into the production storefront integration
 - OpenAPI or equivalent machine-readable schemas
 - consistent response envelope and error codes
 - pagination/filter/sort contracts frozen
-- authorization and IDOR regression tests
+- authorization and IDOR regression tests expanded across every resource
 - queue, scheduler, cache, media and storage policies finalized
 - database indexes and query review
 - seeders/factories for staging acceptance data

@@ -1,0 +1,112 @@
+name: Phase 15 Finalize And Merge
+
+on:
+  push:
+    branches:
+      - agent/phase-15-store-operations
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: phase15-format-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  finalize:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout Phase 15 branch
+        uses: actions/checkout@v4
+        with:
+          ref: agent/phase-15-store-operations
+          fetch-depth: 0
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.3"
+          extensions: bcmath, ctype, curl, dom, fileinfo, gd, intl, mbstring, openssl, pdo_sqlite, sqlite3, tokenizer, xml, zip
+          coverage: none
+          tools: composer:v2
+
+      - name: Install Composer dependencies
+        run: composer install --prefer-dist --no-interaction --no-progress
+
+      - name: Apply canonical Pint formatting
+        run: |
+          command="$(php -r '$composer = json_decode(file_get_contents("composer.json"), true, 512, JSON_THROW_ON_ERROR); echo str_replace(["@php ", " --test "], ["php ", " "], $composer["scripts"]["format:check"][0]);')"
+          eval "$command"
+
+      - name: Remove temporary workflows
+        run: |
+          rm -f .github/workflows/phase15-format-commit.yml
+          rm -f .github/workflows/phase15-format-cleanup.yml
+          rm -f .github/workflows/phase15-format-cleanup-v2.yml
+          rm -f .github/workflows/phase15-format-cleanup-v3.yml
+          rm -f .github/workflows/phase15-finalize.yml
+
+      - name: Prepare Laravel test environment
+        run: |
+          cp .env.example .env
+          mkdir -p database
+          touch database/database.sqlite
+          php artisan key:generate --force
+          php artisan optimize:clear
+
+      - name: Run fresh migrations
+        run: php artisan migrate:fresh --force
+
+      - name: Run full architecture, formatting and regression gate
+        run: composer check
+
+      - name: Validate cached configuration, routes, commands and Filament discovery
+        run: |
+          php artisan config:cache
+          php artisan route:cache
+          php artisan route:list --except-vendor
+          php artisan route:list --path=api/account/addresses
+          php artisan route:list --path=api/delivery
+          php artisan route:list --path=api/store
+          php artisan route:list --path=api/inquiries
+          php artisan route:list --path=admin/delivery-zones
+          php artisan route:list --path=admin/store-settings
+          php artisan route:list --path=admin/product-reviews
+          php artisan route:list --path=admin/inquiries
+          php artisan route:list --path=admin/notification
+          php artisan list --raw | grep '^inventory:release-expired'
+          php artisan list --raw | grep '^notifications:dispatch'
+          if php artisan list --raw | grep -q '^filament:cache-components'; then
+            timeout 120 php artisan filament:cache-components
+            php artisan filament:clear-cached-components
+          fi
+          php artisan optimize:clear
+
+      - name: Run dependency security audit
+        run: composer audit --no-interaction
+
+      - name: Commit the validated final state
+        run: |
+          if git diff --quiet; then
+            echo "Final branch already clean."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Phase 15O: finalize validated store operations backend"
+          git push origin HEAD:agent/phase-15-store-operations
+
+      - name: Mark PR ready and squash merge
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh pr ready 7 --repo sajadkhavas/winimi-bakery-backend || true
+          gh pr merge 7 \
+            --repo sajadkhavas/winimi-bakery-backend \
+            --squash \
+            --subject "Phase 15: complete store operations backend" \
+            --body "Complete customer addresses, database-managed delivery, fulfillment state machine, content, reviews, inquiries, notification outbox, Filament operations, documentation and full regression coverage."

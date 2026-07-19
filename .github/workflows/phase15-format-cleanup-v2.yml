@@ -1,0 +1,99 @@
+name: Phase 15 Format Cleanup V2
+
+on:
+  push:
+    branches:
+      - agent/phase-15-store-operations
+
+permissions:
+  contents: write
+
+concurrency:
+  group: phase15-format-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  finalize:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v4
+        with:
+          ref: agent/phase-15-store-operations
+          fetch-depth: 0
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.3"
+          coverage: none
+          tools: composer:v2
+
+      - name: Install Composer dependencies
+        run: composer install --prefer-dist --no-interaction --no-progress
+
+      - name: Apply canonical Pint formatting
+        run: |
+          command="$(php -r '$composer = json_decode(file_get_contents("composer.json"), true, 512, JSON_THROW_ON_ERROR); echo str_replace(["@php ", " --test "], ["php ", " "], $composer["scripts"]["format:check"][0]);')"
+          eval "$command"
+
+      - name: Restore strict CI and remove temporary workflows
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re
+
+          path = Path('.github/workflows/backend-ci.yml')
+          text = path.read_text()
+          pattern = re.compile(
+              r"      - name: Apply canonical Pint formatting\n"
+              r"        id: pint\n"
+              r"        run: \|\n"
+              r"(?:          .*\n)+?"
+              r"\n"
+              r"      - name: Upload canonical Pint files\n"
+              r"        uses: actions/upload-artifact@v4\n"
+              r"        with:\n"
+              r"          name: pint-formatted-files\n"
+              r"          path: pint-formatted-files.tar.gz\n"
+              r"          if-no-files-found: error\n"
+              r"          retention-days: 3\n"
+          )
+          strict = '''      - name: Pint formatting
+                  id: pint
+                  run: |
+                    set -o pipefail
+                    composer format:check 2>&1 | tee pint.log
+
+                - name: Upload Pint diagnostics
+                  if: failure() && steps.pint.outcome == 'failure'
+                  uses: actions/upload-artifact@v4
+                  with:
+                    name: pint-diagnostics
+                    path: pint.log
+                    if-no-files-found: error
+                    retention-days: 3
+          '''
+          replacement = '\n'.join(line[6:] if line.startswith('      ') else line for line in strict.splitlines()) + '\n'
+          updated, count = pattern.subn(replacement, text, count=1)
+          if count != 1:
+              raise SystemExit(f'Expected one temporary Pint block, found {count}.')
+          path.write_text(updated)
+          PY
+          rm -f .github/workflows/phase15-format-commit.yml
+          rm -f .github/workflows/phase15-format-cleanup.yml
+          rm -f .github/workflows/phase15-format-cleanup-v2.yml
+
+      - name: Commit final formatting state
+        run: |
+          if git diff --quiet; then
+            echo "No cleanup changes required."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Phase 15N: finalize canonical formatting and strict CI"
+          git push origin HEAD:agent/phase-15-store-operations

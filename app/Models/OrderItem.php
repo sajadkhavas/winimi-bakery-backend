@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Str;
 
 class OrderItem extends Model
 {
@@ -23,6 +24,13 @@ class OrderItem extends Model
         'quantity',
         'line_total_toman',
     ];
+
+    protected static function booted(): void
+    {
+        static::creating(function (self $item): void {
+            $item->public_id ??= (string) Str::ulid();
+        });
+    }
 
     protected function casts(): array
     {

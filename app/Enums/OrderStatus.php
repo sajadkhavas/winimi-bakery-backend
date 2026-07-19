@@ -6,6 +6,7 @@ enum OrderStatus: string
 {
     case AwaitingPayment = 'awaiting_payment';
     case Paid = 'paid';
+    case Confirmed = 'confirmed';
     case Preparing = 'preparing';
     case Ready = 'ready';
     case Dispatched = 'dispatched';
@@ -18,6 +19,7 @@ enum OrderStatus: string
         return match ($this) {
             self::AwaitingPayment => 'در انتظار پرداخت',
             self::Paid => 'پرداخت‌شده',
+            self::Confirmed => 'تأییدشده',
             self::Preparing => 'در حال آماده‌سازی',
             self::Ready => 'آماده ارسال یا تحویل',
             self::Dispatched => 'ارسال‌شده',

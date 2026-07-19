@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources;
 
+use App\Models\OrderStatusHistory;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -21,6 +22,12 @@ class OrderResource extends JsonResource
                 'methodLabel' => $this->delivery_method->label(),
                 'requiresCooling' => $this->requires_cooling,
                 'feeToman' => $this->delivery_fee_toman,
+                'zone' => $this->resource->relationLoaded('deliveryZone') && $this->deliveryZone
+                    ? [
+                        'id' => $this->deliveryZone->public_id,
+                        'name' => $this->deliveryZone->name,
+                    ]
+                    : null,
             ],
             'totals' => [
                 'subtotalToman' => $this->subtotal_toman,
@@ -31,6 +38,10 @@ class OrderResource extends JsonResource
             ],
             'itemCount' => $this->item_count,
             'preparationTimeDays' => $this->preparation_time_days,
+            'preparation' => [
+                'minDays' => $this->preparation_time_days,
+                'maxDays' => max($this->preparation_time_days, $this->preparation_max_days),
+            ],
             'recipient' => [
                 'fullName' => $this->customer_name,
                 'mobile' => $this->customer_mobile,
@@ -40,9 +51,25 @@ class OrderResource extends JsonResource
                 'postalCode' => $this->postal_code,
                 'notes' => $this->notes,
             ],
+            'fulfillment' => [
+                'trackingCode' => $this->tracking_code,
+                'confirmedAt' => $this->confirmed_at?->toIso8601String(),
+                'preparingAt' => $this->preparing_at?->toIso8601String(),
+                'readyAt' => $this->ready_at?->toIso8601String(),
+                'dispatchedAt' => $this->dispatched_at?->toIso8601String(),
+                'deliveredAt' => $this->delivered_at?->toIso8601String(),
+            ],
             'items' => OrderItemResource::collection($this->whenLoaded('items'))->resolve($request),
             'payments' => $this->resource->relationLoaded('paymentAttempts')
                 ? PaymentAttemptResource::collection($this->paymentAttempts)->resolve($request)
+                : [],
+            'timeline' => $this->resource->relationLoaded('statusHistory')
+                ? $this->statusHistory->map(fn (OrderStatusHistory $history): array => [
+                    'from' => $history->from_status?->value,
+                    'to' => $history->to_status->value,
+                    'label' => $history->to_status->label(),
+                    'createdAt' => $history->created_at?->toIso8601String(),
+                ])->values()->all()
                 : [],
             'reservationExpiresAt' => $this->reservation_expires_at?->toIso8601String(),
             'canCancel' => $this->canBeCancelledByCustomer(),

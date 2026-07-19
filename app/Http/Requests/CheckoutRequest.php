@@ -16,15 +16,17 @@ class CheckoutRequest extends FormRequest
 
     public function rules(): array
     {
+        $usesSavedAddress = $this->filled('addressId');
         $requiresAddress = $this->input('deliveryMethod') !== DeliveryMethod::Pickup->value;
 
         return [
-            'customer' => ['required', 'array'],
-            'customer.fullName' => ['required', 'string', 'min:2', 'max:120'],
-            'customer.mobile' => ['required', 'string', 'max:32'],
-            'customer.province' => [Rule::requiredIf($requiresAddress), 'nullable', 'string', 'max:100'],
-            'customer.city' => [Rule::requiredIf($requiresAddress), 'nullable', 'string', 'max:100'],
-            'customer.address' => [Rule::requiredIf($requiresAddress), 'nullable', 'string', 'max:1200'],
+            'addressId' => ['nullable', 'string', 'size:26'],
+            'customer' => [Rule::requiredIf(! $usesSavedAddress), 'nullable', 'array'],
+            'customer.fullName' => [Rule::requiredIf(! $usesSavedAddress), 'nullable', 'string', 'min:2', 'max:120'],
+            'customer.mobile' => [Rule::requiredIf(! $usesSavedAddress), 'nullable', 'string', 'max:32'],
+            'customer.province' => [Rule::requiredIf(! $usesSavedAddress && $requiresAddress), 'nullable', 'string', 'max:100'],
+            'customer.city' => [Rule::requiredIf(! $usesSavedAddress && $requiresAddress), 'nullable', 'string', 'max:100'],
+            'customer.address' => [Rule::requiredIf(! $usesSavedAddress && $requiresAddress), 'nullable', 'string', 'max:1200'],
             'customer.postalCode' => ['nullable', 'string', 'max:20'],
             'customer.notes' => ['nullable', 'string', 'max:1000'],
             'deliveryMethod' => ['required', Rule::enum(DeliveryMethod::class)],

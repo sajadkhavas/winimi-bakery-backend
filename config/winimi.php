@@ -20,7 +20,7 @@ return [
 
     'api' => [
         'version' => '1',
-        'contract_version' => '2026-07-19-phase-14',
+        'contract_version' => '2026-07-20-phase-15',
         'request_id_header' => 'X-Request-ID',
     ],
 
@@ -97,6 +97,18 @@ return [
         ],
     ],
 
+    'notifications' => [
+        'sms_provider' => env('ORDER_SMS_PROVIDER', 'disabled'),
+        'max_attempts' => (int) env('NOTIFICATION_MAX_ATTEMPTS', 5),
+        'retry_seconds' => (int) env('NOTIFICATION_RETRY_SECONDS', 60),
+        'timeout_seconds' => (int) env('NOTIFICATION_TIMEOUT_SECONDS', 8),
+        'kavenegar' => [
+            'api_key' => env('KAVENEGAR_API_KEY'),
+            'sender' => env('KAVENEGAR_ORDER_SENDER'),
+            'base_url' => env('KAVENEGAR_BASE_URL', 'https://api.kavenegar.com/v1'),
+        ],
+    ],
+
     'legacy' => [
         'enabled' => $boolean('LEGACY_TOOLMASTER_API_ENABLED', true),
         'contract_url' => '/api/system/contracts',
@@ -119,6 +131,7 @@ return [
             'endpoints' => [
                 'GET /api/catalog/products',
                 'GET /api/catalog/products/{slug}',
+                'GET /api/catalog/products/{slug}/reviews',
                 'GET /api/catalog/categories',
             ],
         ],
@@ -132,6 +145,10 @@ return [
                 'GET /api/auth/me',
                 'POST /api/auth/logout',
                 'PATCH /api/account/profile',
+                'GET /api/account/addresses',
+                'POST /api/account/addresses',
+                'PUT /api/account/addresses/{addressId}',
+                'DELETE /api/account/addresses/{addressId}',
             ],
         ],
         'orders' => [
@@ -140,6 +157,7 @@ return [
             'source' => 'transactional-order-reservations',
             'endpoints' => [
                 'POST /api/checkout',
+                'GET /api/delivery/options',
                 'GET /api/account/orders',
                 'GET /api/account/orders/{orderId}',
                 'POST /api/account/orders/{orderId}/cancel',
@@ -156,11 +174,28 @@ return [
                 'POST /api/payments/zarinpal/verify',
             ],
         ],
+        'store_operations' => [
+            'status' => 'implemented',
+            'target_phase' => 15,
+            'source' => 'delivery-content-reviews-inquiries-notification-outbox',
+            'activation' => 'sms-disabled-until-external-credentials',
+            'endpoints' => [
+                'GET /api/store/settings',
+                'GET /api/store/pages/{slug}',
+                'GET /api/store/faqs',
+                'GET /api/store/gallery',
+                'GET /api/store/posts',
+                'GET /api/store/posts/{slug}',
+                'GET /api/store/cities/{slug}',
+                'POST /api/inquiries',
+                'POST /api/account/orders/{orderId}/reviews',
+            ],
+        ],
     ],
 
     'launch' => [
         'strategy' => 'complete-internal-work-before-external-activation',
-        'roadmap_version' => '2026-07-19-phase-14',
+        'roadmap_version' => '2026-07-20-phase-15',
         'internal_gates' => [
             'backend_complete' => [
                 'status' => 'in-progress',
@@ -188,7 +223,7 @@ return [
             'enamad_badge_code' => [
                 'status' => 'pending-external',
                 'target_phase' => 20,
-                'setting' => 'ENAMAD_BADGE_CODE',
+                'setting' => 'trust.enamad_badge_code',
             ],
             'sms_provider_credentials' => [
                 'status' => 'pending-external',

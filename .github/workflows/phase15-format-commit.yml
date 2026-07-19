@@ -1,0 +1,52 @@
+name: Phase 15 Canonical Format Commit
+
+on:
+  push:
+    branches:
+      - agent/phase-15-store-operations
+
+permissions:
+  contents: write
+
+concurrency:
+  group: phase15-format-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  format:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v4
+        with:
+          ref: agent/phase-15-store-operations
+          fetch-depth: 0
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.3"
+          coverage: none
+          tools: composer:v2
+
+      - name: Install Composer dependencies
+        run: composer install --prefer-dist --no-interaction --no-progress
+
+      - name: Apply canonical Pint formatting
+        run: |
+          command="$(php -r '$composer = json_decode(file_get_contents("composer.json"), true, 512, JSON_THROW_ON_ERROR); echo str_replace(["@php ", " --test "], ["php ", " "], $composer["scripts"]["format:check"][0]);')"
+          eval "$command"
+
+      - name: Commit formatting changes
+        run: |
+          if git diff --quiet -- '*.php'; then
+            echo "No formatting changes required."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -- '*.php'
+          git commit -m "Phase 15N: apply canonical Pint formatting"
+          git push origin HEAD:agent/phase-15-store-operations

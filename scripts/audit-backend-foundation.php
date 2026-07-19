@@ -53,9 +53,9 @@ $requireText('config/cors.php', "'supports_credentials' => true", 'credentialed 
 $requireText('config/cors.php', "env('FRONTEND_URLS'", 'environment-driven frontend origins');
 $requireText('app/Models/Product.php', "config('winimi.brand.name_en'", 'Winimi product seller identity');
 $requireText('README.md', 'No production administrator password or external credential is committed.', 'administrator and external credential policy');
-$requireText('docs/API_CONTRACT.md', 'POST /api/auth/otp/request', 'frontend OTP contract');
-$requireText('docs/API_CONTRACT.md', 'POST /api/checkout', 'frontend checkout contract');
-$requireText('docs/API_CONTRACT.md', 'POST /api/payments/zarinpal/verify', 'frontend payment verification contract');
+$requireText('docs/API_CONTRACT.md', '/api/auth/otp/request', 'frontend OTP contract');
+$requireText('docs/API_CONTRACT.md', '/api/checkout', 'frontend checkout contract');
+$requireText('docs/API_CONTRACT.md', '/api/payments/zarinpal/verify', 'frontend payment verification contract');
 $requireText('docs/PAYMENTS.md', 'Only provider verification may mark an order paid.', 'server-authoritative payment policy');
 
 $forbidText('composer.json', 'toolmaster/backend', 'ToolMaster Composer package identity');

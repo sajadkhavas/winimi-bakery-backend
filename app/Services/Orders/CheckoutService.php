@@ -10,9 +10,11 @@ use App\Exceptions\IdempotencyConflict;
 use App\Exceptions\InventoryUnavailable;
 use App\Models\BakeryProductVariant;
 use App\Models\Customer;
+use App\Models\CustomerAddress;
 use App\Models\InventoryReservation;
 use App\Models\Order;
 use App\Models\OrderStatusHistory;
+use App\Services\Store\DeliveryConfigurationService;
 use App\Support\IranianMobile;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Collection;
@@ -23,6 +25,10 @@ use JsonException;
 
 final class CheckoutService
 {
+    public function __construct(
+        private readonly DeliveryConfigurationService $delivery,
+    ) {}
+
     /**
      * @return array{order: Order, replayed: bool}
      *
@@ -30,6 +36,7 @@ final class CheckoutService
      */
     public function create(Customer $customer, array $payload, string $idempotencyKey): array
     {
+        $payload = $this->resolveCustomerPayload($customer, $payload);
         $canonical = $this->canonicalize($payload);
         $requestHash = hash('sha256', json_encode(
             $canonical,
@@ -97,23 +104,9 @@ final class CheckoutService
         }
 
         $deliveryMethod = DeliveryMethod::from($payload['deliveryMethod']);
-        $delivery = config("winimi.checkout.delivery_methods.{$deliveryMethod->value}", []);
-
-        if (! ($delivery['enabled'] ?? false)) {
-            throw ValidationException::withMessages([
-                'deliveryMethod' => ['روش تحویل انتخاب‌شده فعال نیست.'],
-            ]);
-        }
-
         $requiresCooling = $variants->contains(
             fn (BakeryProductVariant $variant): bool => (bool) $variant->product?->requires_cooling,
         );
-
-        if ($requiresCooling && $deliveryMethod === DeliveryMethod::Standard) {
-            throw ValidationException::withMessages([
-                'deliveryMethod' => ['این سبد به ارسال سرد یا تحویل حضوری نیاز دارد.'],
-            ]);
-        }
 
         if ($deliveryMethod->requiresAddress()) {
             foreach (['province', 'city', 'address'] as $field) {
@@ -127,7 +120,7 @@ final class CheckoutService
 
         $itemSnapshots = [];
         $subtotal = 0;
-        $preparationDays = 0;
+        $productPreparationDays = 0;
 
         foreach ($items as $item) {
             /** @var BakeryProductVariant $variant */
@@ -159,7 +152,10 @@ final class CheckoutService
             $unitPrice = $variant->current_price_toman;
             $lineTotal = $unitPrice * $quantity;
             $subtotal += $lineTotal;
-            $preparationDays = max($preparationDays, (int) ($product->preparation_time_days ?? 0));
+            $productPreparationDays = max(
+                $productPreparationDays,
+                (int) ($product->preparation_time_days ?? 0),
+            );
 
             $itemSnapshots[] = [
                 'product_id' => $product->getKey(),
@@ -178,8 +174,15 @@ final class CheckoutService
             ];
         }
 
-        $deliveryFee = (int) ($delivery['fee_toman'] ?? 0);
-        $packagingFee = (int) config('winimi.checkout.packaging_fee_toman', 0);
+        $quote = $this->delivery->quote(
+            $deliveryMethod,
+            $payload['customer']['province'] ?? null,
+            $payload['customer']['city'] ?? null,
+            $subtotal,
+            $requiresCooling,
+        );
+        $preparationMinDays = max($productPreparationDays, $quote['preparation_min_days']);
+        $preparationMaxDays = max($preparationMinDays, $quote['preparation_max_days']);
         $reservationExpiresAt = now()->addMinutes(
             max(1, (int) config('winimi.checkout.reservation_minutes', 20)),
         );
@@ -192,14 +195,16 @@ final class CheckoutService
             'status' => OrderStatus::AwaitingPayment,
             'payment_status' => PaymentStatus::Unpaid,
             'delivery_method' => $deliveryMethod,
+            'delivery_zone_id' => $quote['zone']?->getKey(),
             'requires_cooling' => $requiresCooling,
             'subtotal_toman' => $subtotal,
-            'delivery_fee_toman' => $deliveryFee,
-            'packaging_fee_toman' => $packagingFee,
+            'delivery_fee_toman' => $quote['fee_toman'],
+            'packaging_fee_toman' => $quote['packaging_fee_toman'],
             'discount_total_toman' => 0,
-            'grand_total_toman' => $subtotal + $deliveryFee + $packagingFee,
+            'grand_total_toman' => $subtotal + $quote['fee_toman'] + $quote['packaging_fee_toman'],
             'item_count' => $items->sum('quantity'),
-            'preparation_time_days' => $preparationDays,
+            'preparation_time_days' => $preparationMinDays,
+            'preparation_max_days' => $preparationMaxDays,
             'customer_name' => trim($payload['customer']['fullName']),
             'customer_mobile' => IranianMobile::normalize($payload['customer']['mobile']),
             'province' => $deliveryMethod->requiresAddress() ? trim($payload['customer']['province']) : null,
@@ -235,6 +240,38 @@ final class CheckoutService
         ]);
 
         return $this->loadOrder($order);
+    }
+
+    private function resolveCustomerPayload(Customer $customer, array $payload): array
+    {
+        $addressId = trim((string) ($payload['addressId'] ?? ''));
+        if ($addressId === '') {
+            return $payload;
+        }
+
+        $address = CustomerAddress::query()
+            ->ownedBy($customer)
+            ->where('public_id', $addressId)
+            ->where('is_active', true)
+            ->first();
+
+        if (! $address) {
+            throw ValidationException::withMessages([
+                'addressId' => ['آدرس انتخاب‌شده معتبر یا متعلق به این حساب نیست.'],
+            ]);
+        }
+
+        $payload['customer'] = [
+            'fullName' => $address->recipient_name,
+            'mobile' => $address->mobile,
+            'province' => $address->province,
+            'city' => $address->city,
+            'address' => $address->address_line,
+            'postalCode' => $address->postal_code,
+            'notes' => $payload['customer']['notes'] ?? null,
+        ];
+
+        return $payload;
     }
 
     private function canonicalize(array $payload): array
@@ -290,7 +327,7 @@ final class CheckoutService
 
     private function loadOrder(Order $order): Order
     {
-        return $order->load(['items', 'reservations']);
+        return $order->load(['items', 'reservations', 'deliveryZone']);
     }
 
     private function nextOrderNumber(): string
