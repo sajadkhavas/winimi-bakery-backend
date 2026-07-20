@@ -21,6 +21,7 @@ class EndToEndAcceptanceTest extends TestCase
 
         config([
             'session.driver' => 'array',
+            'sanctum.stateful' => ['localhost:5173', '127.0.0.1:4173'],
             'winimi.otp.provider' => 'testing',
             'winimi.otp.expose_test_code' => true,
             'winimi.otp.retry_after_seconds' => 0,
@@ -249,7 +250,7 @@ class EndToEndAcceptanceTest extends TestCase
 
     private function stateful(): static
     {
-        return $this->withSession([])->withHeaders([
+        return $this->withHeaders([
             'Origin' => 'http://localhost:5173',
             'Referer' => 'http://localhost:5173/',
             'User-Agent' => 'Winimi-Phase18-Acceptance/1.0',
