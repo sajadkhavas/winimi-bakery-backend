@@ -18,6 +18,16 @@ class AppServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
+        $phase18 = config('phase18', []);
+        if (is_array($phase18) && filled($phase18['roadmap_version'] ?? null)) {
+            config([
+                'winimi.launch.roadmap_version' => $phase18['roadmap_version'],
+                'winimi.launch.internal_gates.frontend_integrated' => $phase18['internal_gates']['frontend_integrated'],
+                'winimi.launch.internal_gates.end_to_end_verified' => $phase18['internal_gates']['end_to_end_verified'],
+                'winimi.launch.internal_gates.production_deployed' => $phase18['internal_gates']['production_deployed'],
+            ]);
+        }
+
         if ($this->app->environment('production')) {
             URL::forceScheme('https');
         }
