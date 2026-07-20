@@ -6,7 +6,6 @@ use App\Enums\InventoryReservationStatus;
 use App\Enums\OrderStatus;
 use App\Enums\PaymentStatus;
 use App\Models\BakeryProductVariant;
-use App\Models\InventoryReservation;
 use App\Models\Order;
 use Database\Seeders\WinimiStagingSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
