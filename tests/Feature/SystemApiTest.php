@@ -23,19 +23,19 @@ class SystemApiTest extends TestCase
             ->assertJsonPath('meta.contractVersion', '2026-07-20-phase-16');
     }
 
-    public function test_meta_endpoint_exposes_the_current_contract_identity(): void
+    public function test_meta_endpoint_exposes_the_frozen_contract_and_phase_18_roadmap_identity(): void
     {
         $this->getJson('/api/system/meta')
             ->assertOk()
             ->assertJsonPath('success', true)
             ->assertJsonPath('data.brand.nameEn', 'Winimi Bakery')
             ->assertJsonPath('data.contractVersion', '2026-07-20-phase-16')
-            ->assertJsonPath('data.roadmapVersion', '2026-07-20-phase-16')
+            ->assertJsonPath('data.roadmapVersion', '2026-07-20-phase-18')
             ->assertJsonPath('data.openApiUrl', '/api/system/openapi')
             ->assertJsonPath('data.legacyApiEnabled', true);
     }
 
-    public function test_contract_endpoint_reports_frozen_backend_and_locked_launch_strategy(): void
+    public function test_contract_endpoint_reports_frozen_backend_and_verified_acceptance_gates(): void
     {
         $response = $this->getJson('/api/system/contracts');
 
@@ -62,11 +62,19 @@ class SystemApiTest extends TestCase
             ->assertJsonPath('data.contracts.backend_freeze.status', 'ready')
             ->assertJsonPath('data.contracts.backend_freeze.schema', '/api/system/openapi')
             ->assertJsonPath('data.launch.strategy', 'complete-internal-work-before-external-activation')
+            ->assertJsonPath('data.launch.roadmap_version', '2026-07-20-phase-18')
             ->assertJsonPath('data.launch.internal_gates.backend_complete.status', 'ready')
             ->assertJsonPath('data.launch.internal_gates.backend_complete.target_phase', 16)
+            ->assertJsonPath('data.launch.internal_gates.frontend_integrated.status', 'ready')
             ->assertJsonPath('data.launch.internal_gates.frontend_integrated.target_phase', 17)
+            ->assertJsonPath('data.launch.internal_gates.end_to_end_verified.status', 'ready')
             ->assertJsonPath('data.launch.internal_gates.end_to_end_verified.target_phase', 18)
+            ->assertJsonPath('data.launch.internal_gates.production_deployed.status', 'not-started')
             ->assertJsonPath('data.launch.internal_gates.production_deployed.target_phase', 19)
+            ->assertJsonPath(
+                'data.launch.internal_gates.production_deployed.topology',
+                'single-server-two-virtual-hosts',
+            )
             ->assertJsonPath('data.launch.external_only.payment_gateway_credentials.status', 'pending-external')
             ->assertJsonPath('data.launch.external_only.enamad_badge_code.status', 'pending-external')
             ->assertJsonPath('data.launch.external_only.sms_provider_credentials.status', 'pending-external')

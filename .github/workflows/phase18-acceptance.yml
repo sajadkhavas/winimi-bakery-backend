@@ -1,0 +1,106 @@
+name: Phase 18 Backend Acceptance
+
+on:
+  push:
+    branches:
+      - "agent/phase-18-*"
+      - main
+  pull_request:
+    branches:
+      - main
+
+concurrency:
+  group: phase18-backend-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  APP_ENV: testing
+  APP_DEBUG: "true"
+  APP_URL: http://127.0.0.1:8000
+  FRONTEND_URL: http://127.0.0.1:4173
+  FRONTEND_URLS: http://127.0.0.1:4173,http://localhost:4173
+  SANCTUM_STATEFUL_DOMAINS: 127.0.0.1:4173,127.0.0.1:8000,localhost:4173,localhost:8000
+  DB_CONNECTION: sqlite
+  DB_DATABASE: database/database.sqlite
+  CACHE_STORE: array
+  SESSION_DRIVER: array
+  QUEUE_CONNECTION: sync
+  MAIL_MAILER: array
+  SMS_PROVIDER: testing
+  OTP_EXPOSE_TEST_CODE: "true"
+  OTP_RETRY_AFTER_SECONDS: "0"
+  CHECKOUT_ENABLED: "true"
+  PAYMENT_ENABLED: "true"
+  PAYMENT_PROVIDER: testing
+  PAYMENT_CALLBACK_URL: http://127.0.0.1:4173/payment/callback
+  ORDER_SMS_PROVIDER: disabled
+  TELESCOPE_ENABLED: "false"
+  PULSE_ENABLED: "false"
+
+jobs:
+  acceptance:
+    name: Frozen contract and full customer journey
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout backend
+        uses: actions/checkout@v4
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.3"
+          extensions: bcmath, ctype, curl, dom, fileinfo, gd, intl, mbstring, openssl, pdo_sqlite, sqlite3, tokenizer, xml, zip
+          coverage: none
+          tools: composer:v2
+
+      - name: Install dependencies
+        run: composer install --prefer-dist --no-interaction --no-progress
+
+      - name: Prepare Laravel acceptance environment
+        run: |
+          cp .env.example .env
+          mkdir -p database
+          touch database/database.sqlite
+          php artisan key:generate --force
+          php artisan optimize:clear
+          php artisan migrate:fresh --force
+          php artisan db:seed --class='Database\Seeders\WinimiStagingSeeder' --force
+
+      - name: Phase 18 architecture audit
+        run: php scripts/audit-phase-18-acceptance.php
+
+      - name: Phase 18 formatting check
+        run: |
+          php vendor/bin/pint --test \
+            app/Providers/AppServiceProvider.php \
+            config/phase18.php \
+            scripts/audit-phase-18-acceptance.php \
+            tests/Feature/EndToEndAcceptanceTest.php \
+            tests/Feature/SystemApiTest.php
+
+      - name: Run targeted end-to-end API acceptance
+        id: acceptance_test
+        run: |
+          set -o pipefail
+          php artisan test --filter=EndToEndAcceptanceTest 2>&1 | tee phase18-acceptance.log
+
+      - name: Validate machine-readable readiness
+        run: |
+          php artisan config:cache
+          php artisan route:cache
+          php artisan backend:readiness --json
+          php artisan optimize:clear
+
+      - name: Upload acceptance diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: phase18-backend-acceptance
+          path: phase18-acceptance.log
+          if-no-files-found: warn
+          retention-days: 14
