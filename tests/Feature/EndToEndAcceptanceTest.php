@@ -54,7 +54,7 @@ class EndToEndAcceptanceTest extends TestCase
 
         $this->stateful()->getJson('/api/catalog/products/staging-chocolate-cookie')
             ->assertOk()
-            ->assertJsonPath('data.product.inventory.authoritative', true)
+            ->assertJsonPath('data.product.inventoryVerified', true)
             ->assertJsonPath('data.product.requiresCooling', false);
 
         $this->stateful()->getJson('/api/store/pages/staging-shipping-policy')
