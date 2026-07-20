@@ -250,8 +250,8 @@ class EndToEndAcceptanceTest extends TestCase
     private function stateful(): static
     {
         return $this->withHeaders([
-            'Origin' => 'http://127.0.0.1:4173',
-            'Referer' => 'http://127.0.0.1:4173/',
+            'Origin' => 'http://localhost:5173',
+            'Referer' => 'http://localhost:5173/',
             'User-Agent' => 'Winimi-Phase18-Acceptance/1.0',
         ]);
     }
