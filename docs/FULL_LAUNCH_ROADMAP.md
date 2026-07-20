@@ -1,171 +1,145 @@
 # Winimi Bakery Full Launch Roadmap
 
-Roadmap lock: `2026-07-20-phase-16`
+Roadmap lock: `2026-07-20-phase-18`
 
 ## Delivery rule
 
-The application must be internally complete, fully integrated and deployed before external activation. At the end of the internal roadmap, no implementation work may remain except supplying and validating these three external inputs:
+The application must be internally complete, fully integrated, acceptance-tested and deployed before public activation. At the end of the internal roadmap, no implementation work may remain except supplying and validating these three external inputs:
 
 1. payment gateway credentials / Zarinpal Merchant ID
 2. eNAMAD badge code
 3. SMS provider API key and approved OTP template
 
-The backend is completed and contract-frozen before frontend integration. Frontend and backend remain separate repositories connected through the frozen production API contract.
+The React storefront and Laravel backend remain separate repositories. They communicate through the frozen API contract and will run on one production server behind two Nginx virtual hosts.
 
 ## Completed foundation
 
-- Phase 1–9.5: complete modern storefront foundation
+- Phase 1–9.5: responsive modern storefront and business UX
 - Phase 10: Laravel/Filament foundation and legacy boundary
 - Phase 11: bakery catalog, Variants, price, stock and administration
 - Phase 12: customer OTP architecture, secure sessions and profile
 - Phase 13: checkout, orders, immutable snapshots and inventory reservations
-- Phase 13.5: repository audit and full-launch roadmap lock
+- Phase 13.5: full-launch roadmap lock
 - Phase 14: provider-ready payment backend
 - Phase 15: complete store operations backend
 - Phase 16: backend completion and contract freeze
+- Phase 17: full frontend/backend integration
+- Phase 18: coordinated API and browser acceptance
 
 ## Phase 14 — Provider-ready payment backend — complete
 
-- persistent `payment_attempts`
-- provider-neutral interface and deterministic testing provider
-- Zarinpal adapter disabled by default
-- idempotent initiation, verification, callback replay and retry
-- atomic verified-payment, order, reservation and stock transition
-- Filament inspection and redacted metadata
-- payment and inventory regression tests
+- persistent customer-owned payment attempts
+- provider-neutral payment contract
+- deterministic non-production testing provider
+- disabled-by-default Zarinpal adapter
+- idempotent initiation, retry and verification
+- duplicate callback replay without a second stock decrement
+- server amount and provider verification as the only payment truth
 
-Only the real Merchant ID remains missing from payment activation.
+Only the real gateway credential remains external.
 
 ## Phase 15 — Complete store operations backend — complete
 
-### Customer and delivery
-
-- reusable customer-owned addresses
-- province/city delivery zones and wildcard fallback
-- standard, chilled and pickup rules
-- Filament-managed fees and limits
-- minimum order, free delivery and preparation windows
-- checkout snapshot of zone and fees
-
-### Order operations
-
-- controlled fulfillment state machine
-- pickup-specific ready-to-delivered path
-- tracking-code requirement
-- row-locked history and timestamps
-- private internal notes
-- one-time restock after paid-order cancellation
-- customer-safe public timeline
-- Filament operations console
-
-### Content, reviews and inquiries
-
-- bakery-specific public settings and content
-- legal, shipping, FAQ, gallery, blog and city pages
-- disabled eNAMAD slot
-- verified-purchase review moderation
-- contact, gift and corporate inquiries
-- spam, rate-limit, duplicate and hashed-IP protection
-
-### Notifications
-
-- transactional outbox
-- SMS templates
-- disabled/testing/Kavenegar-ready providers
-- encrypted destinations, retries and stale-processing recovery
-- one-minute non-overlapping scheduler
+- customer-owned reusable addresses
+- province/city delivery zones and nationwide dry fallback
+- Tehran, Karaj and Andisheh chilled-delivery rules
+- Filament-managed fees, limits and preparation windows
+- content pages, FAQ, gallery, posts and city pages
+- verified-purchase reviews and moderation
+- persisted contact, gift and corporate inquiries
+- notification outbox and order-fulfillment administration
+- queue and scheduler commands
 
 ## Phase 16 — Backend completion and contract freeze — complete
 
-The backend now reports `backend_complete=ready` and is ready for Phase 17.
+Status: `backend_complete=ready`
 
-### Frozen public contract
+- public contract version remains `2026-07-20-phase-16`
+- OpenAPI 3.1 is exposed at `/api/system/openapi`
+- stable success/error envelopes and machine codes
+- frozen filters, sort values and pagination shape
+- ownership and IDOR behavior are frozen
+- deterministic `WinimiStagingSeeder`
+- backup, restore, queue, cache, session and storage policies
+- executable `backend:readiness --json`
 
-- all official public and authenticated paths finalized
-- OpenAPI 3.1 document at `/api/system/openapi`
-- contract version `2026-07-20-phase-16`
-- success and error envelopes include contract metadata
-- stable error codes independent from Persian messages
-- catalog filter and sort values frozen
-- pagination shape, defaults and maximums frozen
-- public identifiers and customer ownership behavior frozen
+The frozen contract is not renamed by later delivery phases.
 
-### Security and authorization
+## Phase 17 — Full frontend/backend integration — complete
 
-- central API exception rendering
-- missing and cross-customer resources share the same 404 behavior
-- address and order IDOR regression tests
-- provider secrets, internal notes and raw payloads remain private
-- inherited ToolMaster API excluded from OpenAPI
-- legacy routes disabled by default in production
+Status: `frontend_integrated=ready`
 
-### Data and performance
+Evidence: `sajadkhavas/cooci#12`.
 
-- reviewed indexes for catalog, order, payment, address, content, review and inquiry queries
-- documented query and index review
-- deterministic staging acceptance seeder
-- dry, chilled and gift test products
-- Tehran, Karaj, Andisheh and nationwide dry-delivery test zones
-- seeder is idempotent and refuses production execution
+- one typed API client with request IDs, timeouts, CSRF and 419 retry
+- backend catalog, categories, filters, product details and pagination
+- OTP session, profile and address CRUD
+- Variant-aware cart reconciliation
+- server-authoritative delivery and checkout
+- idempotent order creation and separate payment initiation
+- owned order history, cancellation and callback verification
+- content, reviews, inquiries and safe trust slot
+- no production static catalog, browser order source or mock authentication
 
-### Operations and recovery
+## Phase 18 — End-to-end completion — complete
 
-- queue, scheduler, cache, session, media and storage policies finalized
-- private backup and 14-day retention baseline
-- restore drill and disaster-recovery runbook
-- executable `backend:readiness` command
-- CI performs read-only formatting checks and never mutates source
-- CI validates migrations, staging seeding, cached routes, Filament, tests and security
+Status: `end_to_end_verified=ready`
 
-No frontend integration began before this gate was defined. Phase 17 must consume the frozen contract rather than redefining it.
+### Backend acceptance
 
-## Phase 17 — Full frontend/backend integration — next
+- deterministic staging catalog, content, customer and delivery zones
+- frozen contract and exact three-external-input boundary
+- OTP request, verification, secure session and logout
+- customer address creation and ownership
+- nationwide dry checkout
+- chilled rejection outside allowed zones
+- chilled checkout in Tehran
+- idempotent checkout replay and conflict
+- testing-provider payment initiation
+- verified payment and duplicate callback replay
+- stock consumed exactly once
+- persisted inquiry, duplicate protection and honeypot
 
-The production storefront will connect to the frozen backend contract:
+### Browser acceptance
 
-- one typed API client with timeout, request ID, envelope parsing and CSRF handling
-- backend catalog, categories, pagination, filters and product details
-- real customer session, OTP, profile and addresses
-- Variant-aware cart reconciliation against server stock and prices
-- server-authoritative checkout and Idempotency-Key handling
-- account order list/detail/cancellation
-- payment initiation, retry and callback-state UI
-- content, reviews, contact, gift and corporate forms
-- production removal of localStorage orders and static catalog fallback
-- mock providers retained only for development and automated tests
+- Chromium desktop and mobile projects
+- public catalog rendered from the running Laravel backend
+- search/filter route behavior
+- protected account redirect
+- real OTP testing-provider session through Sanctum cookies
+- account route after login and logout invalidation
+- public content, 404 and callback-state smoke tests
+- browser console and unhandled page-error guard
 
-Any required backend contract change must be explicit and versioned. Silent schema changes are prohibited.
+### Quality gates
 
-## Phase 18 — End-to-end completion
+- existing frontend audits, lint, TypeScript, production build and performance budget
+- existing backend audits, migrations, staging seed, route/config cache, PHPUnit and security audit
+- dedicated Phase 18 architecture audits in both repositories
+- coordinated CI starts Laravel and Vite on the same runner
+- no live SMS, payment or eNAMAD dependency
 
-- full desktop/mobile user journeys
-- accessibility and keyboard regression
-- catalog, auth, cart, checkout, order and payment-state tests
-- concurrent stock and retry scenarios
-- offline/reconnect and expired-session behavior
-- final business content and product entry
-- legal, privacy, shipping and return-policy completion
-- SEO, sitemap, structured data and canonical review
-- performance budgets and production bundle validation
-- admin acceptance tests
-- `end_to_end_verified=ready`
+## Phase 19 — Production server deployment — next
 
-## Phase 19 — Production server deployment
+Deployment uses one Linux server with two virtual hosts:
 
-The complete system is deployed while all external integrations remain disabled:
+- `winimibakery.com` serves the immutable React/Vite build
+- `api.winimibakery.com` serves Laravel, Filament and media
 
-- production database and migrations
-- frontend hosting and Laravel API
-- `winimibakery.com` and `api.winimibakery.com`
-- DNS, HTTPS and secure cookies
-- persistent media/storage
-- supervised queue workers and scheduler
-- cache/Redis decision
-- backup and restore verification
-- log rotation, health checks and monitoring
-- CI/CD release and rollback
-- disabled-provider smoke tests
+Phase 19 includes:
+
+- server hardening and release directories
+- Nginx, PHP-FPM and selected production database
+- DNS and TLS for storefront and API hosts
+- secure Sanctum cookie and CORS configuration
+- persistent media and private environment files
+- queue worker and one-minute scheduler supervision
+- backups and restore drill
+- health checks, logs, monitoring and rollback
+- disabled-provider production smoke tests
 - `production_deployed=ready`
+
+The detailed topology is in `docs/SINGLE_SERVER_TOPOLOGY.md`.
 
 ## Phase 20 — External activation only
 
@@ -175,15 +149,16 @@ No feature development is allowed. Actions are limited to:
 2. insert the eNAMAD badge code and verify its domain behavior
 3. set the SMS key/template and verify OTP/order messages
 
-After these three checks, public purchasing is enabled.
+After these three checks, public purchasing may be enabled.
 
 ## Definition of internally complete
 
 Internal completion means:
 
 - backend complete and contract-frozen
-- frontend uses the backend for every production dynamic flow
-- no production order, auth or catalog source depends on browser storage or static demo data
-- all required daily admin operations exist
-- deployment, queue, scheduler, backups, logs and rollback work
-- payment, eNAMAD and SMS code paths already exist and wait only for external values
+- frontend integrated for every production dynamic flow
+- coordinated API/browser acceptance is green
+- no trusted payment state comes from the browser
+- no production catalog, authentication or order source depends on static or browser-only data
+- deployment, workers, scheduler, backups, monitoring and rollback work
+- payment, eNAMAD and SMS paths already exist and wait only for external values
