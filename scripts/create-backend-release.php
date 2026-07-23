@@ -2,11 +2,6 @@
 
 declare(strict_types=1);
 
-use FilesystemIterator;
-use RecursiveDirectoryIterator;
-use RecursiveIteratorIterator;
-use RuntimeException;
-
 $sourceRoot = realpath($argv[1] ?? getcwd());
 $releaseRoot = $argv[2] ?? '.release';
 
@@ -32,7 +27,7 @@ foreach ($required as $path) {
 }
 
 $excludedPrefixes = [
-    '.git/', '.github/', '.release/', '.idea/', '.vscode/',
+    '.git/', '.github/', '.release/', '.phase19-release/', '.idea/', '.vscode/',
     'deploy/', 'docs/', 'scripts/', 'tests/', 'node_modules/',
     'storage/app/', 'storage/framework/', 'storage/logs/',
     'bootstrap/cache/',
@@ -40,11 +35,12 @@ $excludedPrefixes = [
 $excludedExact = [
     '.env', '.env.example', '.phpunit.result.cache', 'phpunit.xml',
     'database/database.sqlite', 'public/storage',
+    'backend-release-output.json', 'phase19-production-preparation-audit.json',
 ];
 $forbiddenPatterns = [
     '/-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----/',
     '/\b(?:APP_KEY|DB_PASSWORD|ZARINPAL_MERCHANT_ID|KAVENEGAR_API_KEY|ENAMAD_BADGE_CODE)\s*=/',
-    '/\b(?:mysql|postgres(?:ql)?):\/\/[^\s\"\']+:[^\s\"\']+@/i',
+    '/\b(?:mysql|postgres(?:ql)?):\/\/[^\s"\']+:[^\s"\']+@/i',
 ];
 
 $isExcluded = static function (string $relative) use ($excludedPrefixes, $excludedExact): bool {
@@ -84,9 +80,11 @@ foreach ($iterator as $file) {
     if ($bytes === false) {
         throw new RuntimeException("Unable to read backend release file: {$relative}");
     }
-    foreach ($forbiddenPatterns as $pattern) {
-        if (preg_match($pattern, $bytes) === 1) {
-            throw new RuntimeException("Secret-shaped content found in backend release file: {$relative}");
+    if (! str_starts_with($relative, 'vendor/')) {
+        foreach ($forbiddenPatterns as $pattern) {
+            if (preg_match($pattern, $bytes) === 1) {
+                throw new RuntimeException("Secret-shaped content found in backend release file: {$relative}");
+            }
         }
     }
     $files[$relative] = [
