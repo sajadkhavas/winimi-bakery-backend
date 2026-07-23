@@ -99,10 +99,11 @@ jobs:
 
       - name: Create and verify backend release
         run: |
+          set -o pipefail
           rm -f backend-release-output.json phase19-production-preparation-audit.json
-          php scripts/create-backend-release.php . .phase19-release
+          php scripts/create-backend-release.php . .phase19-release 2>&1 | tee backend-release-create.log
           node -e 'const fs=require("fs");const x=JSON.parse(fs.readFileSync("backend-release-output.json"));fs.writeFileSync("backend-release-path.txt",x.releaseDir);fs.writeFileSync("backend-release-id.txt",x.releaseId)'
-          php scripts/verify-backend-release.php "$(cat backend-release-path.txt)"
+          php scripts/verify-backend-release.php "$(cat backend-release-path.txt)" 2>&1 | tee backend-release-verify.log
 
       - name: Prove tamper detection
         run: |
@@ -121,14 +122,17 @@ jobs:
         run: bash deploy/bin/preflight-backend-server.sh
 
       - name: Upload Phase 19 package evidence
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: phase19-backend-production-package
           path: |
             phase19-production-preparation-audit.json
+            backend-release-create.log
+            backend-release-verify.log
             backend-release-output.json
             backend-release-id.txt
             backend-release-path.txt
             .phase19-release/backend-*/release-manifest.json
-          if-no-files-found: error
+          if-no-files-found: warn
           retention-days: 14
