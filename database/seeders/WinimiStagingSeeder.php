@@ -149,19 +149,68 @@ class WinimiStagingSeeder extends Seeder
                 );
             }
 
-            foreach ([
-                ['slug' => 'staging-shipping-policy', 'type' => 'shipping', 'title' => 'سیاست ارسال تست'],
-                ['slug' => 'staging-privacy', 'type' => 'legal', 'title' => 'حریم خصوصی تست'],
-                ['slug' => 'staging-returns', 'type' => 'legal', 'title' => 'شرایط مرجوعی تست'],
-            ] as $page) {
+            $contentPages = [
+                [
+                    'slug' => 'about',
+                    'type' => 'about',
+                    'title' => 'درباره وینیمی',
+                    'excerpt' => 'معرفی وینیمی و مسیر شکل‌گیری فروشگاه در محیط پذیرش.',
+                    'content' => 'این صفحه معرفی برند برای تست SSR، لینک‌های داخلی و موجودی نهایی Sitemap منتشر شده است.',
+                ],
+                [
+                    'slug' => 'quality',
+                    'type' => 'quality',
+                    'title' => 'شفافیت و کیفیت',
+                    'excerpt' => 'سیاست شفافیت اطلاعات محصول و کنترل محتوای منتشرشده وینیمی.',
+                    'content' => 'اطلاعات محصول، موجودی و رسانه‌ها فقط از داده‌های تأییدشده و منتشرشده نمایش داده می‌شوند.',
+                ],
+                [
+                    'slug' => 'shipping',
+                    'type' => 'shipping',
+                    'title' => 'شرایط ارسال',
+                    'excerpt' => 'شرایط عمومی ارسال و وابستگی روش تحویل به نوع محصول و مقصد.',
+                    'content' => 'روش تحویل، هزینه و بازه آماده‌سازی در Checkout و براساس محصول، مقصد و تنظیمات فعال سرور تعیین می‌شود.',
+                ],
+                [
+                    'slug' => 'privacy',
+                    'type' => 'legal',
+                    'title' => 'حریم خصوصی',
+                    'excerpt' => 'شرح نحوه استفاده از اطلاعات حساب و سفارش در محیط فروشگاه.',
+                    'content' => 'اطلاعات حساب و سفارش فقط برای ارائه خدمات فروشگاه، پیگیری سفارش و الزامات عملیاتی استفاده می‌شود.',
+                ],
+                [
+                    'slug' => 'terms',
+                    'type' => 'legal',
+                    'title' => 'شرایط استفاده',
+                    'excerpt' => 'شرایط استفاده از فروشگاه، ثبت سفارش و مسئولیت‌های طرفین.',
+                    'content' => 'ثبت سفارش به معنی پذیرش قیمت، موجودی، شرایط تحویل و سیاست‌های منتشرشده در زمان ثبت نهایی است.',
+                ],
+                [
+                    'slug' => 'staging-shipping-policy',
+                    'type' => 'shipping',
+                    'title' => 'سیاست ارسال تست',
+                ],
+                [
+                    'slug' => 'staging-privacy',
+                    'type' => 'legal',
+                    'title' => 'حریم خصوصی تست',
+                ],
+                [
+                    'slug' => 'staging-returns',
+                    'type' => 'legal',
+                    'title' => 'شرایط مرجوعی تست',
+                ],
+            ];
+
+            foreach ($contentPages as $page) {
                 DB::table('bakery_content_pages')->updateOrInsert(
                     ['slug' => $page['slug']],
                     [
                         'public_id' => $this->existingPublicId('bakery_content_pages', 'slug', $page['slug']),
                         'type' => $page['type'],
                         'title' => $page['title'],
-                        'excerpt' => 'محتوای staging برای تست اتصال فرانت.',
-                        'content' => 'این صفحه داده تست پذیرش است و پیش از ورود محتوای نهایی جایگزین می‌شود.',
+                        'excerpt' => $page['excerpt'] ?? 'محتوای staging برای تست اتصال فرانت.',
+                        'content' => $page['content'] ?? 'این صفحه داده تست پذیرش است و پیش از ورود محتوای نهایی جایگزین می‌شود.',
                         'status' => 'published',
                         'published_at' => $now,
                         'created_at' => $now,
