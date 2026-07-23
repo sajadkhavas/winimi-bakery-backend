@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use Database\Seeders\WinimiStagingSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use RuntimeException;
 use Tests\TestCase;
 
 class ManagedContentFixtureTest extends TestCase
@@ -28,7 +29,7 @@ class ManagedContentFixtureTest extends TestCase
                 ->assertJsonPath('success', true)
                 ->assertJsonPath('data.page.slug', $slug)
                 ->assertJsonPath('data.page.title', $title)
-                ->assertJsonPath('data.page.status', 'published');
+                ->assertJsonPath('data.page.content', fn (mixed $content): bool => is_string($content) && mb_strlen($content) >= 40);
         }
     }
 
@@ -38,10 +39,10 @@ class ManagedContentFixtureTest extends TestCase
         app()->detectEnvironment(static fn (): string => 'production');
 
         try {
-            $this->expectException(\RuntimeException::class);
+            $this->expectException(RuntimeException::class);
             $this->expectExceptionMessage('Winimi staging data must never be seeded in production.');
 
-            $this->seed(WinimiStagingSeeder::class);
+            (new WinimiStagingSeeder)->run();
         } finally {
             app()->detectEnvironment(static fn (): string => $originalEnvironment);
         }
