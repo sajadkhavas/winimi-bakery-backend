@@ -38,7 +38,8 @@ foreach ([
     'Phase 16 — Backend completion and contract freeze',
     'Phase 17 — Full frontend/backend integration',
     'Phase 18 — End-to-end completion',
-    'Phase 19 — Production server deployment',
+    'Phase 19A — Production deployment package',
+    'Phase 19B — Live server execution',
     'Phase 20 — External activation only',
 ] as $phase) {
     $require('roadmap', $phase, "locked roadmap section {$phase}");
@@ -56,6 +57,8 @@ foreach ([
     $require('config', $gate, "machine-readable gate {$gate}");
 }
 
+$require('roadmap', 'production_server_package=ready', 'Phase 19A package marker');
+$require('roadmap', 'production_deployed=ready', 'Phase 19B live marker');
 $require('config', "'strategy' => 'complete-internal-work-before-external-activation'", 'locked completion strategy');
 $require('system', "'launch' => config('winimi.launch', [])", 'launch gate API exposure');
 $require('test', "->assertJsonCount(3, 'data.launch.external_only')", 'exact external dependency count test');
@@ -75,4 +78,4 @@ if ($errors !== []) {
     exit(1);
 }
 
-echo 'Full-launch roadmap audit passed: backend-first completion, full integration, deployment and exactly three external activations are locked.'.PHP_EOL;
+echo 'Full-launch roadmap audit passed: backend completion, Phase 19A package, Phase 19B live deployment and exactly three external activations are locked.'.PHP_EOL;
