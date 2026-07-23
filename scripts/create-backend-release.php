@@ -34,6 +34,7 @@ $excludedPrefixes = [
 ];
 $excludedExact = [
     '.env', '.env.example', '.phpunit.result.cache', 'phpunit.xml',
+    'README.md', 'SECURITY.md', 'CONTRIBUTING.md', 'AGENTS.md',
     'database/database.sqlite', 'public/storage',
     'backend-release-output.json', 'phase19-production-preparation-audit.json',
 ];
