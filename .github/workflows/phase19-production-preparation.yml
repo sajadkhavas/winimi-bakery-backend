@@ -1,0 +1,122 @@
+name: Phase 19 Production Package
+
+on:
+  push:
+    branches:
+      - "agent/phase-19-*"
+      - main
+  pull_request:
+    branches:
+      - main
+
+concurrency:
+  group: phase19-backend-package-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  package:
+    name: Verify immutable Laravel production package
+    runs-on: ubuntu-latest
+    timeout-minutes: 38
+
+    steps:
+      - name: Checkout backend
+        uses: actions/checkout@v4
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.3"
+          extensions: bcmath, ctype, curl, dom, fileinfo, gd, intl, mbstring, openssl, pdo_sqlite, sqlite3, tokenizer, xml, zip
+          coverage: none
+          tools: composer:v2
+
+      - name: Install dependencies
+        run: composer install --prefer-dist --no-interaction --no-progress
+
+      - name: Prepare Laravel test environment
+        run: |
+          cp .env.example .env
+          mkdir -p database storage/framework/sessions storage/framework/cache storage/framework/views
+          touch database/database.sqlite
+          php artisan key:generate --force
+          php artisan optimize:clear
+
+      - name: Run existing backend validation
+        run: composer check
+
+      - name: Audit Phase 19 production package
+        run: php scripts/audit-phase19-production-preparation.php
+
+      - name: Validate shell syntax
+        run: |
+          for script in deploy/bin/*.sh; do
+            bash -n "$script"
+          done
+
+      - name: Validate Nginx API virtual host
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y nginx
+          sudo mkdir -p /etc/letsencrypt/live/api.winimibakery.com
+          sudo openssl req -x509 -newkey rsa:2048 -nodes \
+            -keyout /etc/letsencrypt/live/api.winimibakery.com/privkey.pem \
+            -out /etc/letsencrypt/live/api.winimibakery.com/fullchain.pem \
+            -days 1 -subj '/CN=api.winimibakery.com' \
+            -addext 'subjectAltName=DNS:api.winimibakery.com'
+          sudo rm -f /etc/nginx/sites-enabled/default
+          sudo cp deploy/nginx/winimi-api.conf.example /etc/nginx/sites-enabled/winimi-api.conf
+          sudo nginx -t
+
+      - name: Validate systemd units
+        run: |
+          sudo useradd --system --home /var/www/winimi --shell /usr/sbin/nologin winimi || true
+          sudo mkdir -p /var/www/winimi/backend/current/bootstrap/cache /var/www/winimi/backend/shared/storage /var/www/winimi/backups
+          sudo systemd-analyze verify \
+            deploy/systemd/winimi-backend-queue.service \
+            deploy/systemd/winimi-backend-scheduler.service \
+            deploy/systemd/winimi-backend-scheduler.timer \
+            deploy/systemd/winimi-backend-backup.service \
+            deploy/systemd/winimi-backend-backup.timer
+
+      - name: Install optimized production dependencies
+        run: composer install --no-dev --prefer-dist --optimize-autoloader --no-interaction --no-progress
+
+      - name: Create and verify backend release
+        run: |
+          rm -f backend-release-output.json phase19-production-preparation-audit.json
+          php scripts/create-backend-release.php . .phase19-release
+          node -e 'const fs=require("fs");const x=JSON.parse(fs.readFileSync("backend-release-output.json"));fs.writeFileSync("backend-release-path.txt",x.releaseDir);fs.writeFileSync("backend-release-id.txt",x.releaseId)'
+          php scripts/verify-backend-release.php "$(cat backend-release-path.txt)"
+
+      - name: Prove tamper detection
+        run: |
+          cp -a "$(cat backend-release-path.txt)" .tampered-backend-release
+          printf '\nphase19-tamper\n' >> .tampered-backend-release/app/artisan
+          if php scripts/verify-backend-release.php .tampered-backend-release; then
+            echo 'Tampered backend release was incorrectly accepted.' >&2
+            exit 1
+          fi
+
+      - name: Run non-host preflight contract
+        env:
+          WINIMI_PREFLIGHT_TEST_MODE: "true"
+          BACKEND_DEPLOY_ROOT: /tmp/winimi-backend-preflight
+          BACKEND_MIN_FREE_KIB: "1"
+        run: bash deploy/bin/preflight-backend-server.sh
+
+      - name: Upload Phase 19 package evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: phase19-backend-production-package
+          path: |
+            phase19-production-preparation-audit.json
+            backend-release-output.json
+            backend-release-id.txt
+            backend-release-path.txt
+            .phase19-release/backend-*/release-manifest.json
+          if-no-files-found: error
+          retention-days: 14
