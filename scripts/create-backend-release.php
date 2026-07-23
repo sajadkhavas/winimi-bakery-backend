@@ -34,7 +34,6 @@ $excludedPrefixes = [
 ];
 $excludedExact = [
     '.env', '.env.example', '.phpunit.result.cache', 'phpunit.xml',
-    'README.md', 'SECURITY.md', 'CONTRIBUTING.md', 'AGENTS.md',
     'database/database.sqlite', 'public/storage',
     'backend-release-output.json', 'phase19-production-preparation-audit.json',
 ];
@@ -46,6 +45,9 @@ $forbiddenPatterns = [
 
 $isExcluded = static function (string $relative) use ($excludedPrefixes, $excludedExact): bool {
     $relative = str_replace('\\', '/', $relative);
+    if (! str_contains($relative, '/') && str_ends_with(strtolower($relative), '.md')) {
+        return true;
+    }
     if (in_array($relative, $excludedExact, true)) {
         return true;
     }
