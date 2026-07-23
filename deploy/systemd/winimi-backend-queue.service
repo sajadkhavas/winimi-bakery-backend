@@ -2,7 +2,7 @@
 Description=Winimi Bakery Laravel queue worker
 Documentation=https://github.com/sajadkhavas/winimi-bakery-backend/blob/main/docs/PHASE_19_PRODUCTION_DEPLOYMENT.md
 Wants=network-online.target
-After=network-online.target mariadb.service mysql.service
+After=network-online.target
 
 [Service]
 Type=simple
