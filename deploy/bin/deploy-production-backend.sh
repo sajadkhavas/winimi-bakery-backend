@@ -31,7 +31,7 @@ export BACKEND_RUN_MIGRATIONS=true
 export BACKEND_MAINTENANCE=true
 
 SCRIPT_ROOT=$(cd "$(dirname "$0")/../.." && pwd)
-"$SCRIPT_ROOT/deploy/bin/deploy-backend.sh" "$RELEASE_SOURCE" "$DEPLOY_ROOT"
+bash "$SCRIPT_ROOT/deploy/bin/deploy-backend.sh" "$RELEASE_SOURCE" "$DEPLOY_ROOT"
 
 sudo systemctl is-active --quiet "$PHP_FPM_SERVICE"
 sudo systemctl is-active --quiet "$QUEUE_SERVICE"
