@@ -1,6 +1,6 @@
 # Winimi Bakery Full Launch Roadmap
 
-Roadmap lock: `2026-07-20-phase-18`
+Roadmap lock: `2026-07-23-phase-19a`
 
 ## Delivery rule
 
@@ -10,7 +10,7 @@ The application must be internally complete, fully integrated, acceptance-tested
 2. eNAMAD badge code
 3. SMS provider API key and approved OTP template
 
-The React storefront and Laravel backend remain separate repositories. They communicate through the frozen API contract and will run on one production server behind two Nginx virtual hosts.
+The React storefront and Laravel backend remain separate repositories. They communicate through the frozen API contract and run on one production server behind two Nginx virtual hosts.
 
 ## Completed foundation
 
@@ -25,6 +25,7 @@ The React storefront and Laravel backend remain separate repositories. They comm
 - Phase 16: backend completion and contract freeze
 - Phase 17: full frontend/backend integration
 - Phase 18: coordinated API and browser acceptance
+- Phase 19A: production deployment package
 
 ## Phase 14 — Provider-ready payment backend — complete
 
@@ -116,30 +117,51 @@ Status: `end_to_end_verified=ready`
 - existing frontend audits, lint, TypeScript, production build and performance budget
 - existing backend audits, migrations, staging seed, route/config cache, PHPUnit and security audit
 - dedicated Phase 18 architecture audits in both repositories
-- coordinated CI starts Laravel and Vite on the same runner
+- coordinated CI starts Laravel and Node SSR on the same runner
 - no live SMS, payment or eNAMAD dependency
 
-## Phase 19 — Production server deployment — next
+## Phase 19A — Production deployment package — complete
 
-Deployment uses one Linux server with two virtual hosts:
+Status: `production_server_package=ready`
 
-- `winimibakery.com` serves the immutable React/Vite build
-- `api.winimibakery.com` serves Laravel, Filament and media
+Both repositories now provide a testable server package before SSH access:
 
-Phase 19 includes:
+- deterministic frontend and backend immutable release manifests
+- SHA-256 release verification and secret-shaped-content rejection
+- atomic current symlinks with retained prior releases
+- production deploy and explicit rollback scripts
+- frontend Node SSR systemd service bound to loopback
+- Laravel PHP-FPM Nginx virtual host
+- supervised database queue worker
+- one-minute scheduler systemd timer
+- daily encrypted backup service/timer
+- disabled-provider production environment baseline
+- frontend and backend server preflight commands
+- public storefront/API smoke checks
+- single-server DNS/TLS, migration, persistence, monitoring, restore and rollback runbooks
+- CI validation for release creation, verification, Nginx/systemd syntax and deployment simulation
 
-- server hardening and release directories
-- Nginx, PHP-FPM and selected production database
-- DNS and TLS for storefront and API hosts
-- secure Sanctum cookie and CORS configuration
-- persistent media and private environment files
-- queue worker and one-minute scheduler supervision
-- backups and restore drill
-- health checks, logs, monitoring and rollback
-- disabled-provider production smoke tests
-- `production_deployed=ready`
+This marker means the repositories are ready to enter the VPS. It does not mean the site is publicly deployed.
 
-The detailed topology is in `docs/SINGLE_SERVER_TOPOLOGY.md`.
+## Phase 19B — Live server execution — next
+
+The same Phase 19 continues on the Linux server:
+
+- provision hardened user, filesystem and database
+- install Node 22, PHP 8.3/FPM, Composer, Nginx and required extensions
+- configure DNS and trusted TLS for storefront/API hosts
+- install private frontend runtime env and backend `.env`
+- deploy backend, migrate, link persistent media and verify readiness
+- deploy frontend SSR and verify internal health
+- enable queue worker, scheduler and backup timers across reboot
+- run disabled-provider public production smoke
+- complete encrypted off-server backup and isolated restore drill
+- complete frontend and migration-aware backend rollback drill
+- activate monitoring/log shipping and Core Web Vitals 75th-percentile dashboards
+- verify Search Console ownership, submit sitemap and inspect representative URLs
+- record final evidence and set `production_deployed=ready`
+
+The detailed coordinated runbook is in `sajadkhavas/cooci/docs/PHASE_19_PRODUCTION_DEPLOYMENT.md`; backend-specific steps are in `docs/PHASE_19_PRODUCTION_DEPLOYMENT.md`.
 
 ## Phase 20 — External activation only
 
@@ -160,5 +182,6 @@ Internal completion means:
 - coordinated API/browser acceptance is green
 - no trusted payment state comes from the browser
 - no production catalog, authentication or order source depends on static or browser-only data
-- deployment, workers, scheduler, backups, monitoring and rollback work
+- production package is reproducible and verified
+- live deployment, workers, scheduler, backups, monitoring and rollback work
 - payment, eNAMAD and SMS paths already exist and wait only for external values
