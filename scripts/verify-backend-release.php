@@ -2,11 +2,6 @@
 
 declare(strict_types=1);
 
-use FilesystemIterator;
-use RecursiveDirectoryIterator;
-use RecursiveIteratorIterator;
-use RuntimeException;
-
 $releaseDir = realpath($argv[1] ?? '');
 if ($releaseDir === false || ! is_dir($releaseDir)) {
     throw new RuntimeException('Usage: php scripts/verify-backend-release.php <release-directory>');
