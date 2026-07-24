@@ -40,7 +40,7 @@ if [[ ! "$target" =~ ^[a-f0-9]{20}$ ]]; then
 fi
 
 TARGET_DIR="$DEPLOY_ROOT/releases/$target"
-php "$SCRIPT_ROOT/scripts/verify-backend-release.php" "$TARGET_DIR"
+php "$SCRIPT_ROOT/scripts/verify-backend-release.php" "$TARGET_DIR" --allow-runtime-links
 if [[ ! -L "$TARGET_DIR/app/.env" || ! -L "$TARGET_DIR/app/storage" ]]; then
   echo "Rollback target is not linked to shared environment and storage." >&2
   exit 1
@@ -100,8 +100,6 @@ if ! restart_runtime; then
   exit 1
 fi
 
-# The maintenance marker lives in shared storage, so the rollback target must
-# be brought online before its HTTP health check is evaluated.
 if ! (cd "$DEPLOY_ROOT/current/app" && php artisan up --no-interaction); then
   restore_original_release
   exit 1
