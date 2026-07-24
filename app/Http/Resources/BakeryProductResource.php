@@ -29,7 +29,9 @@ class BakeryProductResource extends JsonResource
             'name' => $this->name,
             'productCode' => $this->product_code,
             'shortDescription' => $this->short_description,
-            'longDescription' => $contentVerified ? $this->description : null,
+            'longDescription' => $contentVerified
+                ? $this->publicPlainText($this->description)
+                : null,
             'category' => $this->category?->name,
             'categorySlug' => $this->category?->slug,
             'categoryData' => $this->whenLoaded(
@@ -77,6 +79,36 @@ class BakeryProductResource extends JsonResource
             ],
             'updatedAt' => $this->updated_at?->toISOString(),
         ];
+    }
+
+    private function publicPlainText(?string $value): ?string
+    {
+        if ($value === null || trim($value) === '') {
+            return null;
+        }
+
+        $withoutExecutableBlocks = preg_replace(
+            '/<(script|style)\b[^>]*>.*?<\/\1>/isu',
+            '',
+            $value,
+        ) ?? $value;
+
+        $withReadableBreaks = preg_replace(
+            '/<(?:br\s*\/?|\/p|\/div|\/li|\/h[1-6])>/iu',
+            "\n",
+            $withoutExecutableBlocks,
+        ) ?? $withoutExecutableBlocks;
+
+        $plainText = html_entity_decode(
+            strip_tags($withReadableBreaks),
+            ENT_QUOTES | ENT_HTML5,
+            'UTF-8',
+        );
+
+        $plainText = preg_replace('/[\p{Z}\s]+/u', ' ', $plainText) ?? $plainText;
+        $plainText = trim($plainText);
+
+        return $plainText !== '' ? $plainText : null;
     }
 
     private function catalogImages(): array
