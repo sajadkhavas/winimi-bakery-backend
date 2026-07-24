@@ -67,6 +67,21 @@ class BakeryCatalogDataNormalizationTest extends TestCase
             ->assertJsonPath('data.allergens.1', 'لبنیات');
     }
 
+    public function test_catalog_api_exposes_rich_editor_content_as_safe_plain_text(): void
+    {
+        $category = $this->createCategory();
+        $product = $this->createProduct($category, [
+            'slug' => 'safe-managed-description',
+            'description' => '<script>alert("x")</script><p dir="rtl">&nbsp;توضیح <strong>کامل</strong> محصول&nbsp;</p><style>body{display:none}</style>',
+            'content_verified' => true,
+        ]);
+        $this->createVariant($product);
+
+        $this->getJson('/api/catalog/products/safe-managed-description')
+            ->assertOk()
+            ->assertJsonPath('data.longDescription', 'توضیح کامل محصول');
+    }
+
     private function createCategory(): BakeryCategory
     {
         return BakeryCategory::create([
