@@ -45,6 +45,9 @@ $forbiddenPatterns = [
 
 $isExcluded = static function (string $relative) use ($excludedPrefixes, $excludedExact): bool {
     $relative = str_replace('\\', '/', $relative);
+    if ($relative === 'docs/openapi.json') {
+        return false;
+    }
     if (! str_contains($relative, '/') && str_ends_with(strtolower($relative), '.md')) {
         return true;
     }
