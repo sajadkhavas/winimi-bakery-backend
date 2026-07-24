@@ -121,21 +121,36 @@ check_health() {
     curl --fail --silent --show-error --retry 20 --retry-delay 1 "$BACKEND_HEALTH_URL" >/dev/null
   fi
 }
-
-activate_release "releases/$RELEASE_ID"
-if ! restart_runtime || ! check_health; then
+restore_previous_release() {
   echo "Backend restart or health check failed; restoring previous release symlink." >&2
   if [[ -n "$PREVIOUS_TARGET" ]]; then
     activate_release "$PREVIOUS_TARGET"
     restart_runtime || true
+    (cd "$DEPLOY_ROOT/current/app" && php artisan up --no-interaction) || true
   fi
+  maintenance_started=false
+}
+
+activate_release "releases/$RELEASE_ID"
+
+if ! restart_runtime; then
+  restore_previous_release
+  echo "Database migrations are not automatically reversed; inspect migration compatibility before retrying." >&2
+  exit 1
+fi
+
+# Laravel's maintenance marker is stored in shared storage. The newly activated
+# release must be brought online before an HTTP health check can ever return 200.
+cleanup_maintenance
+maintenance_started=false
+
+if ! check_health; then
+  restore_previous_release
   echo "Database migrations are not automatically reversed; inspect migration compatibility before retrying." >&2
   exit 1
 fi
 
 (cd "$DEPLOY_ROOT/current/app" && php artisan queue:restart --no-interaction) || true
-cleanup_maintenance
-maintenance_started=false
 printf '%s\n' "$RELEASE_ID" > "$DEPLOY_ROOT/active-release"
 chmod 0644 "$DEPLOY_ROOT/active-release"
 
