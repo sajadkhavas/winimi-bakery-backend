@@ -61,6 +61,12 @@ check_health() {
     curl --fail --silent --show-error --retry 20 --retry-delay 1 "$BACKEND_HEALTH_URL" >/dev/null
   fi
 }
+restore_original_release() {
+  echo "Backend rollback health failed; restoring release $current." >&2
+  activate_release "$current"
+  restart_runtime || true
+  (cd "$DEPLOY_ROOT/current/app" && php artisan up --no-interaction) || true
+}
 
 (cd "$DEPLOY_ROOT/current/app" && php artisan down --retry=60 --no-interaction) || true
 activate_release "$target"
@@ -89,16 +95,24 @@ find \
   "$DEPLOY_ROOT/shared/storage" \
   -type f -exec chmod 0660 {} +
 
-if ! restart_runtime || ! check_health; then
-  echo "Backend rollback health failed; restoring release $current." >&2
-  activate_release "$current"
-  restart_runtime || true
-  (cd "$DEPLOY_ROOT/current/app" && php artisan up --no-interaction) || true
+if ! restart_runtime; then
+  restore_original_release
+  exit 1
+fi
+
+# The maintenance marker lives in shared storage, so the rollback target must
+# be brought online before its HTTP health check is evaluated.
+if ! (cd "$DEPLOY_ROOT/current/app" && php artisan up --no-interaction); then
+  restore_original_release
+  exit 1
+fi
+
+if ! check_health; then
+  restore_original_release
   exit 1
 fi
 
 (cd "$DEPLOY_ROOT/current/app" && php artisan queue:restart --no-interaction) || true
-(cd "$DEPLOY_ROOT/current/app" && php artisan up --no-interaction) || true
 printf '%s\n' "$target" > "$DEPLOY_ROOT/active-release"
 chmod 0644 "$DEPLOY_ROOT/active-release"
 
