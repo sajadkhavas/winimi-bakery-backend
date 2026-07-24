@@ -53,7 +53,7 @@ activate_release() {
 }
 restart_runtime() {
   if [[ -n "$BACKEND_RESTART_COMMAND" ]]; then
-    BACKEND_CURRENT="$DEPLOY_ROOT/current" bash -Eeuo pipefail -c "$BACKEND_RESTART_COMMAND"
+    BACKEND_CURRENT="$DEPLOY_ROOT/current/app" bash -Eeuo pipefail -c "$BACKEND_RESTART_COMMAND"
   fi
 }
 check_health() {
@@ -62,10 +62,10 @@ check_health() {
   fi
 }
 
-(cd "$DEPLOY_ROOT/current" && php artisan down --retry=60 --no-interaction) || true
+(cd "$DEPLOY_ROOT/current/app" && php artisan down --retry=60 --no-interaction) || true
 activate_release "$target"
 (
-  cd "$DEPLOY_ROOT/current"
+  cd "$DEPLOY_ROOT/current/app"
   php artisan optimize:clear --no-interaction
   php artisan config:cache --no-interaction
   php artisan route:cache --no-interaction
@@ -73,16 +73,32 @@ activate_release "$target"
   php artisan backend:readiness --json
 )
 
+echo "===== NORMALIZING ROLLBACK BACKEND PERMISSIONS ====="
+
+chown -R winimi:www-data \
+  "$DEPLOY_ROOT/current/app/bootstrap/cache" \
+  "$DEPLOY_ROOT/shared/storage"
+
+find \
+  "$DEPLOY_ROOT/current/app/bootstrap/cache" \
+  "$DEPLOY_ROOT/shared/storage" \
+  -type d -exec chmod 2770 {} +
+
+find \
+  "$DEPLOY_ROOT/current/app/bootstrap/cache" \
+  "$DEPLOY_ROOT/shared/storage" \
+  -type f -exec chmod 0660 {} +
+
 if ! restart_runtime || ! check_health; then
   echo "Backend rollback health failed; restoring release $current." >&2
   activate_release "$current"
   restart_runtime || true
-  (cd "$DEPLOY_ROOT/current" && php artisan up --no-interaction) || true
+  (cd "$DEPLOY_ROOT/current/app" && php artisan up --no-interaction) || true
   exit 1
 fi
 
-(cd "$DEPLOY_ROOT/current" && php artisan queue:restart --no-interaction) || true
-(cd "$DEPLOY_ROOT/current" && php artisan up --no-interaction) || true
+(cd "$DEPLOY_ROOT/current/app" && php artisan queue:restart --no-interaction) || true
+(cd "$DEPLOY_ROOT/current/app" && php artisan up --no-interaction) || true
 printf '%s\n' "$target" > "$DEPLOY_ROOT/active-release"
 chmod 0644 "$DEPLOY_ROOT/active-release"
 
