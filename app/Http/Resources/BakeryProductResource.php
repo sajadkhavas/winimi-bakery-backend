@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources;
 
+use App\Models\BakeryProduct;
 use App\Models\BakeryProductVariant;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
@@ -51,8 +52,12 @@ class BakeryProductResource extends JsonResource
             'shippingNote' => $this->requires_cooling
                 ? 'این محصول نیازمند روش تحویل سرد است و محدوده نهایی در Checkout تأیید می‌شود.'
                 : 'روش تحویل نهایی براساس مقصد و تنظیمات Checkout محاسبه می‌شود.',
-            'ingredients' => $contentVerified ? ($this->ingredients ?? []) : [],
-            'allergens' => $contentVerified ? ($this->allergens ?? []) : [],
+            'ingredients' => $contentVerified
+                ? BakeryProduct::normalizeTagList($this->ingredients)
+                : [],
+            'allergens' => $contentVerified
+                ? BakeryProduct::normalizeTagList($this->allergens)
+                : [],
             'shelfLife' => $contentVerified ? $this->shelf_life : null,
             'storageTips' => $contentVerified ? $this->storage_instructions : null,
             'preparationTimeDays' => $this->preparation_time_days,
