@@ -105,7 +105,7 @@ class BakeryProduct extends Model implements HasMedia
             if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
                 $value = $decoded;
             } else {
-                $value = preg_split('/[\x{060C},;\n\r]+/u', $value) ?: [];
+                $value = [$value];
             }
         }
 
@@ -117,7 +117,9 @@ class BakeryProduct extends Model implements HasMedia
 
         foreach ($value as $item) {
             if (is_array($item)) {
-                array_push($items, ...self::normalizeTagList($item));
+                foreach (self::normalizeTagList($item) as $nestedItem) {
+                    $items[] = $nestedItem;
+                }
 
                 continue;
             }
@@ -126,10 +128,16 @@ class BakeryProduct extends Model implements HasMedia
                 continue;
             }
 
-            $item = trim((string) $item);
+            $parts = is_string($item)
+                ? (preg_split('/[\x{060C},;\n\r]+/u', $item) ?: [])
+                : [$item];
 
-            if ($item !== '') {
-                $items[] = $item;
+            foreach ($parts as $part) {
+                $part = trim((string) $part);
+
+                if ($part !== '') {
+                    $items[] = $part;
+                }
             }
         }
 
