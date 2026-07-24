@@ -79,7 +79,61 @@ class BakeryProduct extends Model implements HasMedia
     {
         return SlugOptions::create()
             ->generateSlugsFrom('name')
-            ->saveSlugsTo('slug');
+            ->saveSlugsTo('slug')
+            ->doNotGenerateSlugsOnUpdate();
+    }
+
+    public function setIngredientsAttribute(mixed $value): void
+    {
+        $this->attributes['ingredients'] = self::encodeTagList($value);
+    }
+
+    public function setAllergensAttribute(mixed $value): void
+    {
+        $this->attributes['allergens'] = self::encodeTagList($value);
+    }
+
+    public static function normalizeTagList(mixed $value): array
+    {
+        if ($value === null || $value === '') {
+            return [];
+        }
+
+        if (is_string($value)) {
+            $decoded = json_decode($value, true);
+
+            if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+                $value = $decoded;
+            } else {
+                $value = preg_split('/[\x{060C},;\n\r]+/u', $value) ?: [];
+            }
+        }
+
+        if (! is_array($value)) {
+            $value = [$value];
+        }
+
+        $items = [];
+
+        foreach ($value as $item) {
+            if (is_array($item)) {
+                array_push($items, ...self::normalizeTagList($item));
+
+                continue;
+            }
+
+            if (! is_scalar($item)) {
+                continue;
+            }
+
+            $item = trim((string) $item);
+
+            if ($item !== '') {
+                $items[] = $item;
+            }
+        }
+
+        return array_values(array_unique($items));
     }
 
     public function getActivitylogOptions(): LogOptions
@@ -145,6 +199,15 @@ class BakeryProduct extends Model implements HasMedia
         return $query->orderByDesc('is_featured')
             ->orderBy('sort_order')
             ->orderBy('name');
+    }
+
+    private static function encodeTagList(mixed $value): ?string
+    {
+        $items = self::normalizeTagList($value);
+
+        return $items === []
+            ? null
+            : json_encode($items, JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR);
     }
 
     private static function flushCatalogCache(string $slug): void
