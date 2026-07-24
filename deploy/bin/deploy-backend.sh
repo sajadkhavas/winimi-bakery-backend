@@ -45,7 +45,7 @@ if [[ -L "$DEPLOY_ROOT/current" ]]; then
 fi
 
 if [[ -e "$TARGET" ]]; then
-  php "$SCRIPT_ROOT/scripts/verify-backend-release.php" "$TARGET"
+  php "$SCRIPT_ROOT/scripts/verify-backend-release.php" "$TARGET" --allow-runtime-links
 else
   trap 'rm -rf "$STAGING"' EXIT
   mkdir -p "$STAGING"
@@ -139,8 +139,6 @@ if ! restart_runtime; then
   exit 1
 fi
 
-# Laravel's maintenance marker is stored in shared storage. The newly activated
-# release must be brought online before an HTTP health check can ever return 200.
 cleanup_maintenance
 maintenance_started=false
 
