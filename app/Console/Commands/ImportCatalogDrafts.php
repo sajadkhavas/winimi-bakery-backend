@@ -86,14 +86,14 @@ class ImportCatalogDrafts extends Command
             DB::transaction(function () use ($categories, $products, &$categoryMap, &$productMap): void {
                 foreach ($categories as $categoryData) {
                     $category = new BakeryCategory();
-                    $category->fill([
+                    $category->forceFill([
+                        'public_id' => (string) Str::ulid(),
                         'name' => trim((string) $categoryData['name']),
+                        'slug' => (string) $categoryData['slug'],
                         'description' => $this->nullableString($categoryData['description'] ?? null),
                         'is_active' => false,
                         'sort_order' => (int) ($categoryData['sortOrder'] ?? 0),
                     ]);
-                    $category->save();
-                    $category->slug = (string) $categoryData['slug'];
                     $category->saveQuietly();
 
                     $categoryMap[(string) $categoryData['slug']] = $category;
@@ -109,9 +109,11 @@ class ImportCatalogDrafts extends Command
                     $seo = is_array($productData['seo'] ?? null) ? $productData['seo'] : [];
 
                     $product = new BakeryProduct();
-                    $product->fill([
+                    $product->forceFill([
+                        'public_id' => (string) Str::ulid(),
                         'category_id' => $category->getKey(),
                         'name' => trim((string) $productData['name']),
+                        'slug' => (string) $productData['slug'],
                         'product_code' => trim((string) $productData['productCode']),
                         'short_description' => $this->nullableString($productData['shortDescription'] ?? null),
                         'description' => $this->nullableString($productData['description'] ?? null),
@@ -129,8 +131,6 @@ class ImportCatalogDrafts extends Command
                         'meta_title' => $this->limitedNullableString($seo['title'] ?? null, 70),
                         'meta_description' => $this->limitedNullableString($seo['description'] ?? null, 180),
                     ]);
-                    $product->save();
-                    $product->slug = (string) $productData['slug'];
                     $product->saveQuietly();
 
                     foreach ($productData['variants'] as $variantData) {
@@ -193,13 +193,19 @@ class ImportCatalogDrafts extends Command
             }
         }
 
+        $importedProductIds = array_map(
+            static fn (array $entry): int => (int) $entry['model']->getKey(),
+            array_values($productMap),
+        );
+        $status = $mediaFailed === 0 ? 'completed' : 'completed-with-media-warnings';
+
         $this->newLine();
-        $this->line('CATALOG_DRAFT_IMPORT_STATUS=completed');
+        $this->line("CATALOG_DRAFT_IMPORT_STATUS={$status}");
         $this->line("MANIFEST_SHA256={$actualHash}");
         $this->line('CATEGORIES_CREATED='.count($categoryMap));
         $this->line('PRODUCTS_CREATED='.count($productMap));
         $this->line('VARIANTS_CREATED='.BakeryProductVariant::query()
-            ->whereIn('product_id', collect($productMap)->pluck('model.id'))
+            ->whereIn('product_id', $importedProductIds)
             ->count());
         $this->line("MEDIA_ATTACHED={$mediaAttached}");
         $this->line("MEDIA_FAILED={$mediaFailed}");
