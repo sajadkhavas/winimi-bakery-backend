@@ -77,12 +77,46 @@ class BakeryProductResource extends Resource
                                         ->default(false),
                                     Forms\Components\Toggle::make('requires_cooling')
                                         ->label('نیازمند نگهداری و ارسال سرد')
+                                        ->helperText('مستقل از محدوده جغرافیایی ارسال است.')
                                         ->default(false),
-                                    Forms\Components\TextInput::make('preparation_time_days')
-                                        ->label('زمان آماده‌سازی (روز)')
+                                    Forms\Components\Select::make('availability_mode')
+                                        ->label('مدل تأمین محصول')
+                                        ->options([
+                                            BakeryProduct::AVAILABILITY_STOCKED => 'موجودی آماده',
+                                            BakeryProduct::AVAILABILITY_MADE_TO_ORDER => 'آماده‌سازی پس از سفارش',
+                                        ])
+                                        ->placeholder('تعیین نشده')
+                                        ->helperText('واقعیت تأمین محصول را مشخص می‌کند؛ موجودی را دور نمی‌زند.'),
+                                    Forms\Components\TextInput::make('preparation_min_days')
+                                        ->label('حداقل زمان آماده‌سازی (روز)')
                                         ->numeric()
                                         ->minValue(0)
                                         ->maxValue(30),
+                                    Forms\Components\TextInput::make('preparation_max_days')
+                                        ->label('حداکثر زمان آماده‌سازی (روز)')
+                                        ->numeric()
+                                        ->minValue(0)
+                                        ->maxValue(30),
+                                    Forms\Components\TextInput::make('preparation_time_days')
+                                        ->label('زمان آماده‌سازی قدیمی / fallback')
+                                        ->numeric()
+                                        ->minValue(0)
+                                        ->maxValue(30)
+                                        ->helperText('فقط برای سازگاری داده‌های قدیمی نگه داشته شده است؛ برای داده جدید بازه بالا را تکمیل کنید.'),
+                                    Forms\Components\Select::make('shipping_scope')
+                                        ->label('سیاست محدوده ارسال')
+                                        ->options([
+                                            BakeryProduct::SHIPPING_NATIONWIDE => 'ارسال سراسری مطابق تنظیمات تحویل',
+                                            BakeryProduct::SHIPPING_CONFIGURED_ZONES => 'فقط محدوده‌های تنظیم‌شده فروشگاه',
+                                            BakeryProduct::SHIPPING_PICKUP_ONLY => 'فقط تحویل حضوری',
+                                        ])
+                                        ->placeholder('تعیین نشده')
+                                        ->helperText('این فیلد محدوده ارسال را مشخص می‌کند و از نیاز به ارسال سرد مستقل است.'),
+                                    Forms\Components\Textarea::make('shipping_note')
+                                        ->label('توضیح سیاست ارسال')
+                                        ->rows(3)
+                                        ->maxLength(1000)
+                                        ->columnSpanFull(),
                                     Forms\Components\TextInput::make('sort_order')
                                         ->label('ترتیب نمایش')
                                         ->numeric()
@@ -112,6 +146,21 @@ class BakeryProductResource extends Resource
                                         ->label('وزن (گرم)')
                                         ->numeric()
                                         ->minValue(1),
+                                    Forms\Components\TextInput::make('package_quantity')
+                                        ->label('تعداد در بسته')
+                                        ->numeric()
+                                        ->minValue(1)
+                                        ->helperText('اطلاعات بسته‌بندی است و به‌تنهایی ضریب تعداد سفارش نیست.'),
+                                    Forms\Components\TextInput::make('min_order_quantity')
+                                        ->label('حداقل تعداد سفارش')
+                                        ->numeric()
+                                        ->minValue(1)
+                                        ->helperText('فقط در صورت تأیید واقعی فروشگاه مقداردهی شود.'),
+                                    Forms\Components\TextInput::make('max_order_quantity')
+                                        ->label('حداکثر تعداد سفارش')
+                                        ->numeric()
+                                        ->minValue(1)
+                                        ->helperText('اگر سقف تجاری تأیید نشده است خالی بماند.'),
                                     Forms\Components\TextInput::make('regular_price_toman')
                                         ->label('قیمت عادی (تومان)')
                                         ->numeric()
@@ -134,6 +183,10 @@ class BakeryProductResource extends Resource
                                         ->required()
                                         ->minValue(0)
                                         ->default(5),
+                                    Forms\Components\Toggle::make('inventory_verified')
+                                        ->label('موجودی تأیید شده است')
+                                        ->helperText('فقط پس از تأیید موجودی واقعی این Variant فعال شود.')
+                                        ->default(false),
                                     Forms\Components\Toggle::make('is_default')
                                         ->label('انتخاب پیش‌فرض'),
                                     Forms\Components\Toggle::make('is_active')
@@ -241,6 +294,23 @@ class BakeryProductResource extends Resource
                     ->label('موجودی کل')
                     ->sum('variants', 'stock_quantity')
                     ->sortable(),
+                Tables\Columns\TextColumn::make('availability_mode')
+                    ->label('تأمین')
+                    ->badge()
+                    ->formatStateUsing(fn (?string $state): string => match ($state) {
+                        BakeryProduct::AVAILABILITY_STOCKED => 'آماده',
+                        BakeryProduct::AVAILABILITY_MADE_TO_ORDER => 'سفارشی',
+                        default => 'تعیین نشده',
+                    }),
+                Tables\Columns\TextColumn::make('shipping_scope')
+                    ->label('محدوده ارسال')
+                    ->badge()
+                    ->formatStateUsing(fn (?string $state): string => match ($state) {
+                        BakeryProduct::SHIPPING_NATIONWIDE => 'سراسری',
+                        BakeryProduct::SHIPPING_CONFIGURED_ZONES => 'محدوده‌های فعال',
+                        BakeryProduct::SHIPPING_PICKUP_ONLY => 'حضوری',
+                        default => 'تعیین نشده',
+                    }),
                 Tables\Columns\IconColumn::make('requires_cooling')
                     ->label('سرد')
                     ->boolean(),
@@ -263,6 +333,19 @@ class BakeryProductResource extends Resource
                     ->relationship('category', 'name'),
                 Tables\Filters\TernaryFilter::make('is_active')->label('فعال'),
                 Tables\Filters\TernaryFilter::make('is_featured')->label('پیشنهادی'),
+                Tables\Filters\SelectFilter::make('availability_mode')
+                    ->label('مدل تأمین')
+                    ->options([
+                        BakeryProduct::AVAILABILITY_STOCKED => 'موجودی آماده',
+                        BakeryProduct::AVAILABILITY_MADE_TO_ORDER => 'آماده‌سازی پس از سفارش',
+                    ]),
+                Tables\Filters\SelectFilter::make('shipping_scope')
+                    ->label('محدوده ارسال')
+                    ->options([
+                        BakeryProduct::SHIPPING_NATIONWIDE => 'سراسری',
+                        BakeryProduct::SHIPPING_CONFIGURED_ZONES => 'محدوده‌های تنظیم‌شده',
+                        BakeryProduct::SHIPPING_PICKUP_ONLY => 'تحویل حضوری',
+                    ]),
                 Tables\Filters\TernaryFilter::make('requires_cooling')->label('نیازمند سرما'),
                 Tables\Filters\TernaryFilter::make('content_verified')->label('محتوای تأییدشده'),
                 Tables\Filters\TernaryFilter::make('media_verified')->label('رسانه تأییدشده'),

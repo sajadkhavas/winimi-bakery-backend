@@ -23,6 +23,22 @@ class BakeryProductResource extends JsonResource
         $images = $this->catalogImages();
         $contentVerified = (bool) $this->content_verified;
 
+        $inventoryVerified = $variants->isNotEmpty()
+            && $variants->every(
+                fn (BakeryProductVariant $variant): bool => (bool) $variant->inventory_verified
+            );
+
+        $preparationMinDays = $this->preparation_min_days
+            ?? $this->preparation_time_days;
+
+        $preparationMaxDays = $this->preparation_max_days
+            ?? $preparationMinDays;
+
+        // Compatibility-only until the storefront migrates to shippingPolicy.
+        $legacyShippingScope = $this->requires_cooling
+            ? 'tehran-karaj'
+            : 'nationwide';
+
         return [
             'id' => $this->public_id,
             'slug' => $this->slug,
@@ -50,10 +66,15 @@ class BakeryProductResource extends JsonResource
             'stock' => $stock,
             'available' => $stock > 0,
             'requiresCooling' => (bool) $this->requires_cooling,
-            'shippingScope' => $this->requires_cooling ? 'tehran-karaj' : 'nationwide',
+            'shippingScope' => $legacyShippingScope,
             'shippingNote' => $this->requires_cooling
                 ? 'این محصول نیازمند روش تحویل سرد است و محدوده نهایی در Checkout تأیید می‌شود.'
                 : 'روش تحویل نهایی براساس مقصد و تنظیمات Checkout محاسبه می‌شود.',
+            'shippingPolicy' => [
+                'scope' => $this->shipping_scope,
+                'note' => $this->shipping_note,
+            ],
+            'availabilityMode' => $this->availability_mode,
             'ingredients' => $contentVerified
                 ? BakeryProduct::normalizeTagList($this->ingredients)
                 : [],
@@ -62,7 +83,14 @@ class BakeryProductResource extends JsonResource
                 : [],
             'shelfLife' => $contentVerified ? $this->shelf_life : null,
             'storageTips' => $contentVerified ? $this->storage_instructions : null,
-            'preparationTimeDays' => $this->preparation_time_days,
+            'preparationTimeDays' => $this->preparation_time_days
+                ?? $preparationMinDays,
+            'preparation' => $preparationMinDays === null
+                ? null
+                : [
+                    'minDays' => $preparationMinDays,
+                    'maxDays' => $preparationMaxDays,
+                ],
             'badges' => array_values(array_filter([
                 $this->requires_cooling ? 'نیازمند نگهداری سرد' : null,
                 $this->is_featured ? 'پیشنهاد وینیمی' : null,
@@ -71,7 +99,7 @@ class BakeryProductResource extends JsonResource
             'isFeatured' => (bool) $this->is_featured,
             'contentVerified' => $contentVerified,
             'mediaVerified' => (bool) $this->media_verified,
-            'inventoryVerified' => true,
+            'inventoryVerified' => $inventoryVerified,
             'variants' => BakeryVariantResource::collection($variants),
             'seo' => [
                 'title' => $this->meta_title ?: $this->name,

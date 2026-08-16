@@ -8,6 +8,7 @@ use App\Enums\OrderStatus;
 use App\Enums\PaymentStatus;
 use App\Exceptions\IdempotencyConflict;
 use App\Exceptions\InventoryUnavailable;
+use App\Models\BakeryProduct;
 use App\Models\BakeryProductVariant;
 use App\Models\Customer;
 use App\Models\CustomerAddress;
@@ -16,6 +17,7 @@ use App\Models\Order;
 use App\Models\OrderStatusHistory;
 use App\Services\Store\DeliveryConfigurationService;
 use App\Support\IranianMobile;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -91,6 +93,10 @@ final class CheckoutService
         $variants = BakeryProductVariant::query()
             ->whereIn('public_id', $variantIds)
             ->where('is_active', true)
+            ->whereHas(
+                'product',
+                fn (Builder $product): Builder => $product->launchReady(),
+            )
             ->with(['product.category'])
             ->orderBy('id')
             ->lockForUpdate()
@@ -120,7 +126,9 @@ final class CheckoutService
 
         $itemSnapshots = [];
         $subtotal = 0;
-        $productPreparationDays = 0;
+        $productPreparationMinDays = 0;
+        $productPreparationMaxDays = 0;
+        $requiresConfiguredDeliveryZone = false;
 
         foreach ($items as $item) {
             /** @var BakeryProductVariant $variant */
@@ -133,12 +141,59 @@ final class CheckoutService
                 ]);
             }
 
+            if (! $variant->inventory_verified) {
+                throw ValidationException::withMessages([
+                    'items' => ["موجودی «{$variant->name}» هنوز توسط فروشگاه تأیید نشده است."],
+                ]);
+            }
+
+            $quantity = (int) $item['quantity'];
+
+            if (
+                $variant->min_order_quantity !== null
+                && $quantity < $variant->min_order_quantity
+            ) {
+                throw ValidationException::withMessages([
+                    'items' => [
+                        "حداقل تعداد سفارش «{$variant->name}» {$variant->min_order_quantity} عدد است.",
+                    ],
+                ]);
+            }
+
+            if (
+                $variant->max_order_quantity !== null
+                && $quantity > $variant->max_order_quantity
+            ) {
+                throw ValidationException::withMessages([
+                    'items' => [
+                        "حداکثر تعداد سفارش «{$variant->name}» {$variant->max_order_quantity} عدد است.",
+                    ],
+                ]);
+            }
+
+            if (
+                $product->shipping_scope === BakeryProduct::SHIPPING_PICKUP_ONLY
+                && $deliveryMethod !== DeliveryMethod::Pickup
+            ) {
+                throw ValidationException::withMessages([
+                    'deliveryMethod' => [
+                        "محصول «{$product->name}» فقط با تحویل حضوری قابل سفارش است.",
+                    ],
+                ]);
+            }
+
+            if (
+                $product->shipping_scope === BakeryProduct::SHIPPING_CONFIGURED_ZONES
+                && $deliveryMethod !== DeliveryMethod::Pickup
+            ) {
+                $requiresConfiguredDeliveryZone = true;
+            }
+
             $reserved = (int) InventoryReservation::query()
                 ->where('variant_id', $variant->getKey())
                 ->active()
                 ->sum('quantity');
             $available = max(0, (int) $variant->stock_quantity - $reserved);
-            $quantity = (int) $item['quantity'];
 
             if ($quantity > $available) {
                 throw new InventoryUnavailable(
@@ -152,9 +207,26 @@ final class CheckoutService
             $unitPrice = $variant->current_price_toman;
             $lineTotal = $unitPrice * $quantity;
             $subtotal += $lineTotal;
-            $productPreparationDays = max(
-                $productPreparationDays,
-                (int) ($product->preparation_time_days ?? 0),
+
+            $productMinDays = (int) (
+                $product->preparation_min_days
+                ?? $product->preparation_time_days
+                ?? 0
+            );
+
+            $productMaxDays = (int) (
+                $product->preparation_max_days
+                ?? $productMinDays
+            );
+
+            $productPreparationMinDays = max(
+                $productPreparationMinDays,
+                $productMinDays,
+            );
+
+            $productPreparationMaxDays = max(
+                $productPreparationMaxDays,
+                $productMaxDays,
             );
 
             $itemSnapshots[] = [
@@ -181,8 +253,24 @@ final class CheckoutService
             $subtotal,
             $requiresCooling,
         );
-        $preparationMinDays = max($productPreparationDays, $quote['preparation_min_days']);
-        $preparationMaxDays = max($preparationMinDays, $quote['preparation_max_days']);
+        if ($requiresConfiguredDeliveryZone && $quote['zone'] === null) {
+            throw ValidationException::withMessages([
+                'deliveryMethod' => [
+                    'برای یک یا چند محصول این سبد، مقصد باید در محدوده ارسال فعال فروشگاه باشد.',
+                ],
+            ]);
+        }
+
+        $preparationMinDays = max(
+            $productPreparationMinDays,
+            $quote['preparation_min_days'],
+        );
+
+        $preparationMaxDays = max(
+            $preparationMinDays,
+            $productPreparationMaxDays,
+            $quote['preparation_max_days'],
+        );
         $reservationExpiresAt = now()->addMinutes(
             max(1, (int) config('winimi.checkout.reservation_minutes', 20)),
         );

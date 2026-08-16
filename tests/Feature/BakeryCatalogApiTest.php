@@ -67,7 +67,7 @@ class BakeryCatalogApiTest extends TestCase
             'description' => 'توضیح داخلی که تا تأیید نباید منتشر شود.',
             'ingredients' => ['آرد', 'گردو'],
             'allergens' => ['گلوتن', 'گردو'],
-            'content_verified' => false,
+            'content_verified' => true,
             'requires_cooling' => false,
             'is_featured' => true,
         ]);
@@ -97,11 +97,15 @@ class BakeryCatalogApiTest extends TestCase
             ->assertJsonPath('data.0.stock', 5)
             ->assertJsonPath('data.0.available', true)
             ->assertJsonPath('data.0.inventoryVerified', true)
-            ->assertJsonPath('data.0.contentVerified', false)
-            ->assertJsonPath('data.0.longDescription', null)
-            ->assertJsonPath('data.0.ingredients', [])
-            ->assertJsonPath('data.0.allergens', [])
+            ->assertJsonPath('data.0.contentVerified', true)
+            ->assertJsonPath(
+                'data.0.longDescription',
+                'توضیح داخلی که تا تأیید نباید منتشر شود.',
+            )
+            ->assertJsonPath('data.0.ingredients.0', 'آرد')
+            ->assertJsonPath('data.0.allergens.0', 'گلوتن')
             ->assertJsonPath('data.0.variants.0.id', $firstVariant->public_id)
+            ->assertJsonPath('data.0.variants.0.inventoryVerified', true)
             ->assertJsonPath('meta.pagination.total', 1);
     }
 
@@ -124,6 +128,11 @@ class BakeryCatalogApiTest extends TestCase
             'storage_instructions' => 'در یخچال نگهداری شود.',
             'content_verified' => true,
             'requires_cooling' => true,
+            'availability_mode' => BakeryProduct::AVAILABILITY_MADE_TO_ORDER,
+            'preparation_min_days' => 1,
+            'preparation_max_days' => 2,
+            'shipping_scope' => BakeryProduct::SHIPPING_CONFIGURED_ZONES,
+            'shipping_note' => 'ارسال فقط در محدوده‌های فعال تنظیم‌شده فروشگاه انجام می‌شود.',
         ]);
 
         $this->createVariant($product, [
@@ -131,6 +140,10 @@ class BakeryCatalogApiTest extends TestCase
             'sku' => 'WIN-CAKE-001-S',
             'regular_price_toman' => 180000,
             'stock_quantity' => 4,
+            'package_quantity' => 1,
+            'min_order_quantity' => 1,
+            'max_order_quantity' => 4,
+            'inventory_verified' => true,
         ]);
         $this->createVariant($product, [
             'name' => 'غیرفعال',
@@ -147,8 +160,118 @@ class BakeryCatalogApiTest extends TestCase
             ->assertJsonPath('data.allergens.0', 'لبنیات')
             ->assertJsonPath('data.requiresCooling', true)
             ->assertJsonPath('data.shippingScope', 'tehran-karaj')
+            ->assertJsonPath('data.shippingPolicy.scope', BakeryProduct::SHIPPING_CONFIGURED_ZONES)
+            ->assertJsonPath(
+                'data.shippingPolicy.note',
+                'ارسال فقط در محدوده‌های فعال تنظیم‌شده فروشگاه انجام می‌شود.',
+            )
+            ->assertJsonPath(
+                'data.availabilityMode',
+                BakeryProduct::AVAILABILITY_MADE_TO_ORDER,
+            )
+            ->assertJsonPath('data.preparation.minDays', 1)
+            ->assertJsonPath('data.preparation.maxDays', 2)
+            ->assertJsonPath('data.inventoryVerified', true)
             ->assertJsonPath('data.stock', 4)
+            ->assertJsonPath('data.variants.0.packageQuantity', 1)
+            ->assertJsonPath('data.variants.0.minOrderQuantity', 1)
+            ->assertJsonPath('data.variants.0.maxOrderQuantity', 4)
+            ->assertJsonPath('data.variants.0.inventoryVerified', true)
             ->assertJsonCount(1, 'data.variants');
+    }
+
+    public function test_public_catalog_reviews_and_counts_require_launch_ready_products(): void
+    {
+        $category = BakeryCategory::create([
+            'name' => 'انتشار',
+            'slug' => 'publication',
+            'is_active' => true,
+        ]);
+
+        $ready = $this->createProduct($category, [
+            'name' => 'محصول آماده انتشار',
+            'slug' => 'launch-ready-product',
+            'product_code' => 'WIN-LAUNCH-READY',
+        ]);
+
+        $this->createVariant($ready, [
+            'sku' => 'WIN-LAUNCH-READY-1',
+        ]);
+
+        $contentBlocked = $this->createProduct($category, [
+            'name' => 'محتوای تأییدنشده',
+            'slug' => 'content-blocked-product',
+            'product_code' => 'WIN-CONTENT-BLOCKED',
+            'content_verified' => false,
+        ]);
+
+        $this->createVariant($contentBlocked, [
+            'sku' => 'WIN-CONTENT-BLOCKED-1',
+        ]);
+
+        $mediaBlocked = $this->createProduct($category, [
+            'name' => 'رسانه تأییدنشده',
+            'slug' => 'media-blocked-product',
+            'product_code' => 'WIN-MEDIA-BLOCKED',
+            'media_verified' => false,
+        ]);
+
+        $this->createVariant($mediaBlocked, [
+            'sku' => 'WIN-MEDIA-BLOCKED-1',
+        ]);
+
+        $inventoryBlocked = $this->createProduct($category, [
+            'name' => 'موجودی تأییدنشده',
+            'slug' => 'inventory-blocked-product',
+            'product_code' => 'WIN-INVENTORY-BLOCKED',
+        ]);
+
+        $this->createVariant($inventoryBlocked, [
+            'sku' => 'WIN-INVENTORY-BLOCKED-1',
+            'inventory_verified' => false,
+        ]);
+
+        $partiallyVerified = $this->createProduct($category, [
+            'name' => 'موجودی ناقص',
+            'slug' => 'partial-inventory-product',
+            'product_code' => 'WIN-PARTIAL-INVENTORY',
+        ]);
+
+        $this->createVariant($partiallyVerified, [
+            'name' => 'انتخاب تأییدشده',
+            'sku' => 'WIN-PARTIAL-INVENTORY-1',
+            'inventory_verified' => true,
+        ]);
+
+        $this->createVariant($partiallyVerified, [
+            'name' => 'انتخاب تأییدنشده',
+            'sku' => 'WIN-PARTIAL-INVENTORY-2',
+            'inventory_verified' => false,
+            'is_default' => false,
+        ]);
+
+        $this->getJson('/api/catalog/products?category=publication')
+            ->assertOk()
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.id', $ready->public_id)
+            ->assertJsonPath('meta.pagination.total', 1);
+
+        $this->getJson('/api/catalog/categories')
+            ->assertOk()
+            ->assertJsonPath('data.0.productCount', 1);
+
+        foreach ([
+            'content-blocked-product',
+            'media-blocked-product',
+            'inventory-blocked-product',
+            'partial-inventory-product',
+        ] as $slug) {
+            $this->getJson("/api/catalog/products/{$slug}")
+                ->assertNotFound();
+
+            $this->getJson("/api/catalog/products/{$slug}/reviews")
+                ->assertNotFound();
+        }
     }
 
     public function test_inactive_and_out_of_stock_products_are_filtered_correctly(): void
@@ -198,6 +321,8 @@ class BakeryCatalogApiTest extends TestCase
             'slug' => 'test-product-'.uniqid(),
             'product_code' => 'WIN-TEST-'.uniqid(),
             'short_description' => 'توضیح کوتاه محصول',
+            'content_verified' => true,
+            'media_verified' => true,
             'is_active' => true,
             ...$attributes,
         ]);
@@ -211,6 +336,7 @@ class BakeryCatalogApiTest extends TestCase
             'regular_price_toman' => 100000,
             'stock_quantity' => 5,
             'low_stock_threshold' => 2,
+            'inventory_verified' => true,
             'is_active' => true,
             ...$attributes,
         ]);

@@ -16,10 +16,14 @@ class BakeryProductVariant extends Model
         'name',
         'sku',
         'weight_grams',
+        'package_quantity',
         'regular_price_toman',
         'sale_price_toman',
         'stock_quantity',
         'low_stock_threshold',
+        'min_order_quantity',
+        'max_order_quantity',
+        'inventory_verified',
         'is_default',
         'is_active',
         'sort_order',
@@ -27,11 +31,15 @@ class BakeryProductVariant extends Model
 
     protected $casts = [
         'weight_grams' => 'integer',
+        'package_quantity' => 'integer',
         'regular_price_toman' => 'integer',
         'sale_price_toman' => 'integer',
         'stock_quantity' => 'integer',
         'low_stock_threshold' => 'integer',
+        'min_order_quantity' => 'integer',
+        'max_order_quantity' => 'integer',
         'active_reserved_quantity' => 'integer',
+        'inventory_verified' => 'boolean',
         'is_default' => 'boolean',
         'is_active' => 'boolean',
         'sort_order' => 'integer',
@@ -42,10 +50,12 @@ class BakeryProductVariant extends Model
         static::creating(function (self $variant): void {
             $variant->public_id ??= (string) Str::ulid();
             self::validatePrices($variant);
+            self::validateOperationalLimits($variant);
         });
 
         static::updating(function (self $variant): void {
             self::validatePrices($variant);
+            self::validateOperationalLimits($variant);
         });
 
         static::saved(function (self $variant): void {
@@ -116,6 +126,31 @@ class BakeryProductVariant extends Model
         return $this->sale_price_toman !== null
             && $this->sale_price_toman > 0
             && $this->sale_price_toman < $this->regular_price_toman;
+    }
+
+    private static function validateOperationalLimits(self $variant): void
+    {
+        foreach ([
+            'package_quantity',
+            'min_order_quantity',
+            'max_order_quantity',
+        ] as $field) {
+            if ($variant->{$field} !== null && (int) $variant->{$field} < 1) {
+                throw new InvalidArgumentException(
+                    "{$field} باید در صورت ثبت، حداقل ۱ باشد."
+                );
+            }
+        }
+
+        if (
+            $variant->min_order_quantity !== null
+            && $variant->max_order_quantity !== null
+            && $variant->min_order_quantity > $variant->max_order_quantity
+        ) {
+            throw new InvalidArgumentException(
+                'حداقل تعداد سفارش Variant نمی‌تواند بیشتر از حداکثر تعداد باشد.'
+            );
+        }
     }
 
     private static function validatePrices(self $variant): void

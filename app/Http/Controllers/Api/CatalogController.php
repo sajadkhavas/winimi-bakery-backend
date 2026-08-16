@@ -41,7 +41,7 @@ class CatalogController extends Controller
             : false;
 
         $query = BakeryProduct::query()
-            ->active()
+            ->launchReady()
             ->with($this->catalogRelations());
 
         if (! empty($filters['category'])) {
@@ -101,7 +101,7 @@ class CatalogController extends Controller
     public function product(string $slug): JsonResponse
     {
         $product = BakeryProduct::query()
-            ->active()
+            ->launchReady()
             ->with($this->catalogRelations())
             ->where('slug', $slug)
             ->firstOrFail();
@@ -116,7 +116,7 @@ class CatalogController extends Controller
         $categories = BakeryCategory::query()
             ->active()
             ->withCount([
-                'products' => fn (Builder $products): Builder => $products->active(),
+                'products' => fn (Builder $products): Builder => $products->launchReady(),
             ])
             ->ordered()
             ->get();

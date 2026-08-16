@@ -99,6 +99,8 @@ class BakeryCatalogDataNormalizationTest extends TestCase
             'slug' => 'normalization-product',
             'product_code' => 'WIN-NORMALIZE-'.uniqid(),
             'short_description' => 'توضیح کوتاه محصول',
+            'content_verified' => true,
+            'media_verified' => true,
             'is_active' => true,
             ...$attributes,
         ]);
@@ -112,6 +114,7 @@ class BakeryCatalogDataNormalizationTest extends TestCase
             'regular_price_toman' => 100000,
             'stock_quantity' => 5,
             'low_stock_threshold' => 2,
+            'inventory_verified' => true,
             'is_default' => true,
             'is_active' => true,
         ]);

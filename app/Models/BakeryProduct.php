@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
+use InvalidArgumentException;
 use Spatie\Activitylog\LogOptions;
 use Spatie\Activitylog\Traits\LogsActivity;
 use Spatie\MediaLibrary\HasMedia;
@@ -20,6 +21,27 @@ use Spatie\Sluggable\SlugOptions;
 class BakeryProduct extends Model implements HasMedia
 {
     use HasSlug, InteractsWithMedia, LogsActivity, SoftDeletes;
+
+    public const AVAILABILITY_STOCKED = 'stocked';
+
+    public const AVAILABILITY_MADE_TO_ORDER = 'made_to_order';
+
+    public const AVAILABILITY_MODES = [
+        self::AVAILABILITY_STOCKED,
+        self::AVAILABILITY_MADE_TO_ORDER,
+    ];
+
+    public const SHIPPING_NATIONWIDE = 'nationwide';
+
+    public const SHIPPING_CONFIGURED_ZONES = 'configured_zones';
+
+    public const SHIPPING_PICKUP_ONLY = 'pickup_only';
+
+    public const SHIPPING_SCOPES = [
+        self::SHIPPING_NATIONWIDE,
+        self::SHIPPING_CONFIGURED_ZONES,
+        self::SHIPPING_PICKUP_ONLY,
+    ];
 
     protected $fillable = [
         'category_id',
@@ -33,7 +55,12 @@ class BakeryProduct extends Model implements HasMedia
         'shelf_life',
         'storage_instructions',
         'preparation_time_days',
+        'preparation_min_days',
+        'preparation_max_days',
+        'availability_mode',
         'requires_cooling',
+        'shipping_scope',
+        'shipping_note',
         'content_verified',
         'media_verified',
         'is_active',
@@ -47,6 +74,8 @@ class BakeryProduct extends Model implements HasMedia
         'ingredients' => 'array',
         'allergens' => 'array',
         'preparation_time_days' => 'integer',
+        'preparation_min_days' => 'integer',
+        'preparation_max_days' => 'integer',
         'requires_cooling' => 'boolean',
         'content_verified' => 'boolean',
         'media_verified' => 'boolean',
@@ -59,6 +88,10 @@ class BakeryProduct extends Model implements HasMedia
     {
         static::creating(function (self $product): void {
             $product->public_id ??= (string) Str::ulid();
+        });
+
+        static::saving(function (self $product): void {
+            self::validateOperationalDetails($product);
         });
 
         static::saved(function (self $product): void {
@@ -151,7 +184,12 @@ class BakeryProduct extends Model implements HasMedia
                 'name',
                 'product_code',
                 'category_id',
+                'preparation_time_days',
+                'preparation_min_days',
+                'preparation_max_days',
+                'availability_mode',
                 'requires_cooling',
+                'shipping_scope',
                 'content_verified',
                 'media_verified',
                 'is_active',
@@ -197,6 +235,20 @@ class BakeryProduct extends Model implements HasMedia
             ->whereHas('activeVariants');
     }
 
+    public function scopeLaunchReady(Builder $query): Builder
+    {
+        return $query->active()
+            ->where('content_verified', true)
+            ->where('media_verified', true)
+            ->whereDoesntHave(
+                'activeVariants',
+                fn (Builder $variant): Builder => $variant->where(
+                    'inventory_verified',
+                    false,
+                ),
+            );
+    }
+
     public function scopeFeatured(Builder $query): Builder
     {
         return $query->where('is_featured', true);
@@ -207,6 +259,33 @@ class BakeryProduct extends Model implements HasMedia
         return $query->orderByDesc('is_featured')
             ->orderBy('sort_order')
             ->orderBy('name');
+    }
+
+    private static function validateOperationalDetails(self $product): void
+    {
+        if (
+            $product->availability_mode !== null
+            && ! in_array($product->availability_mode, self::AVAILABILITY_MODES, true)
+        ) {
+            throw new InvalidArgumentException('وضعیت آماده‌سازی محصول معتبر نیست.');
+        }
+
+        if (
+            $product->shipping_scope !== null
+            && ! in_array($product->shipping_scope, self::SHIPPING_SCOPES, true)
+        ) {
+            throw new InvalidArgumentException('محدوده ارسال محصول معتبر نیست.');
+        }
+
+        if (
+            $product->preparation_min_days !== null
+            && $product->preparation_max_days !== null
+            && $product->preparation_min_days > $product->preparation_max_days
+        ) {
+            throw new InvalidArgumentException(
+                'حداقل زمان آماده‌سازی نمی‌تواند بیشتر از حداکثر زمان آماده‌سازی باشد.'
+            );
+        }
     }
 
     private static function encodeTagList(mixed $value): ?string

@@ -41,6 +41,34 @@ class BackendContractFreezeTest extends TestCase
         $this->assertSame(0, Artisan::call('backend:readiness', ['--json' => true]));
     }
 
+    public function test_category_editorial_manifest_remains_truth_safe(): void
+    {
+        $manifestPath = base_path('database/data/winimi-category-editorial-v1.json');
+        $manifest = json_decode(
+            (string) file_get_contents($manifestPath),
+            true,
+            512,
+            JSON_THROW_ON_ERROR,
+        );
+
+        $this->assertSame('winimi-category-editorial-v1', $manifest['format']);
+        $this->assertCount(6, $manifest['categories']);
+
+        $dietCategories = array_values(array_filter(
+            $manifest['categories'],
+            static fn (array $category): bool => ($category['slug'] ?? null) === 'diet',
+        ));
+
+        $this->assertCount(1, $dietCategories);
+
+        $diet = $dietCategories[0];
+
+        $this->assertSame('انتخاب‌های رژیمی', $diet['name']);
+        $this->assertStringNotContainsString('بدون قند افزوده', $diet['name']);
+        $this->assertStringNotContainsString('بدون قند افزوده', $diet['metaTitle']);
+        $this->assertStringNotContainsString('بدون قند افزوده', $diet['metaDescription']);
+    }
+
     public function test_errors_use_frozen_codes_and_contract_metadata(): void
     {
         $this->getJson('/api/catalog/products?perPage=999')
@@ -90,6 +118,7 @@ class BackendContractFreezeTest extends TestCase
                 'sku' => "CONTRACT-SKU-{$position}",
                 'regular_price_toman' => 100000 + $position,
                 'stock_quantity' => 5,
+                'inventory_verified' => true,
                 'is_default' => true,
                 'is_active' => true,
             ]);

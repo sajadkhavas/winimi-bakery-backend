@@ -65,6 +65,8 @@ class PaymentFlowTest extends TestCase
             'slug' => 'chocolate-cookie',
             'product_code' => 'COOKIE-001',
             'preparation_time_days' => 2,
+            'content_verified' => true,
+            'media_verified' => true,
             'requires_cooling' => false,
             'is_active' => true,
         ]);
@@ -77,6 +79,7 @@ class PaymentFlowTest extends TestCase
             'sale_price_toman' => 80_000,
             'stock_quantity' => 5,
             'low_stock_threshold' => 2,
+            'inventory_verified' => true,
             'is_default' => true,
             'is_active' => true,
         ]);

@@ -106,6 +106,7 @@ class WinimiStagingSeeder extends Seeder
                         'sale_price_toman' => null,
                         'stock_quantity' => $product['stock'],
                         'low_stock_threshold' => 3,
+                        'inventory_verified' => true,
                         'is_default' => true,
                         'is_active' => true,
                         'sort_order' => 0,

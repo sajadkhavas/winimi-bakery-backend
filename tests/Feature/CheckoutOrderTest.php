@@ -8,6 +8,7 @@ use App\Models\BakeryCategory;
 use App\Models\BakeryProduct;
 use App\Models\BakeryProductVariant;
 use App\Models\Customer;
+use App\Models\DeliveryZone;
 use App\Models\InventoryReservation;
 use App\Models\Order;
 use App\Services\Orders\OrderLifecycleService;
@@ -58,6 +59,10 @@ class CheckoutOrderTest extends TestCase
             'slug' => 'chocolate-cookie',
             'product_code' => 'COOKIE-001',
             'preparation_time_days' => 2,
+            'availability_mode' => BakeryProduct::AVAILABILITY_STOCKED,
+            'shipping_scope' => BakeryProduct::SHIPPING_NATIONWIDE,
+            'content_verified' => true,
+            'media_verified' => true,
             'requires_cooling' => false,
             'is_active' => true,
         ]);
@@ -70,6 +75,7 @@ class CheckoutOrderTest extends TestCase
             'sale_price_toman' => 80_000,
             'stock_quantity' => 5,
             'low_stock_threshold' => 2,
+            'inventory_verified' => true,
             'is_default' => true,
             'is_active' => true,
         ]);
@@ -161,6 +167,124 @@ class CheckoutOrderTest extends TestCase
             ->assertJsonPath('data.order.delivery.method', 'chilled')
             ->assertJsonPath('data.order.delivery.requiresCooling', true)
             ->assertJsonPath('data.order.totals.deliveryFeeToman', 90_000);
+    }
+
+    public function test_checkout_enforces_variant_minimum_and_maximum_order_quantities(): void
+    {
+        $this->variant->update([
+            'min_order_quantity' => 2,
+            'max_order_quantity' => 3,
+        ]);
+
+        $this->checkout('checkout-key-min-0001', 1)
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('items');
+
+        $this->checkout('checkout-key-max-0001', 4)
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('items');
+
+        $this->checkout('checkout-key-range-001', 2)
+            ->assertCreated();
+    }
+
+    public function test_checkout_rejects_product_that_is_not_launch_ready(): void
+    {
+        $product = $this->variant->product;
+
+        $product->update([
+            'content_verified' => false,
+        ]);
+
+        $this->checkout('checkout-key-publish-01', 1)
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('items');
+
+        $product->update([
+            'content_verified' => true,
+            'media_verified' => false,
+        ]);
+
+        $this->checkout('checkout-key-publish-02', 1)
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('items');
+
+        $this->assertDatabaseCount('orders', 0);
+    }
+
+    public function test_checkout_rejects_unverified_inventory(): void
+    {
+        $this->variant->update([
+            'inventory_verified' => false,
+        ]);
+
+        $this->checkout('checkout-key-stock-001', 1)
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('items');
+
+        $this->assertDatabaseCount('orders', 0);
+    }
+
+    public function test_configured_zone_policy_rejects_fallback_destination(): void
+    {
+        $this->variant->product()->update([
+            'shipping_scope' => BakeryProduct::SHIPPING_CONFIGURED_ZONES,
+        ]);
+
+        $this->checkout('checkout-key-zone-0001', 1)
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('deliveryMethod');
+
+        $this->assertDatabaseCount('orders', 0);
+    }
+
+    public function test_configured_zone_and_preparation_ranges_are_enforced(): void
+    {
+        $this->variant->product()->update([
+            'shipping_scope' => BakeryProduct::SHIPPING_CONFIGURED_ZONES,
+            'preparation_min_days' => 1,
+            'preparation_max_days' => 3,
+        ]);
+
+        DeliveryZone::query()->create([
+            'name' => 'تهران مرکزی',
+            'province' => 'تهران',
+            'city' => 'تهران',
+            'standard_enabled' => true,
+            'chilled_enabled' => true,
+            'pickup_enabled' => true,
+            'standard_fee_toman' => 40_000,
+            'chilled_fee_toman' => 100_000,
+            'pickup_fee_toman' => 0,
+            'packaging_fee_toman' => 15_000,
+            'preparation_min_days' => 2,
+            'preparation_max_days' => 4,
+            'priority' => 1,
+            'is_active' => true,
+        ]);
+
+        $this->checkout('checkout-key-zone-0002', 1)
+            ->assertCreated()
+            ->assertJsonPath('data.order.delivery.zone.name', 'تهران مرکزی')
+            ->assertJsonPath('data.order.preparation.minDays', 2)
+            ->assertJsonPath('data.order.preparation.maxDays', 4)
+            ->assertJsonPath('data.order.totals.deliveryFeeToman', 40_000)
+            ->assertJsonPath('data.order.totals.packagingFeeToman', 15_000);
+    }
+
+    public function test_pickup_only_product_rejects_shipping_but_allows_pickup(): void
+    {
+        $this->variant->product()->update([
+            'shipping_scope' => BakeryProduct::SHIPPING_PICKUP_ONLY,
+        ]);
+
+        $this->checkout('checkout-key-pickup-01', 1, 'standard')
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('deliveryMethod');
+
+        $this->checkout('checkout-key-pickup-02', 1, 'pickup')
+            ->assertCreated()
+            ->assertJsonPath('data.order.delivery.method', 'pickup');
     }
 
     public function test_customer_can_only_view_own_orders_and_cancel_unpaid_order(): void
