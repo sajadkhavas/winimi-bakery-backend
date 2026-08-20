@@ -234,7 +234,18 @@ class BakeryProductResource extends Resource
                                 ->collection('catalog-main')
                                 ->image()
                                 ->imageEditor()
-                                ->acceptedFileTypes(['image/jpeg', 'image/png', 'image/webp', 'image/avif'])
+                                ->acceptedFileTypes([
+                                    'image/jpeg',
+                                    'image/png',
+                                    'image/webp',
+                                ])
+                                ->maxSize(12 * 1024)
+                                ->rules([
+                                    'dimensions:max_width=6000,max_height=6000',
+                                ])
+                                ->helperText(
+                                    'JPEG، PNG یا WebP؛ حداکثر ۱۲ مگابایت و ۶۰۰۰×۶۰۰۰ پیکسل. نسخه‌های بهینه خودکار ساخته می‌شوند.'
+                                )
                                 ->columnSpanFull(),
                             SpatieMediaLibraryFileUpload::make('gallery_images')
                                 ->label('گالری')
@@ -243,10 +254,24 @@ class BakeryProductResource extends Resource
                                 ->reorderable()
                                 ->maxFiles(10)
                                 ->image()
-                                ->acceptedFileTypes(['image/jpeg', 'image/png', 'image/webp', 'image/avif'])
+                                ->acceptedFileTypes([
+                                    'image/jpeg',
+                                    'image/png',
+                                    'image/webp',
+                                ])
+                                ->maxSize(12 * 1024)
+                                ->rules([
+                                    'dimensions:max_width=6000,max_height=6000',
+                                ])
+                                ->helperText(
+                                    'برای هر تصویر: JPEG، PNG یا WebP؛ حداکثر ۱۲ مگابایت و ۶۰۰۰×۶۰۰۰ پیکسل.'
+                                )
                                 ->columnSpanFull(),
                             Forms\Components\Toggle::make('media_verified')
                                 ->label('تصاویر متعلق به همین محصول و تأییدشده هستند')
+                                ->helperText(
+                                    'با افزودن یا حذف تصویر، تأیید رسانه خودکار باطل می‌شود و باید دوباره بررسی شود.'
+                                )
                                 ->columnSpanFull(),
                         ]),
                     Forms\Components\Tabs\Tab::make('سئو')

@@ -143,11 +143,67 @@ class BakeryProductResource extends JsonResource
     {
         return $this->getMedia('catalog-main')
             ->concat($this->getMedia('catalog-gallery'))
-            ->map(fn ($media): array => [
-                'url' => $media->getFullUrl(),
-                'alt' => $media->getCustomProperty('alt', $this->name),
-                'verified' => (bool) $this->media_verified,
-            ])
+            ->map(function ($media): array {
+                $hasThumb = $media->hasGeneratedConversion(
+                    'thumb'
+                );
+
+                $hasCard = $media->hasGeneratedConversion(
+                    'card'
+                );
+
+                $hasDetail = $media->hasGeneratedConversion(
+                    'detail'
+                );
+
+                $srcSet = $hasDetail
+                    ? trim((string) $media->getSrcset('detail'))
+                    : '';
+
+                return [
+                    // Backward-compatible optimized URL.
+                    'url' => $hasDetail
+                        ? $media->getFullUrl('detail')
+                        : $media->getFullUrl(),
+
+                    'alt' => $media->getCustomProperty(
+                        'alt',
+                        $this->name,
+                    ),
+
+                    'verified' => (bool) $this->media_verified,
+
+                    'originalUrl' => $media->getFullUrl(),
+
+                    'thumbnailUrl' => $hasThumb
+                        ? $media->getFullUrl('thumb')
+                        : null,
+
+                    'cardUrl' => $hasCard
+                        ? $media->getFullUrl('card')
+                        : null,
+
+                    'detailUrl' => $hasDetail
+                        ? $media->getFullUrl('detail')
+                        : null,
+
+                    'srcSet' => $srcSet !== ''
+                        ? $srcSet
+                        : null,
+
+                    'width' => $media->getCustomProperty(
+                        'width'
+                    ),
+
+                    'height' => $media->getCustomProperty(
+                        'height'
+                    ),
+
+                    'mimeType' => $hasDetail
+                        ? 'image/webp'
+                        : $media->mime_type,
+                ];
+            })
             ->values()
             ->all();
     }

@@ -13,8 +13,10 @@ use Illuminate\Support\Str;
 use InvalidArgumentException;
 use Spatie\Activitylog\LogOptions;
 use Spatie\Activitylog\Traits\LogsActivity;
+use Spatie\Image\Enums\Fit;
 use Spatie\MediaLibrary\HasMedia;
 use Spatie\MediaLibrary\InteractsWithMedia;
+use Spatie\MediaLibrary\MediaCollections\Models\Media;
 use Spatie\Sluggable\HasSlug;
 use Spatie\Sluggable\SlugOptions;
 
@@ -204,10 +206,45 @@ class BakeryProduct extends Model implements HasMedia
     {
         $this->addMediaCollection('catalog-main')
             ->singleFile()
-            ->acceptsMimeTypes(['image/jpeg', 'image/png', 'image/webp', 'image/avif']);
+            ->acceptsMimeTypes([
+                'image/jpeg',
+                'image/png',
+                'image/webp',
+            ]);
 
         $this->addMediaCollection('catalog-gallery')
-            ->acceptsMimeTypes(['image/jpeg', 'image/png', 'image/webp', 'image/avif']);
+            ->acceptsMimeTypes([
+                'image/jpeg',
+                'image/png',
+                'image/webp',
+            ]);
+    }
+
+    public function registerMediaConversions(?Media $media = null): void
+    {
+        $collections = [
+            'catalog-main',
+            'catalog-gallery',
+        ];
+
+        $this->addMediaConversion('thumb')
+            ->performOnCollections(...$collections)
+            ->fit(Fit::Crop, 160, 160)
+            ->format('webp')
+            ->quality(80);
+
+        $this->addMediaConversion('card')
+            ->performOnCollections(...$collections)
+            ->fit(Fit::Max, 720, 720)
+            ->format('webp')
+            ->quality(82);
+
+        $this->addMediaConversion('detail')
+            ->performOnCollections(...$collections)
+            ->fit(Fit::Max, 1400, 1400)
+            ->format('webp')
+            ->quality(85)
+            ->withResponsiveImages();
     }
 
     public function category(): BelongsTo

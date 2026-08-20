@@ -2,14 +2,18 @@
 
 namespace App\Providers;
 
+use App\Models\BakeryProduct;
 use App\Models\Product;
 use App\Observers\ProductObserver;
 use App\Support\IranianMobile;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\ServiceProvider;
+use Spatie\MediaLibrary\MediaCollections\Events\MediaHasBeenAddedEvent;
+use Spatie\MediaLibrary\MediaCollections\Models\Media;
 use Throwable;
 
 class AppServiceProvider extends ServiceProvider
@@ -33,6 +37,86 @@ class AppServiceProvider extends ServiceProvider
         }
 
         Product::observe(ProductObserver::class);
+
+        Event::listen(
+            MediaHasBeenAddedEvent::class,
+            static function (MediaHasBeenAddedEvent $event): void {
+                $media = $event->media;
+                $model = $media->model;
+
+                if (! $model instanceof BakeryProduct) {
+                    return;
+                }
+
+                $dimensions = @getimagesize(
+                    $media->getPath()
+                );
+
+                if (is_array($dimensions)) {
+                    $media->setCustomProperty(
+                        'width',
+                        (int) $dimensions[0],
+                    );
+
+                    $media->setCustomProperty(
+                        'height',
+                        (int) $dimensions[1],
+                    );
+
+                    if (
+                        isset($dimensions['mime'])
+                        && is_string($dimensions['mime'])
+                    ) {
+                        $media->setCustomProperty(
+                            'detected_mime',
+                            $dimensions['mime'],
+                        );
+                    }
+
+                    $media->save();
+                }
+
+                if ($model->media_verified) {
+                    $model
+                        ->forceFill([
+                            'media_verified' => false,
+                        ])
+                        ->save();
+                }
+            },
+        );
+
+        Media::deleting(
+            static function (Media $media): void {
+                $bakeryProductMorphClass = (
+                    new BakeryProduct
+                )->getMorphClass();
+
+                if (
+                    (string) $media->model_type
+                    !== $bakeryProductMorphClass
+                ) {
+                    return;
+                }
+
+                $model = BakeryProduct::query()->find(
+                    $media->model_id
+                );
+
+                if (
+                    ! $model instanceof BakeryProduct
+                    || ! $model->media_verified
+                ) {
+                    return;
+                }
+
+                $model
+                    ->forceFill([
+                        'media_verified' => false,
+                    ])
+                    ->save();
+            },
+        );
 
         RateLimiter::for('otp-request', function (Request $request): array {
             try {
