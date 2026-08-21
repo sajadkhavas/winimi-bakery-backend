@@ -8,6 +8,8 @@ class SitemapCanonicalizationTest extends TestCase
 {
     public function test_backend_sitemap_redirects_to_canonical_storefront_sitemap(): void
     {
+        $this->withoutMiddleware();
+
         $this->get('/sitemap.xml')
             ->assertStatus(301)
             ->assertRedirect('https://winimibakery.com/sitemap.xml');
