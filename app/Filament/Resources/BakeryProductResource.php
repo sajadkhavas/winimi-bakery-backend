@@ -181,6 +181,15 @@ class BakeryProductResource extends Resource
                                         ->numeric()
                                         ->minValue(1)
                                         ->lt('regular_price_toman'),
+                                    Forms\Components\TextInput::make('packaging_fee_toman')
+                                        ->label('هزینه بسته‌بندی هر واحد (تومان)')
+                                        ->numeric()
+                                        ->minValue(0)
+                                        ->default(0)
+                                        ->suffix('تومان')
+                                        ->helperText(
+                                            'هزینه بسته‌بندی برای هر یک واحد از همین Variant است و در Checkout در تعداد ضرب می‌شود.'
+                                        ),
                                     Forms\Components\TextInput::make('stock_quantity')
                                         ->label('موجودی')
                                         ->numeric()

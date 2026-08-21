@@ -77,6 +77,7 @@ class PaymentFlowTest extends TestCase
             'sku' => 'COOKIE-001-6',
             'regular_price_toman' => 100_000,
             'sale_price_toman' => 80_000,
+            'packaging_fee_toman' => 10_000,
             'stock_quantity' => 5,
             'low_stock_threshold' => 2,
             'inventory_verified' => true,

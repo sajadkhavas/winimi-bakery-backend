@@ -19,6 +19,7 @@ class BakeryProductVariant extends Model
         'package_quantity',
         'regular_price_toman',
         'sale_price_toman',
+        'packaging_fee_toman',
         'stock_quantity',
         'low_stock_threshold',
         'min_order_quantity',
@@ -34,6 +35,7 @@ class BakeryProductVariant extends Model
         'package_quantity' => 'integer',
         'regular_price_toman' => 'integer',
         'sale_price_toman' => 'integer',
+        'packaging_fee_toman' => 'integer',
         'stock_quantity' => 'integer',
         'low_stock_threshold' => 'integer',
         'min_order_quantity' => 'integer',
@@ -50,11 +52,13 @@ class BakeryProductVariant extends Model
         static::creating(function (self $variant): void {
             $variant->public_id ??= (string) Str::ulid();
             self::validatePrices($variant);
+            self::validatePackagingFee($variant);
             self::validateOperationalLimits($variant);
         });
 
         static::updating(function (self $variant): void {
             self::validatePrices($variant);
+            self::validatePackagingFee($variant);
             self::validateOperationalLimits($variant);
         });
 
@@ -149,6 +153,15 @@ class BakeryProductVariant extends Model
         ) {
             throw new InvalidArgumentException(
                 'حداقل تعداد سفارش Variant نمی‌تواند بیشتر از حداکثر تعداد باشد.'
+            );
+        }
+    }
+
+    private static function validatePackagingFee(self $variant): void
+    {
+        if ((int) ($variant->packaging_fee_toman ?? 0) < 0) {
+            throw new InvalidArgumentException(
+                'هزینه بسته‌بندی Variant نمی‌تواند منفی باشد.'
             );
         }
     }

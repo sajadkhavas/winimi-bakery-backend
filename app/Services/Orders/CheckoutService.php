@@ -126,6 +126,7 @@ final class CheckoutService
 
         $itemSnapshots = [];
         $subtotal = 0;
+        $packagingTotal = 0;
         $productPreparationMinDays = 0;
         $productPreparationMaxDays = 0;
         $requiresConfiguredDeliveryZone = false;
@@ -207,6 +208,7 @@ final class CheckoutService
             $unitPrice = $variant->current_price_toman;
             $lineTotal = $unitPrice * $quantity;
             $subtotal += $lineTotal;
+            $packagingTotal += (int) $variant->packaging_fee_toman * $quantity;
 
             $productMinDays = (int) (
                 $product->preparation_min_days
@@ -287,9 +289,9 @@ final class CheckoutService
             'requires_cooling' => $requiresCooling,
             'subtotal_toman' => $subtotal,
             'delivery_fee_toman' => $quote['fee_toman'],
-            'packaging_fee_toman' => $quote['packaging_fee_toman'],
+            'packaging_fee_toman' => $packagingTotal,
             'discount_total_toman' => 0,
-            'grand_total_toman' => $subtotal + $quote['fee_toman'] + $quote['packaging_fee_toman'],
+            'grand_total_toman' => $subtotal + $quote['fee_toman'] + $packagingTotal,
             'item_count' => $items->sum('quantity'),
             'preparation_time_days' => $preparationMinDays,
             'preparation_max_days' => $preparationMaxDays,

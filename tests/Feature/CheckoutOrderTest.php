@@ -73,6 +73,7 @@ class CheckoutOrderTest extends TestCase
             'sku' => 'COOKIE-001-6',
             'regular_price_toman' => 100_000,
             'sale_price_toman' => 80_000,
+            'packaging_fee_toman' => 5_000,
             'stock_quantity' => 5,
             'low_stock_threshold' => 2,
             'inventory_verified' => true,
@@ -119,6 +120,7 @@ class CheckoutOrderTest extends TestCase
 
         $this->getJson('/api/catalog/products/chocolate-cookie')
             ->assertOk()
+            ->assertJsonPath('data.variants.0.packagingFeeToman', 5_000)
             ->assertJsonPath('data.variants.0.stock', 3);
     }
 
@@ -225,6 +227,55 @@ class CheckoutOrderTest extends TestCase
         $this->assertDatabaseCount('orders', 0);
     }
 
+    public function test_variant_packaging_fee_is_authoritative_over_global_and_zone_values(): void
+    {
+        config([
+            'winimi.checkout.packaging_fee_toman' => 99_000,
+        ]);
+
+        $this->variant->update([
+            'packaging_fee_toman' => 7_000,
+        ]);
+
+        DeliveryZone::query()->create([
+            'name' => 'تهران مرکزی',
+            'province' => 'تهران',
+            'city' => 'تهران',
+            'standard_enabled' => true,
+            'chilled_enabled' => true,
+            'pickup_enabled' => true,
+            'standard_fee_toman' => 40_000,
+            'chilled_fee_toman' => 100_000,
+            'pickup_fee_toman' => 0,
+            'packaging_fee_toman' => 88_000,
+            'preparation_min_days' => 0,
+            'preparation_max_days' => 0,
+            'priority' => 1,
+            'is_active' => true,
+        ]);
+
+        $this->checkout('checkout-key-packaging-01', 2)
+            ->assertCreated()
+            ->assertJsonPath('data.order.totals.subtotalToman', 160_000)
+            ->assertJsonPath('data.order.totals.deliveryFeeToman', 40_000)
+            ->assertJsonPath('data.order.totals.packagingFeeToman', 14_000)
+            ->assertJsonPath('data.order.totals.grandTotalToman', 214_000);
+
+        $this->assertDatabaseHas('orders', [
+            'packaging_fee_toman' => 14_000,
+            'grand_total_toman' => 214_000,
+        ]);
+    }
+
+    public function test_variant_packaging_fee_cannot_be_negative(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+
+        $this->variant->update([
+            'packaging_fee_toman' => -1,
+        ]);
+    }
+
     public function test_configured_zone_policy_rejects_fallback_destination(): void
     {
         $this->variant->product()->update([
@@ -269,7 +320,7 @@ class CheckoutOrderTest extends TestCase
             ->assertJsonPath('data.order.preparation.minDays', 2)
             ->assertJsonPath('data.order.preparation.maxDays', 4)
             ->assertJsonPath('data.order.totals.deliveryFeeToman', 40_000)
-            ->assertJsonPath('data.order.totals.packagingFeeToman', 15_000);
+            ->assertJsonPath('data.order.totals.packagingFeeToman', 5_000);
     }
 
     public function test_pickup_only_product_rejects_shipping_but_allows_pickup(): void
