@@ -5,6 +5,11 @@ use Illuminate\Support\Facades\Route;
 Route::get('/', fn () => redirect('/admin'));
 Route::get('/health', fn () => response()->json(['status' => 'ok', 'time' => now()->toIso8601String()]));
 
+Route::get('/sitemap.xml', fn () => redirect()->away(
+    'https://winimibakery.com/sitemap.xml',
+    301,
+))->name('canonical-sitemap');
+
 // Short URL redirect
 Route::get('/s/{code}', function (string $code) {
     $shortUrl = \App\Models\ShortUrl::where('code', $code)->first();
