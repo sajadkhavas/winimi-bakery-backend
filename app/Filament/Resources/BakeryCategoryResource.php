@@ -52,6 +52,9 @@ class BakeryCategoryResource extends Resource
                         ->columnSpanFull(),
                     Forms\Components\Toggle::make('is_active')
                         ->label('فعال در فروشگاه')
+                        ->helperText(
+                            'فعال بودن دسته شرط لازم انتشار محصولات آن است، اما به‌تنهایی هیچ محصولی را منتشر نمی‌کند.'
+                        )
                         ->default(true),
                     Forms\Components\TextInput::make('sort_order')
                         ->label('ترتیب نمایش')
