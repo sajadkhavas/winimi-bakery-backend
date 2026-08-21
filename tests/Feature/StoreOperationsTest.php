@@ -88,7 +88,7 @@ class StoreOperationsTest extends TestCase
         ]);
     }
 
-    public function test_customer_addresses_are_owned_and_checkout_snapshots_database_delivery_rules(): void
+    public function test_customer_addresses_are_owned_and_checkout_ignores_legacy_delivery_zone_pricing(): void
     {
         $address = $this->actingAs($this->customer, 'customer')
             ->postJson('/api/account/addresses', [
@@ -144,22 +144,37 @@ class StoreOperationsTest extends TestCase
                     'variantId' => $this->variant->public_id,
                     'quantity' => 1,
                 ]],
-            ], ['Idempotency-Key' => 'phase15-checkout-key-0001'])
+            ], [
+                'Idempotency-Key' => 'phase15-checkout-key-0001',
+            ])
             ->assertCreated()
-            ->assertJsonPath('data.order.delivery.zone.id', $zone->public_id)
-            ->assertJsonPath('data.order.totals.deliveryFeeToman', 25_000)
+            ->assertJsonPath('data.order.delivery.method', 'standard')
+            ->assertJsonPath('data.order.delivery.zone', null)
+            ->assertJsonPath('data.order.delivery.feeToman', 0)
+            ->assertJsonPath('data.order.delivery.feeIncludedInOrder', false)
+            ->assertJsonPath('data.order.totals.deliveryFeeToman', 0)
             ->assertJsonPath('data.order.totals.packagingFeeToman', 5_000)
-            ->assertJsonPath('data.order.totals.grandTotalToman', 110_000)
+            ->assertJsonPath('data.order.totals.grandTotalToman', 85_000)
             ->assertJsonPath('data.order.preparation.minDays', 2)
-            ->assertJsonPath('data.order.preparation.maxDays', 3)
-            ->assertJsonPath('data.order.recipient.address', 'خیابان نمونه، پلاک یک');
+            ->assertJsonPath('data.order.preparation.maxDays', 2)
+            ->assertJsonPath(
+                'data.order.recipient.address',
+                'خیابان نمونه، پلاک یک',
+            );
 
         $this->assertDatabaseHas('orders', [
-            'delivery_zone_id' => $zone->getKey(),
-            'delivery_fee_toman' => 25_000,
+            'delivery_zone_id' => null,
+            'delivery_fee_toman' => 0,
             'packaging_fee_toman' => 5_000,
+            'grand_total_toman' => 85_000,
             'preparation_time_days' => 2,
-            'preparation_max_days' => 3,
+            'preparation_max_days' => 2,
+        ]);
+
+        $this->assertDatabaseHas('delivery_zones', [
+            'id' => $zone->getKey(),
+            'standard_fee_toman' => 25_000,
+            'packaging_fee_toman' => 55_000,
         ]);
     }
 

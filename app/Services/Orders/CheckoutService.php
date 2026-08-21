@@ -8,7 +8,6 @@ use App\Enums\OrderStatus;
 use App\Enums\PaymentStatus;
 use App\Exceptions\IdempotencyConflict;
 use App\Exceptions\InventoryUnavailable;
-use App\Models\BakeryProduct;
 use App\Models\BakeryProductVariant;
 use App\Models\Customer;
 use App\Models\CustomerAddress;
@@ -109,7 +108,7 @@ final class CheckoutService
             ]);
         }
 
-        $deliveryMethod = DeliveryMethod::from($payload['deliveryMethod']);
+        $deliveryMethod = DeliveryMethod::Standard;
         $requiresCooling = $variants->contains(
             fn (BakeryProductVariant $variant): bool => (bool) $variant->product?->requires_cooling,
         );
@@ -129,7 +128,6 @@ final class CheckoutService
         $packagingTotal = 0;
         $productPreparationMinDays = 0;
         $productPreparationMaxDays = 0;
-        $requiresConfiguredDeliveryZone = false;
 
         foreach ($items as $item) {
             /** @var BakeryProductVariant $variant */
@@ -170,24 +168,6 @@ final class CheckoutService
                         "حداکثر تعداد سفارش «{$variant->name}» {$variant->max_order_quantity} عدد است.",
                     ],
                 ]);
-            }
-
-            if (
-                $product->shipping_scope === BakeryProduct::SHIPPING_PICKUP_ONLY
-                && $deliveryMethod !== DeliveryMethod::Pickup
-            ) {
-                throw ValidationException::withMessages([
-                    'deliveryMethod' => [
-                        "محصول «{$product->name}» فقط با تحویل حضوری قابل سفارش است.",
-                    ],
-                ]);
-            }
-
-            if (
-                $product->shipping_scope === BakeryProduct::SHIPPING_CONFIGURED_ZONES
-                && $deliveryMethod !== DeliveryMethod::Pickup
-            ) {
-                $requiresConfiguredDeliveryZone = true;
             }
 
             $reserved = (int) InventoryReservation::query()
@@ -255,14 +235,6 @@ final class CheckoutService
             $subtotal,
             $requiresCooling,
         );
-        if ($requiresConfiguredDeliveryZone && $quote['zone'] === null) {
-            throw ValidationException::withMessages([
-                'deliveryMethod' => [
-                    'برای یک یا چند محصول این سبد، مقصد باید در محدوده ارسال فعال فروشگاه باشد.',
-                ],
-            ]);
-        }
-
         $preparationMinDays = max(
             $productPreparationMinDays,
             $quote['preparation_min_days'],
@@ -285,13 +257,13 @@ final class CheckoutService
             'status' => OrderStatus::AwaitingPayment,
             'payment_status' => PaymentStatus::Unpaid,
             'delivery_method' => $deliveryMethod,
-            'delivery_zone_id' => $quote['zone']?->getKey(),
+            'delivery_zone_id' => null,
             'requires_cooling' => $requiresCooling,
             'subtotal_toman' => $subtotal,
-            'delivery_fee_toman' => $quote['fee_toman'],
+            'delivery_fee_toman' => 0,
             'packaging_fee_toman' => $packagingTotal,
             'discount_total_toman' => 0,
-            'grand_total_toman' => $subtotal + $quote['fee_toman'] + $packagingTotal,
+            'grand_total_toman' => $subtotal + $packagingTotal,
             'item_count' => $items->sum('quantity'),
             'preparation_time_days' => $preparationMinDays,
             'preparation_max_days' => $preparationMaxDays,
@@ -390,7 +362,7 @@ final class CheckoutService
                 'postalCode' => trim((string) ($payload['customer']['postalCode'] ?? '')),
                 'notes' => trim((string) ($payload['customer']['notes'] ?? '')),
             ],
-            'deliveryMethod' => $payload['deliveryMethod'],
+            'deliveryMethod' => DeliveryMethod::Standard->value,
             'items' => $items,
         ];
     }

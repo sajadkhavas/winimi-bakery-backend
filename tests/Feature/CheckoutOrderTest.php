@@ -89,10 +89,18 @@ class CheckoutOrderTest extends TestCase
         $response
             ->assertCreated()
             ->assertJsonPath('success', true)
+            ->assertJsonPath('data.order.delivery.method', 'standard')
+            ->assertJsonPath('data.order.delivery.feeToman', 0)
+            ->assertJsonPath('data.order.delivery.feePayment', 'pay_on_delivery_to_courier')
+            ->assertJsonPath('data.order.delivery.feeIncludedInOrder', false)
+            ->assertJsonPath(
+                'data.order.delivery.notice',
+                'هزینه ارسال در مبلغ سفارش محاسبه نشده و هنگام تحویل مستقیماً به پیک پرداخت می‌شود.',
+            )
             ->assertJsonPath('data.order.totals.subtotalToman', 160_000)
-            ->assertJsonPath('data.order.totals.deliveryFeeToman', 30_000)
+            ->assertJsonPath('data.order.totals.deliveryFeeToman', 0)
             ->assertJsonPath('data.order.totals.packagingFeeToman', 10_000)
-            ->assertJsonPath('data.order.totals.grandTotalToman', 200_000)
+            ->assertJsonPath('data.order.totals.grandTotalToman', 170_000)
             ->assertJsonPath('data.order.items.0.unitPriceToman', 80_000)
             ->assertJsonPath('data.order.items.0.productName', 'کوکی شکلاتی')
             ->assertJsonPath('data.payment.available', false)
@@ -101,9 +109,13 @@ class CheckoutOrderTest extends TestCase
         $this->assertDatabaseHas('orders', [
             'customer_id' => $this->customer->getKey(),
             'status' => OrderStatus::AwaitingPayment->value,
+            'delivery_zone_id' => null,
+            'delivery_fee_toman' => 0,
             'subtotal_toman' => 160_000,
-            'grand_total_toman' => 200_000,
+            'packaging_fee_toman' => 10_000,
+            'grand_total_toman' => 170_000,
         ]);
+
         $this->assertDatabaseHas('order_items', [
             'product_name' => 'کوکی شکلاتی',
             'variant_name' => 'بسته ۶ عددی',
@@ -111,17 +123,38 @@ class CheckoutOrderTest extends TestCase
             'quantity' => 2,
             'line_total_toman' => 160_000,
         ]);
+
         $this->assertDatabaseHas('inventory_reservations', [
             'variant_id' => $this->variant->getKey(),
             'quantity' => 2,
             'status' => InventoryReservationStatus::Active->value,
         ]);
-        $this->assertSame(5, $this->variant->fresh()->stock_quantity);
+
+        $this->assertSame(
+            5,
+            $this->variant->fresh()->stock_quantity,
+        );
 
         $this->getJson('/api/catalog/products/chocolate-cookie')
             ->assertOk()
             ->assertJsonPath('data.variants.0.packagingFeeToman', 5_000)
             ->assertJsonPath('data.variants.0.stock', 3);
+
+        $this->getJson(
+            '/api/delivery/options?subtotalToman=160000&requiresCooling=0',
+        )
+            ->assertOk()
+            ->assertJsonPath('data.zone', null)
+            ->assertJsonPath('data.feePayment', 'pay_on_delivery_to_courier')
+            ->assertJsonPath('data.feeIncludedInOrder', false)
+            ->assertJsonPath(
+                'data.notice',
+                'هزینه ارسال در مبلغ سفارش محاسبه نشده و هنگام تحویل مستقیماً به پیک پرداخت می‌شود.',
+            )
+            ->assertJsonCount(1, 'data.methods')
+            ->assertJsonPath('data.methods.0.method', 'standard')
+            ->assertJsonPath('data.methods.0.enabled', true)
+            ->assertJsonPath('data.methods.0.feeToman', 0);
     }
 
     public function test_same_idempotency_key_replays_one_order_and_rejects_a_different_payload(): void
@@ -156,19 +189,33 @@ class CheckoutOrderTest extends TestCase
         $this->assertSame(5, $this->variant->fresh()->stock_quantity);
     }
 
-    public function test_cooling_products_require_chilled_delivery_or_pickup(): void
+    public function test_cooling_products_keep_operational_flag_on_standard_merchant_delivery_and_reject_legacy_chilled(): void
     {
-        $this->variant->product()->update(['requires_cooling' => true]);
+        $this->variant->product()->update([
+            'requires_cooling' => true,
+        ]);
 
-        $this->checkout('checkout-key-000005', 1, 'standard')
+        $this->checkout(
+            'checkout-key-000005',
+            1,
+            'standard',
+        )
+            ->assertCreated()
+            ->assertJsonPath('data.order.delivery.method', 'standard')
+            ->assertJsonPath('data.order.delivery.requiresCooling', true)
+            ->assertJsonPath('data.order.delivery.feeToman', 0)
+            ->assertJsonPath('data.order.totals.deliveryFeeToman', 0)
+            ->assertJsonPath('data.order.totals.grandTotalToman', 85_000);
+
+        $this->checkout(
+            'checkout-key-000006',
+            1,
+            'chilled',
+        )
             ->assertUnprocessable()
             ->assertJsonValidationErrors('deliveryMethod');
 
-        $this->checkout('checkout-key-000006', 1, 'chilled')
-            ->assertCreated()
-            ->assertJsonPath('data.order.delivery.method', 'chilled')
-            ->assertJsonPath('data.order.delivery.requiresCooling', true)
-            ->assertJsonPath('data.order.totals.deliveryFeeToman', 90_000);
+        $this->assertDatabaseCount('orders', 1);
     }
 
     public function test_checkout_enforces_variant_minimum_and_maximum_order_quantities(): void
@@ -227,7 +274,7 @@ class CheckoutOrderTest extends TestCase
         $this->assertDatabaseCount('orders', 0);
     }
 
-    public function test_variant_packaging_fee_is_authoritative_over_global_and_zone_values(): void
+    public function test_variant_packaging_fee_is_authoritative_and_legacy_zone_pricing_is_ignored(): void
     {
         config([
             'winimi.checkout.packaging_fee_toman' => 99_000,
@@ -254,16 +301,22 @@ class CheckoutOrderTest extends TestCase
             'is_active' => true,
         ]);
 
-        $this->checkout('checkout-key-packaging-01', 2)
+        $this->checkout(
+            'checkout-key-packaging-01',
+            2,
+        )
             ->assertCreated()
+            ->assertJsonPath('data.order.delivery.zone', null)
             ->assertJsonPath('data.order.totals.subtotalToman', 160_000)
-            ->assertJsonPath('data.order.totals.deliveryFeeToman', 40_000)
+            ->assertJsonPath('data.order.totals.deliveryFeeToman', 0)
             ->assertJsonPath('data.order.totals.packagingFeeToman', 14_000)
-            ->assertJsonPath('data.order.totals.grandTotalToman', 214_000);
+            ->assertJsonPath('data.order.totals.grandTotalToman', 174_000);
 
         $this->assertDatabaseHas('orders', [
+            'delivery_zone_id' => null,
+            'delivery_fee_toman' => 0,
             'packaging_fee_toman' => 14_000,
-            'grand_total_toman' => 214_000,
+            'grand_total_toman' => 174_000,
         ]);
     }
 
@@ -276,20 +329,29 @@ class CheckoutOrderTest extends TestCase
         ]);
     }
 
-    public function test_configured_zone_policy_rejects_fallback_destination(): void
+    public function test_configured_zone_scope_is_legacy_metadata_and_does_not_gate_new_checkout(): void
     {
         $this->variant->product()->update([
             'shipping_scope' => BakeryProduct::SHIPPING_CONFIGURED_ZONES,
         ]);
 
-        $this->checkout('checkout-key-zone-0001', 1)
-            ->assertUnprocessable()
-            ->assertJsonValidationErrors('deliveryMethod');
+        $this->checkout(
+            'checkout-key-zone-0001',
+            1,
+        )
+            ->assertCreated()
+            ->assertJsonPath('data.order.delivery.method', 'standard')
+            ->assertJsonPath('data.order.delivery.zone', null)
+            ->assertJsonPath('data.order.totals.deliveryFeeToman', 0)
+            ->assertJsonPath('data.order.totals.grandTotalToman', 85_000);
 
-        $this->assertDatabaseCount('orders', 0);
+        $this->assertDatabaseHas('orders', [
+            'delivery_zone_id' => null,
+            'delivery_fee_toman' => 0,
+        ]);
     }
 
-    public function test_configured_zone_and_preparation_ranges_are_enforced(): void
+    public function test_legacy_zone_does_not_override_product_preparation_or_delivery_total(): void
     {
         $this->variant->product()->update([
             'shipping_scope' => BakeryProduct::SHIPPING_CONFIGURED_ZONES,
@@ -314,28 +376,76 @@ class CheckoutOrderTest extends TestCase
             'is_active' => true,
         ]);
 
-        $this->checkout('checkout-key-zone-0002', 1)
+        $this->checkout(
+            'checkout-key-zone-0002',
+            1,
+        )
             ->assertCreated()
-            ->assertJsonPath('data.order.delivery.zone.name', 'تهران مرکزی')
-            ->assertJsonPath('data.order.preparation.minDays', 2)
-            ->assertJsonPath('data.order.preparation.maxDays', 4)
-            ->assertJsonPath('data.order.totals.deliveryFeeToman', 40_000)
-            ->assertJsonPath('data.order.totals.packagingFeeToman', 5_000);
+            ->assertJsonPath('data.order.delivery.zone', null)
+            ->assertJsonPath('data.order.preparation.minDays', 1)
+            ->assertJsonPath('data.order.preparation.maxDays', 3)
+            ->assertJsonPath('data.order.totals.deliveryFeeToman', 0)
+            ->assertJsonPath('data.order.totals.packagingFeeToman', 5_000)
+            ->assertJsonPath('data.order.totals.grandTotalToman', 85_000);
     }
 
-    public function test_pickup_only_product_rejects_shipping_but_allows_pickup(): void
+    public function test_pickup_only_scope_is_legacy_metadata_and_new_checkout_rejects_pickup_method(): void
     {
         $this->variant->product()->update([
             'shipping_scope' => BakeryProduct::SHIPPING_PICKUP_ONLY,
         ]);
 
-        $this->checkout('checkout-key-pickup-01', 1, 'standard')
+        $this->checkout(
+            'checkout-key-pickup-01',
+            1,
+            'standard',
+        )
+            ->assertCreated()
+            ->assertJsonPath('data.order.delivery.method', 'standard')
+            ->assertJsonPath('data.order.totals.deliveryFeeToman', 0);
+
+        $this->checkout(
+            'checkout-key-pickup-02',
+            1,
+            'pickup',
+        )
             ->assertUnprocessable()
             ->assertJsonValidationErrors('deliveryMethod');
 
-        $this->checkout('checkout-key-pickup-02', 1, 'pickup')
-            ->assertCreated()
-            ->assertJsonPath('data.order.delivery.method', 'pickup');
+        $this->assertDatabaseCount('orders', 1);
+    }
+
+    public function test_standard_merchant_delivery_requires_destination_address(): void
+    {
+        $payload = $this->payload(1);
+
+        unset(
+            $payload['customer']['province'],
+            $payload['customer']['city'],
+            $payload['customer']['address'],
+        );
+
+        $this->actingAs(
+            $this->customer,
+            'customer',
+        )
+            ->postJson(
+                '/api/checkout',
+                $payload,
+                [
+                    'Idempotency-Key' => 'checkout-address-required-01',
+                    'Origin' => 'http://localhost:5173',
+                    'Referer' => 'http://localhost:5173/',
+                ],
+            )
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors([
+                'customer.province',
+                'customer.city',
+                'customer.address',
+            ]);
+
+        $this->assertDatabaseCount('orders', 0);
     }
 
     public function test_customer_can_only_view_own_orders_and_cancel_unpaid_order(): void

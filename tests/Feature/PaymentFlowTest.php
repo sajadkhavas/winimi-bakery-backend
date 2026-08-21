@@ -278,7 +278,7 @@ class PaymentFlowTest extends TestCase
             ->assertJsonPath('data.payment.referenceId', '987654321');
 
         Http::assertSent(fn (Request $request): bool => $request->url() === 'https://gateway.test/request'
-            && $request['amount'] === 1_200_000
+            && $request['amount'] === 900_000
             && $request['merchant_id'] === '00000000-0000-0000-0000-000000000000');
 
         $attempt = PaymentAttempt::query()->firstOrFail();

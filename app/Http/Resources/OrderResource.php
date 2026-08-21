@@ -3,6 +3,7 @@
 namespace App\Http\Resources;
 
 use App\Models\OrderStatusHistory;
+use App\Services\Store\DeliveryConfigurationService;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -22,6 +23,9 @@ class OrderResource extends JsonResource
                 'methodLabel' => $this->delivery_method->label(),
                 'requiresCooling' => $this->requires_cooling,
                 'feeToman' => $this->delivery_fee_toman,
+                'feePayment' => DeliveryConfigurationService::FEE_PAYMENT_MODE,
+                'feeIncludedInOrder' => false,
+                'notice' => DeliveryConfigurationService::CUSTOMER_NOTICE,
                 'zone' => $this->resource->relationLoaded('deliveryZone') && $this->deliveryZone
                     ? [
                         'id' => $this->deliveryZone->public_id,
