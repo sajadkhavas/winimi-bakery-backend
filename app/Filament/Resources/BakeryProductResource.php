@@ -10,6 +10,7 @@ use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 
 class BakeryProductResource extends Resource
 {
@@ -69,8 +70,17 @@ class BakeryProductResource extends Resource
                                 ->columns(2),
                             Forms\Components\Section::make('انتشار و تحویل')
                                 ->schema([
+                                    Forms\Components\Placeholder::make('launch_readiness')
+                                        ->label('وضعیت انتشار')
+                                        ->content(
+                                            fn (?BakeryProduct $record): string => self::launchReadinessSummary($record)
+                                        )
+                                        ->columnSpanFull(),
                                     Forms\Components\Toggle::make('is_active')
                                         ->label('فعال در فروشگاه')
+                                        ->helperText(
+                                            'این گزینه فقط یکی از شروط انتشار است. محصول فقط وقتی در فروشگاه دیده می‌شود که دسته فعال، حداقل یک Variant قابل‌فروش فعال و تأییدهای محتوا، رسانه و موجودی هم کامل باشند.'
+                                        )
                                         ->default(false),
                                     Forms\Components\Toggle::make('is_featured')
                                         ->label('پیشنهاد وینیمی')
@@ -191,6 +201,9 @@ class BakeryProductResource extends Resource
                                         ->label('انتخاب پیش‌فرض'),
                                     Forms\Components\Toggle::make('is_active')
                                         ->label('قابل فروش')
+                                        ->helperText(
+                                            'Variant فعال وارد Gate انتشار می‌شود و موجودی واقعی آن باید تأیید شده باشد.'
+                                        )
                                         ->default(true),
                                     Forms\Components\TextInput::make('sort_order')
                                         ->label('ترتیب')
@@ -295,6 +308,9 @@ class BakeryProductResource extends Resource
     public static function table(Table $table): Table
     {
         return $table
+            ->modifyQueryUsing(
+                fn (Builder $query): Builder => $query->with(['category', 'variants'])
+            )
             ->columns([
                 Tables\Columns\SpatieMediaLibraryImageColumn::make('main_image')
                     ->label('تصویر')
@@ -308,6 +324,22 @@ class BakeryProductResource extends Resource
                 Tables\Columns\TextColumn::make('product_code')
                     ->label('کد')
                     ->searchable(),
+                Tables\Columns\TextColumn::make('launch_readiness')
+                    ->label('وضعیت انتشار')
+                    ->state(
+                        fn (BakeryProduct $record): string => self::launchBlockers($record) === []
+                                ? 'آماده انتشار'
+                                : 'مسدود'
+                    )
+                    ->badge()
+                    ->color(
+                        fn (string $state): string => $state === 'آماده انتشار'
+                                ? 'success'
+                                : 'warning'
+                    )
+                    ->description(
+                        fn (BakeryProduct $record): ?string => self::launchBlockerSummary($record)
+                    ),
                 Tables\Columns\TextColumn::make('category.name')
                     ->label('دسته')
                     ->badge()
@@ -385,6 +417,82 @@ class BakeryProductResource extends Resource
                 ]),
             ])
             ->defaultSort('sort_order');
+    }
+
+    private static function launchReadinessSummary(
+        ?BakeryProduct $record,
+    ): string {
+        if ($record === null) {
+            return 'پس از ذخیره محصول، وضعیت دقیق انتشار اینجا نمایش داده می‌شود.';
+        }
+
+        $blockers = self::launchBlockers($record);
+
+        if ($blockers === []) {
+            return 'آماده انتشار — تمام Gateهای فعلی محصول عبور کرده‌اند.';
+        }
+
+        return 'مسدود — بر اساس آخرین وضعیت ذخیره‌شده: '
+            .implode(' | ', $blockers);
+    }
+
+    private static function launchBlockerSummary(
+        BakeryProduct $record,
+    ): ?string {
+        $blockers = self::launchBlockers($record);
+
+        return $blockers === []
+            ? null
+            : implode('، ', $blockers);
+    }
+
+    /**
+     * @return list<string>
+     */
+    private static function launchBlockers(
+        BakeryProduct $record,
+    ): array {
+        $record->loadMissing([
+            'category',
+            'variants',
+        ]);
+
+        $activeVariants = $record->variants
+            ->filter(
+                fn ($variant): bool => (bool) $variant->is_active
+            );
+
+        $blockers = [];
+
+        if (! (bool) $record->is_active) {
+            $blockers[] = 'محصول غیرفعال است';
+        }
+
+        if (! (bool) ($record->category?->is_active ?? false)) {
+            $blockers[] = 'دسته‌بندی غیرفعال است';
+        }
+
+        if ($activeVariants->isEmpty()) {
+            $blockers[] = 'Variant قابل‌فروش فعال ندارد';
+        }
+
+        if (! (bool) $record->content_verified) {
+            $blockers[] = 'اطلاعات محصول تأیید نشده است';
+        }
+
+        if (! (bool) $record->media_verified) {
+            $blockers[] = 'رسانه محصول تأیید نشده است';
+        }
+
+        if (
+            $activeVariants->contains(
+                fn ($variant): bool => ! (bool) $variant->inventory_verified
+            )
+        ) {
+            $blockers[] = 'موجودی Variant فعال تأیید نشده است';
+        }
+
+        return $blockers;
     }
 
     public static function getPages(): array
