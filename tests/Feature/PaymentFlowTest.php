@@ -238,6 +238,7 @@ class PaymentFlowTest extends TestCase
     {
         config([
             'winimi.payment.provider' => 'zarinpal',
+            'winimi.payment.currency' => 'IRR',
             'winimi.payment.zarinpal.merchant_id' => '00000000-0000-0000-0000-000000000000',
             'winimi.payment.zarinpal.request_url' => 'https://gateway.test/request',
             'winimi.payment.zarinpal.verify_url' => 'https://gateway.test/verify',
@@ -279,6 +280,13 @@ class PaymentFlowTest extends TestCase
 
         Http::assertSent(fn (Request $request): bool => $request->url() === 'https://gateway.test/request'
             && $request['amount'] === 900_000
+            && $request['currency'] === 'IRR'
+            && $request['merchant_id'] === '00000000-0000-0000-0000-000000000000');
+
+        Http::assertSent(fn (Request $request): bool => $request->url() === 'https://gateway.test/verify'
+            && $request['amount'] === 900_000
+            && $request['currency'] === 'IRR'
+            && $request['authority'] === 'A000000000000000000000000000000001'
             && $request['merchant_id'] === '00000000-0000-0000-0000-000000000000');
 
         $attempt = PaymentAttempt::query()->firstOrFail();

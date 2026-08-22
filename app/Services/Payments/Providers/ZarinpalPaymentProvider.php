@@ -26,6 +26,7 @@ final class ZarinpalPaymentProvider implements PaymentProvider
         $payload = [
             'merchant_id' => $merchantId,
             'amount' => $attempt->amount_provider,
+            'currency' => (string) config('winimi.payment.currency', 'IRR'),
             'callback_url' => (string) config('winimi.payment.callback_url'),
             'description' => "پرداخت سفارش {$order->order_number} وینیمی بیکری",
         ];
@@ -57,6 +58,7 @@ final class ZarinpalPaymentProvider implements PaymentProvider
             requestPayload: [
                 'merchant_id' => '[REDACTED]',
                 'amount' => $attempt->amount_provider,
+                'currency' => (string) config('winimi.payment.currency', 'IRR'),
                 'callback_url' => (string) config('winimi.payment.callback_url'),
                 'description' => $payload['description'],
             ],
@@ -82,6 +84,7 @@ final class ZarinpalPaymentProvider implements PaymentProvider
         $payload = [
             'merchant_id' => $this->merchantId(),
             'amount' => $attempt->amount_provider,
+            'currency' => (string) config('winimi.payment.currency', 'IRR'),
             'authority' => $attempt->authority,
         ];
 
