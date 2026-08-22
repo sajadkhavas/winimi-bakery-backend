@@ -39,6 +39,8 @@ class Order extends Model
         'postal_code',
         'notes',
         'tracking_code',
+        'courier_name',
+        'courier_mobile',
         'reservation_expires_at',
         'placed_at',
         'paid_at',

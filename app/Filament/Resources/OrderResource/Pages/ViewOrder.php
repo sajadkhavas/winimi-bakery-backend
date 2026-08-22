@@ -18,21 +18,16 @@ class ViewOrder extends ViewRecord
     protected function getHeaderActions(): array
     {
         return [
-            Actions\Action::make('confirm')
-                ->label('تأیید سفارش')
-                ->icon('heroicon-o-check-badge')
-                ->color('success')
-                ->requiresConfirmation()
-                ->visible(fn (): bool => $this->order()->status === OrderStatus::Paid)
-                ->action(function (): void {
-                    $this->transition(OrderStatus::Confirmed);
-                }),
             Actions\Action::make('prepare')
                 ->label('شروع آماده‌سازی')
                 ->icon('heroicon-o-fire')
                 ->color('warning')
                 ->requiresConfirmation()
-                ->visible(fn (): bool => $this->order()->status === OrderStatus::Confirmed)
+                ->visible(fn (): bool => in_array(
+                    $this->order()->status,
+                    [OrderStatus::Paid, OrderStatus::Confirmed],
+                    true,
+                ))
                 ->action(function (): void {
                     $this->transition(OrderStatus::Preparing);
                 }),
@@ -50,11 +45,22 @@ class ViewOrder extends ViewRecord
                 ->icon('heroicon-o-truck')
                 ->color('primary')
                 ->form([
+                    Forms\Components\TextInput::make('courierName')
+                        ->label('نام پیک')
+                        ->maxLength(160)
+                        ->helperText('اختیاری'),
+                    Forms\Components\TextInput::make('courierMobile')
+                        ->label('موبایل پیک')
+                        ->tel()
+                        ->maxLength(32)
+                        ->helperText('اختیاری'),
                     Forms\Components\TextInput::make('trackingCode')
                         ->label('کد پیگیری')
-                        ->required()
-                        ->maxLength(160),
-                    Forms\Components\Textarea::make('note')->label('یادداشت')->maxLength(1000),
+                        ->maxLength(160)
+                        ->helperText('اختیاری'),
+                    Forms\Components\Textarea::make('note')
+                        ->label('یادداشت')
+                        ->maxLength(1000),
                 ])
                 ->visible(fn (): bool => $this->order()->status === OrderStatus::Ready
                     && $this->order()->delivery_method !== DeliveryMethod::Pickup)
@@ -63,6 +69,8 @@ class ViewOrder extends ViewRecord
                         OrderStatus::Dispatched,
                         $data['note'] ?? null,
                         $data['trackingCode'] ?? null,
+                        $data['courierName'] ?? null,
+                        $data['courierMobile'] ?? null,
                     );
                 }),
             Actions\Action::make('deliver')
@@ -123,6 +131,8 @@ class ViewOrder extends ViewRecord
         OrderStatus $target,
         ?string $note = null,
         ?string $trackingCode = null,
+        ?string $courierName = null,
+        ?string $courierMobile = null,
     ): void {
         app(OrderLifecycleService::class)->transitionByAdmin(
             $this->order(),
@@ -130,6 +140,8 @@ class ViewOrder extends ViewRecord
             auth()->id(),
             $note,
             $trackingCode,
+            $courierName,
+            $courierMobile,
         );
         $this->reloadPage();
     }

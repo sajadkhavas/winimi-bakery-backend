@@ -21,7 +21,7 @@ enum OrderStatus: string
             self::Paid => 'پرداخت‌شده',
             self::Confirmed => 'تأییدشده',
             self::Preparing => 'در حال آماده‌سازی',
-            self::Ready => 'آماده ارسال یا تحویل',
+            self::Ready => 'آماده ارسال',
             self::Dispatched => 'ارسال‌شده',
             self::Delivered => 'تحویل‌شده',
             self::Cancelled => 'لغوشده',
