@@ -8,8 +8,11 @@ use RuntimeException;
 final class SeoGuideManifest
 {
     public const DEFAULT_PATH = 'database/content/winimi-seo-guides-v1.json';
+
     public const VERSION = 'winimi-seo-guides-v1';
+
     public const TOPIC = 'راهنمای انتخاب و سفارش';
+
     public const GUIDE_COUNT = 5;
 
     /**
