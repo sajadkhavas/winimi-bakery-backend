@@ -56,7 +56,10 @@ class SyncSeoGuides extends Command
                 continue;
             }
 
-            if ($this->postDiffers($post, $guide) || ($publish && ! $post->published()->exists())) {
+            if (
+                $this->postDiffers($post, $guide)
+                || ($publish && ($post->status !== 'published' || $post->published_at === null))
+            ) {
                 $changed++;
             }
         }
