@@ -53,6 +53,7 @@ class SyncSeoGuides extends Command
             if (! $post) {
                 $new++;
                 $changed++;
+
                 continue;
             }
 
@@ -150,6 +151,7 @@ class SyncSeoGuides extends Command
             $post = BakeryPost::query()->where('slug', $guide['slug'])->first();
             if (! $post || $this->postDiffers($post, $guide)) {
                 $failures++;
+
                 continue;
             }
             if ($publish && ($post->status !== 'published' || $post->published_at === null)) {
