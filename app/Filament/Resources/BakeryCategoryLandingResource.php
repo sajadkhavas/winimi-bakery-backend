@@ -67,7 +67,7 @@ class BakeryCategoryLandingResource extends Resource
                     Forms\Components\TextInput::make('heading')->label('H1')->required()->maxLength(220)->columnSpanFull(),
                     Forms\Components\Textarea::make('intro')->label('مقدمه')->required()->rows(5)->columnSpanFull(),
                 ])->columns(2),
-            Forms\Components\Section::make('بخش‌های محتوایی')
+            Forms\Components\Section::make('بخش‌های محتوایی و لینک‌سازی داخلی')
                 ->schema([
                     Forms\Components\Repeater::make('sections')
                         ->label('بخش‌ها')
@@ -83,6 +83,25 @@ class BakeryCategoryLandingResource extends Resource
                         ->schema([
                             Forms\Components\TextInput::make('question')->label('پرسش')->required()->maxLength(255),
                             Forms\Components\Textarea::make('answer')->label('پاسخ')->required()->rows(4),
+                        ])
+                        ->reorderable()
+                        ->columnSpanFull(),
+                    Forms\Components\Repeater::make('guides')
+                        ->label('راهنماهای مرتبط (Internal Linking)')
+                        ->schema([
+                            Forms\Components\TextInput::make('href')
+                                ->label('مسیر داخلی')
+                                ->required()
+                                ->startsWith('/')
+                                ->maxLength(255),
+                            Forms\Components\TextInput::make('title')
+                                ->label('عنوان لینک')
+                                ->required()
+                                ->maxLength(220),
+                            Forms\Components\Textarea::make('description')
+                                ->label('توضیح')
+                                ->required()
+                                ->rows(3),
                         ])
                         ->reorderable()
                         ->columnSpanFull(),
