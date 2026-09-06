@@ -1,0 +1,46 @@
+name: F30 FAQ Migration Fix
+
+on:
+  push:
+    branches:
+      - 'phase-30-a/storefront-backend-authority'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: phase-30-a/storefront-backend-authority
+          fetch-depth: 0
+      - name: Align FAQ seed with authoritative schema
+        shell: python
+        run: |
+          from pathlib import Path
+          path = Path('database/migrations/2026_09_06_153500_seed_storefront_authority.php')
+          source = path.read_text()
+          source = source.replace('use Illuminate\\Support\\Str;\n', '')
+          token = "                    'public_id' => (string) Str::ulid(),\n"
+          count = source.count(token)
+          if count != 4:
+              raise SystemExit(f'expected 4 FAQ public_id inserts, found {count}')
+          source = source.replace(token, '')
+          path.write_text(source)
+      - name: Verify syntax
+        run: php -l database/migrations/2026_09_06_153500_seed_storefront_authority.php
+      - name: Commit fix
+        shell: bash
+        run: |
+          if git diff --quiet; then
+            echo 'No changes required.'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add database/migrations/2026_09_06_153500_seed_storefront_authority.php
+          git commit -m 'fix(f30): align home FAQ seed with schema'
+          git push origin HEAD:phase-30-a/storefront-backend-authority
