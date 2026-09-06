@@ -164,8 +164,8 @@ class F30StorefrontAuthorityTest extends TestCase
         $resourceSource = file_get_contents(app_path('Filament/Resources/StoreSettingResource.php'));
         $pageSource = file_get_contents(app_path('Filament/Resources/StoreSettingResource/Pages/ManageStoreSettings.php'));
 
-        $this->assertStringContainsString("->disabled()", $resourceSource);
-        $this->assertStringContainsString("->dehydrated(false)", $resourceSource);
+        $this->assertStringContainsString('->disabled()', $resourceSource);
+        $this->assertStringContainsString('->dehydrated(false)', $resourceSource);
         $this->assertStringNotContainsString('CreateAction::make()', $pageSource);
     }
 
