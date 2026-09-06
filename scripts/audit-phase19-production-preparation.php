@@ -64,7 +64,7 @@ $requireText('production env', $env, [
 ]);
 $requireText('Nginx API config', $nginx, [
     'server_name api.winimibakery.com',
-    'root /var/www/winimi/backend/current/public',
+    'root /var/www/winimi/backend/current/app/public',
     'fastcgi_pass unix:/run/php/php8.3-fpm.sock',
     'try_files $uri $uri/ /index.php?$query_string',
     'Strict-Transport-Security',
