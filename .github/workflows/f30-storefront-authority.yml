@@ -3,12 +3,19 @@ name: F30 Storefront Backend Authority
 on:
   push:
     branches:
-      - 'phase-30/**'
+      - 'phase-30*/**'
   pull_request:
     paths:
       - 'app/Filament/Resources/StoreSettingResource.php'
       - 'app/Filament/Resources/StoreSettingResource/**'
+      - 'app/Filament/Resources/BakeryCategoryLandingResource.php'
+      - 'app/Filament/Resources/BakeryCategoryLandingResource/**'
+      - 'app/Http/Controllers/Api/CatalogController.php'
+      - 'app/Models/BakeryCategoryLanding.php'
       - 'database/migrations/2026_09_06_153500_seed_storefront_authority.php'
+      - 'database/migrations/2026_09_06_160000_create_bakery_category_landings.php'
+      - 'database/migrations/2026_09_06_161000_add_guides_to_bakery_category_landings.php'
+      - 'database/migrations/2026_09_06_162000_seed_category_guide_section_authority.php'
       - 'tests/Feature/F30StorefrontAuthorityTest.php'
       - '.github/workflows/f30-storefront-authority.yml'
 
@@ -39,11 +46,17 @@ jobs:
           touch database/database.sqlite
           php artisan key:generate --force
 
+      - name: Migration gate
+        run: php artisan migrate:fresh --force
+
       - name: F30 authority tests
         run: php artisan test tests/Feature/F30StorefrontAuthorityTest.php tests/Feature/StoreOperationsTest.php tests/Feature/StoreOperationsFilamentTest.php
 
+      - name: Full backend regression
+        run: php artisan test
+
       - name: Formatting gate
-        run: vendor/bin/pint --test app/Filament/Resources/StoreSettingResource.php app/Filament/Resources/StoreSettingResource/Pages/ManageStoreSettings.php database/migrations/2026_09_06_153500_seed_storefront_authority.php tests/Feature/F30StorefrontAuthorityTest.php
+        run: vendor/bin/pint --test app/Filament/Resources/StoreSettingResource.php app/Filament/Resources/StoreSettingResource/Pages/ManageStoreSettings.php app/Filament/Resources/BakeryCategoryLandingResource.php app/Filament/Resources/BakeryCategoryLandingResource/Pages/ManageBakeryCategoryLandings.php app/Http/Controllers/Api/CatalogController.php app/Models/BakeryCategoryLanding.php database/migrations/2026_09_06_153500_seed_storefront_authority.php database/migrations/2026_09_06_160000_create_bakery_category_landings.php database/migrations/2026_09_06_161000_add_guides_to_bakery_category_landings.php database/migrations/2026_09_06_162000_seed_category_guide_section_authority.php tests/Feature/F30StorefrontAuthorityTest.php
 
       - name: Composer security audit
         run: composer audit --no-interaction
