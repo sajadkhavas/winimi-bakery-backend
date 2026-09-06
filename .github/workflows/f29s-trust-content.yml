@@ -73,11 +73,19 @@ jobs:
 
       - name: Check formatting of F29S trust PHP changes
         run: |
-          ./vendor/bin/pint --test \
-            app/Support/Content/TrustReconciliationManifest.php \
-            app/Console/Commands/ReconcileTrustPages.php \
-            database/seeders/TrustContentStagingSeeder.php \
+          files=(
+            app/Support/Content/TrustReconciliationManifest.php
+            app/Console/Commands/ReconcileTrustPages.php
+            database/seeders/TrustContentStagingSeeder.php
             tests/Feature/TrustContentReconciliationTest.php
+          )
+          if ! ./vendor/bin/pint --test "${files[@]}"; then
+            echo 'PINT_FORMAT_DIFF_BEGIN'
+            ./vendor/bin/pint "${files[@]}"
+            git --no-pager diff -- "${files[@]}"
+            echo 'PINT_FORMAT_DIFF_END'
+            exit 1
+          fi
 
       - name: Verify guarded mutation boundary
         run: |
