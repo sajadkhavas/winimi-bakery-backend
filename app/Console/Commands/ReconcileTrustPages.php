@@ -136,7 +136,7 @@ class ReconcileTrustPages extends Command
     }
 
     /**
-     * @param array<int, array{slug: string, replacements: array<int, array{from: string, to: string}>}> $pages
+     * @param  array<int, array{slug: string, replacements: array<int, array{from: string, to: string}>}>  $pages
      * @return array{pending: int, reconciled: int, failures: int, states: array<int, string>}
      */
     private function audit(array $pages): array
