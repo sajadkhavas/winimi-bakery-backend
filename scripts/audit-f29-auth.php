@@ -42,7 +42,7 @@ $require('service', 'hash_equals($expectedState, $receivedState)', 'state compar
 $require('service', "'scope' => 'openid email profile'", 'minimal OpenID scopes');
 $require('service', "'grant_type' => 'authorization_code'", 'authorization code exchange');
 $require('service', "'account_link_required'", 'no automatic existing-email link');
-$require('service', "'provider_user_id' => $profile['sub']", 'Google sub persistence');
+$require('service', "'provider_user_id' => \$profile['sub']", 'Google sub persistence');
 $require('service', "'email_verified' => true", 'verified-email persistence');
 $forbid('service', 'stateless()', 'stateless OAuth bypass');
 $forbid('identity', "'token'", 'provider token persistence');
