@@ -10,6 +10,8 @@ class CustomerOAuthIdentity extends Model
 {
     use HasFactory;
 
+    protected $table = 'customer_oauth_identities';
+
     protected $fillable = [
         'customer_id',
         'provider',
