@@ -1,0 +1,48 @@
+name: F30 Migration Diagnostics
+
+on:
+  push:
+    branches:
+      - 'phase-30-a/storefront-backend-authority'
+
+permissions:
+  contents: read
+
+jobs:
+  migration-diagnostics:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: mbstring, pdo_sqlite
+          coverage: none
+          tools: composer:v2
+      - run: composer install --no-interaction --prefer-dist --no-progress
+      - name: Prepare Laravel test environment
+        run: |
+          cp .env.example .env
+          touch database/database.sqlite
+          php artisan key:generate --force
+      - name: Capture migration gate
+        shell: bash
+        run: |
+          set +e
+          php artisan migrate:fresh --force > f30-migrate.log 2>&1
+          status=$?
+          echo "$status" > f30-migrate.exit
+          cat f30-migrate.log
+          exit 0
+      - name: Upload migration diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: f30-migration-diagnostics
+          path: |
+            f30-migrate.log
+            f30-migrate.exit
+          if-no-files-found: error
+      - name: Enforce migration result
+        shell: bash
+        run: test "$(cat f30-migrate.exit)" = "0"
