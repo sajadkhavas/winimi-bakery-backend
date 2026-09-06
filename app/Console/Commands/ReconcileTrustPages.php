@@ -6,6 +6,7 @@ use App\Models\BakeryContentPage;
 use App\Support\Content\TrustReconciliationManifest;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
+use RuntimeException;
 use Throwable;
 
 class ReconcileTrustPages extends Command
@@ -72,10 +73,10 @@ class ReconcileTrustPages extends Command
             return self::FAILURE;
         }
 
-        $mutations = 0;
-
         try {
-            DB::transaction(function () use ($manifest, &$mutations): void {
+            $mutations = DB::transaction(function () use ($manifest): int {
+                $mutations = 0;
+
                 foreach ($manifest['pages'] as $definition) {
                     $page = BakeryContentPage::query()
                         ->where('slug', $definition['slug'])
@@ -92,7 +93,7 @@ class ReconcileTrustPages extends Command
                         if ($fromCount === 1 && $toCount === 0) {
                             $content = str_replace($replacement['from'], $replacement['to'], $content, $count);
                             if ($count !== 1) {
-                                throw new \RuntimeException('Unexpected replacement count for '.$definition['slug']);
+                                throw new RuntimeException('Unexpected replacement count for '.$definition['slug']);
                             }
                             $changed = true;
 
@@ -103,7 +104,7 @@ class ReconcileTrustPages extends Command
                             continue;
                         }
 
-                        throw new \RuntimeException('Trust page changed after audit: '.$definition['slug']);
+                        throw new RuntimeException('Trust page changed after audit: '.$definition['slug']);
                     }
 
                     if ($changed) {
@@ -112,6 +113,8 @@ class ReconcileTrustPages extends Command
                         $mutations++;
                     }
                 }
+
+                return $mutations;
             }, 3);
         } catch (Throwable $exception) {
             report($exception);
