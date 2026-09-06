@@ -1,0 +1,103 @@
+name: F29 Auth Closure
+
+on:
+  push:
+    branches:
+      - "phase-29/google-login-auth-closure"
+  pull_request:
+    branches:
+      - "phase-29s/seo-content-strategy-authority"
+  workflow_dispatch:
+
+concurrency:
+  group: f29-auth-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  APP_ENV: testing
+  APP_DEBUG: "true"
+  DB_CONNECTION: sqlite
+  DB_DATABASE: database/database.sqlite
+  CACHE_STORE: array
+  SESSION_DRIVER: array
+  QUEUE_CONNECTION: sync
+  MAIL_MAILER: array
+  OTP_ENABLED: "true"
+  TELESCOPE_ENABLED: "false"
+  PULSE_ENABLED: "false"
+
+jobs:
+  auth:
+    name: Google identity, session, linking and OTP gate
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.3"
+          extensions: bcmath, ctype, curl, dom, fileinfo, gd, intl, mbstring, openssl, pdo_sqlite, sqlite3, tokenizer, xml, zip
+          coverage: none
+          tools: composer:v2
+
+      - name: Validate and install Composer dependencies
+        run: |
+          composer validate --no-check-publish --no-check-lock
+          composer install --prefer-dist --no-interaction --no-progress
+
+      - name: Prepare Laravel test environment
+        run: |
+          cp .env.example .env
+          mkdir -p database
+          touch database/database.sqlite
+          php artisan key:generate --force
+          php artisan optimize:clear
+
+      - name: Deterministic F29 auth audit
+        run: php scripts/audit-f29-auth.php
+
+      - name: Pint F29 implementation
+        run: |
+          php vendor/bin/pint --test \
+            app/Exceptions/GoogleAuthException.php \
+            app/Http/Controllers/GoogleAuthController.php \
+            app/Http/Controllers/Api/OtpAuthController.php \
+            app/Http/Controllers/Api/AccountController.php \
+            app/Http/Resources/CustomerResource.php \
+            app/Models/Customer.php \
+            app/Models/CustomerOAuthIdentity.php \
+            app/Services/Auth/GoogleOAuthService.php \
+            config/auth_features.php \
+            database/migrations/2026_09_06_140000_add_google_auth_to_customers.php \
+            routes/api.php \
+            routes/web.php \
+            tests/Feature/F29GoogleAuthTest.php \
+            scripts/audit-f29-auth.php
+
+      - name: Migration and route cache gate
+        run: |
+          php artisan migrate:fresh --force
+          php artisan route:cache
+          php artisan route:list --path=auth/google
+          php artisan route:list --path=api/auth
+          php artisan route:list --path=api/account/mobile
+          php artisan route:clear
+
+      - name: Existing customer auth audit
+        run: composer audit:auth
+
+      - name: Focused F29 feature tests
+        run: php artisan test --filter=F29GoogleAuthTest
+
+      - name: Full backend regression
+        run: php artisan test
+
+      - name: Composer security audit
+        run: composer audit --no-interaction
