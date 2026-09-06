@@ -98,8 +98,8 @@ $require('addressController', '->ownedBy($request->user(\'customer\'))', 'server
 $require('checkout', 'resolveCustomerPayload', 'saved-address checkout resolution');
 $require('checkout', "'delivery_zone_id' =>", 'delivery zone snapshot');
 $require('delivery', 'StoreSetting::value', 'database operating settings');
-$require('delivery', "orders.accepting_orders", 'store-level order acceptance switch');
-$require('delivery', "orders.minimum_total_toman", 'store-level minimum-order policy');
+$require('delivery', 'orders.accepting_orders', 'store-level order acceptance switch');
+$require('delivery', 'orders.minimum_total_toman', 'store-level minimum-order policy');
 $require('delivery', "'zone' => null", 'legacy delivery-zone isolation for new checkout');
 $require('delivery', "'fee_toman' => 0", 'merchant-arranged courier fee isolation');
 $require('deliveryZone', 'free_delivery_threshold_toman', 'legacy free delivery threshold metadata');
