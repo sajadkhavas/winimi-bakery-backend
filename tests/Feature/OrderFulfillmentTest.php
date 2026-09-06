@@ -87,34 +87,34 @@ class OrderFulfillmentTest extends TestCase
         $order = $this->createPaidOrder(DeliveryMethod::Standard, 'WNM-FUL-0001');
         $lifecycle = app(OrderLifecycleService::class);
 
-        $this->assertValidationFailure(
-            fn () => $lifecycle->transitionByAdmin($order, OrderStatus::Preparing, $this->adminId),
+        $order = $lifecycle->transitionByAdmin(
+            $order,
+            OrderStatus::Preparing,
+            $this->adminId,
+            'شروع آماده‌سازی',
         );
-
-        $order = $lifecycle->transitionByAdmin($order, OrderStatus::Confirmed, $this->adminId, 'تأیید سفارش');
-        $order = $lifecycle->transitionByAdmin($order, OrderStatus::Preparing, $this->adminId);
         $order = $lifecycle->transitionByAdmin($order, OrderStatus::Ready, $this->adminId);
 
         $this->assertValidationFailure(
             fn () => $lifecycle->transitionByAdmin($order, OrderStatus::Delivered, $this->adminId),
         );
-        $this->assertValidationFailure(
-            fn () => $lifecycle->transitionByAdmin($order, OrderStatus::Dispatched, $this->adminId),
-        );
-
         $order = $lifecycle->transitionByAdmin(
             $order,
             OrderStatus::Dispatched,
             $this->adminId,
             'تحویل به پیک',
-            'TRACK-123',
+            trackingCode: null,
+            courierName: 'پیک تست',
+            courierMobile: '09121112233',
         );
         $order = $lifecycle->transitionByAdmin($order, OrderStatus::Delivered, $this->adminId);
         $lifecycle->addInternalNote($order, $this->adminId, 'این یادداشت فقط برای مدیر است.');
 
         $this->assertSame(OrderStatus::Delivered, $order->status);
-        $this->assertSame('TRACK-123', $order->tracking_code);
-        $this->assertNotNull($order->confirmed_at);
+        $this->assertNull($order->tracking_code);
+        $this->assertSame('پیک تست', $order->courier_name);
+        $this->assertSame('09121112233', $order->courier_mobile);
+        $this->assertNull($order->confirmed_at);
         $this->assertNotNull($order->preparing_at);
         $this->assertNotNull($order->ready_at);
         $this->assertNotNull($order->dispatched_at);
@@ -131,6 +131,29 @@ class OrderFulfillmentTest extends TestCase
             'order.dispatched',
             'order.delivered',
         ], NotificationOutbox::query()->where('order_id', $order->getKey())->orderBy('id')->pluck('template_key')->all());
+    }
+
+    public function test_legacy_confirmed_order_can_still_advance_to_preparing(): void
+    {
+        $order = $this->createPaidOrder(
+            DeliveryMethod::Standard,
+            'WNM-FUL-LEGACY-0001',
+        );
+
+        $order->forceFill([
+            'status' => OrderStatus::Confirmed,
+            'confirmed_at' => now()->subMinutes(10),
+        ])->save();
+
+        $prepared = app(OrderLifecycleService::class)->transitionByAdmin(
+            $order->fresh(),
+            OrderStatus::Preparing,
+            $this->adminId,
+        );
+
+        $this->assertSame(OrderStatus::Preparing, $prepared->status);
+        $this->assertNotNull($prepared->confirmed_at);
+        $this->assertNotNull($prepared->preparing_at);
     }
 
     public function test_admin_cancellation_after_payment_restocks_consumed_inventory_exactly_once(): void
@@ -166,7 +189,6 @@ class OrderFulfillmentTest extends TestCase
     {
         $order = $this->createPaidOrder(DeliveryMethod::Pickup, 'WNM-FUL-0003');
         $lifecycle = app(OrderLifecycleService::class);
-        $order = $lifecycle->transitionByAdmin($order, OrderStatus::Confirmed, $this->adminId);
         $order = $lifecycle->transitionByAdmin($order, OrderStatus::Preparing, $this->adminId);
         $order = $lifecycle->transitionByAdmin($order, OrderStatus::Ready, $this->adminId);
 

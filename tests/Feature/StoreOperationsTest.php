@@ -68,6 +68,8 @@ class StoreOperationsTest extends TestCase
             'slug' => 'chocolate-cookie',
             'product_code' => 'COOKIE-001',
             'preparation_time_days' => 2,
+            'content_verified' => true,
+            'media_verified' => true,
             'requires_cooling' => false,
             'is_active' => true,
         ]);
@@ -77,14 +79,16 @@ class StoreOperationsTest extends TestCase
             'name' => 'بسته ۶ عددی',
             'sku' => 'COOKIE-001-6',
             'regular_price_toman' => 80_000,
+            'packaging_fee_toman' => 5_000,
             'stock_quantity' => 10,
             'low_stock_threshold' => 2,
+            'inventory_verified' => true,
             'is_default' => true,
             'is_active' => true,
         ]);
     }
 
-    public function test_customer_addresses_are_owned_and_checkout_snapshots_database_delivery_rules(): void
+    public function test_customer_addresses_are_owned_and_checkout_ignores_legacy_delivery_zone_pricing(): void
     {
         $address = $this->actingAs($this->customer, 'customer')
             ->postJson('/api/account/addresses', [
@@ -125,7 +129,7 @@ class StoreOperationsTest extends TestCase
             'city' => 'تهران',
             'standard_enabled' => true,
             'standard_fee_toman' => 25_000,
-            'packaging_fee_toman' => 5_000,
+            'packaging_fee_toman' => 55_000,
             'preparation_min_days' => 1,
             'preparation_max_days' => 3,
             'priority' => 1,
@@ -140,22 +144,37 @@ class StoreOperationsTest extends TestCase
                     'variantId' => $this->variant->public_id,
                     'quantity' => 1,
                 ]],
-            ], ['Idempotency-Key' => 'phase15-checkout-key-0001'])
+            ], [
+                'Idempotency-Key' => 'phase15-checkout-key-0001',
+            ])
             ->assertCreated()
-            ->assertJsonPath('data.order.delivery.zone.id', $zone->public_id)
-            ->assertJsonPath('data.order.totals.deliveryFeeToman', 25_000)
+            ->assertJsonPath('data.order.delivery.method', 'standard')
+            ->assertJsonPath('data.order.delivery.zone', null)
+            ->assertJsonPath('data.order.delivery.feeToman', 0)
+            ->assertJsonPath('data.order.delivery.feeIncludedInOrder', false)
+            ->assertJsonPath('data.order.totals.deliveryFeeToman', 0)
             ->assertJsonPath('data.order.totals.packagingFeeToman', 5_000)
-            ->assertJsonPath('data.order.totals.grandTotalToman', 110_000)
+            ->assertJsonPath('data.order.totals.grandTotalToman', 85_000)
             ->assertJsonPath('data.order.preparation.minDays', 2)
-            ->assertJsonPath('data.order.preparation.maxDays', 3)
-            ->assertJsonPath('data.order.recipient.address', 'خیابان نمونه، پلاک یک');
+            ->assertJsonPath('data.order.preparation.maxDays', 2)
+            ->assertJsonPath(
+                'data.order.recipient.address',
+                'خیابان نمونه، پلاک یک',
+            );
 
         $this->assertDatabaseHas('orders', [
-            'delivery_zone_id' => $zone->getKey(),
-            'delivery_fee_toman' => 25_000,
+            'delivery_zone_id' => null,
+            'delivery_fee_toman' => 0,
             'packaging_fee_toman' => 5_000,
+            'grand_total_toman' => 85_000,
             'preparation_time_days' => 2,
-            'preparation_max_days' => 3,
+            'preparation_max_days' => 2,
+        ]);
+
+        $this->assertDatabaseHas('delivery_zones', [
+            'id' => $zone->getKey(),
+            'standard_fee_toman' => 25_000,
+            'packaging_fee_toman' => 55_000,
         ]);
     }
 

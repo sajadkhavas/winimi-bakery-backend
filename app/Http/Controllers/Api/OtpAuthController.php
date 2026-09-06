@@ -6,6 +6,7 @@ use App\Exceptions\OtpCooldown;
 use App\Exceptions\OtpDeliveryUnavailable;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\CustomerResource;
+use App\Services\Auth\GoogleOAuthService;
 use App\Services\Auth\OtpService;
 use App\Support\ApiResponse;
 use Illuminate\Http\JsonResponse;
@@ -16,8 +17,26 @@ use InvalidArgumentException;
 
 class OtpAuthController extends Controller
 {
+    public function capabilities(GoogleOAuthService $google): JsonResponse
+    {
+        return ApiResponse::success([
+            'google' => [
+                'enabled' => $google->isAvailable(),
+                'redirectPath' => '/auth/google/redirect',
+                'linkPath' => '/auth/google/link',
+            ],
+            'otp' => [
+                'enabled' => (bool) config('auth_features.otp_enabled'),
+            ],
+        ]);
+    }
+
     public function requestOtp(Request $request, OtpService $otp): JsonResponse
     {
+        if (! config('auth_features.otp_enabled')) {
+            return $this->otpDisabled();
+        }
+
         $validated = $request->validate([
             'mobile' => ['required', 'string', 'max:32'],
         ]);
@@ -46,6 +65,10 @@ class OtpAuthController extends Controller
 
     public function verify(Request $request, OtpService $otp): JsonResponse
     {
+        if (! config('auth_features.otp_enabled')) {
+            return $this->otpDisabled();
+        }
+
         $validated = $request->validate([
             'mobile' => ['required', 'string', 'max:32'],
             'challengeId' => ['required', 'string', 'size:26'],
@@ -85,5 +108,16 @@ class OtpAuthController extends Controller
         $request->session()->regenerateToken();
 
         return ApiResponse::success(null, 'از حساب خارج شدید.');
+    }
+
+    private function otpDisabled(): JsonResponse
+    {
+        return ApiResponse::error(
+            'ورود با کد پیامکی در حال حاضر فعال نیست.',
+            503,
+            [],
+            [],
+            'otp_disabled',
+        );
     }
 }

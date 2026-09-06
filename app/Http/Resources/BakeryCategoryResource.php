@@ -4,6 +4,7 @@ namespace App\Http\Resources;
 
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
+use Illuminate\Support\Facades\Storage;
 
 class BakeryCategoryResource extends JsonResource
 {
@@ -14,7 +15,9 @@ class BakeryCategoryResource extends JsonResource
             'name' => $this->name,
             'slug' => $this->slug,
             'description' => $this->description,
-            'image' => $this->image_path,
+            'image' => $this->image_path
+                ? Storage::disk('public')->url($this->image_path)
+                : null,
             'productCount' => $this->whenCounted('products'),
             'seo' => [
                 'title' => $this->meta_title ?: $this->name,

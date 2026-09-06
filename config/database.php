@@ -21,7 +21,12 @@ return [
             'strict'       => true,
             'engine'       => 'InnoDB',
             'dump' => [
-                'dump_binary_path' => 'C:\Program Files\MySQL\MySQL Server 8.0\bin',
+                'dump_binary_path' => env(
+                    'DB_DUMP_BINARY_PATH',
+                    PHP_OS_FAMILY === 'Windows'
+                        ? 'C:\\Program Files\\MySQL\\MySQL Server 8.0\\bin'
+                        : '/usr/bin',
+                ),
                 'use_single_transaction' => true,
                 'timeout' => 60 * 5,
             ],

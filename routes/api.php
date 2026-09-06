@@ -62,6 +62,8 @@ Route::post('inquiries', [InquiryController::class, 'store'])
     ->middleware('throttle:5,1');
 
 Route::prefix('auth')->group(function () {
+    Route::get('capabilities', [OtpAuthController::class, 'capabilities'])
+        ->middleware('throttle:60,1');
     Route::post('otp/request', [OtpAuthController::class, 'requestOtp'])
         ->middleware('throttle:otp-request');
     Route::post('otp/verify', [OtpAuthController::class, 'verify'])
@@ -86,6 +88,7 @@ Route::middleware(['auth:customer', 'customer.active'])->group(function () {
 
     Route::prefix('account')->middleware('throttle:60,1')->group(function () {
         Route::patch('profile', [AccountController::class, 'updateProfile']);
+        Route::patch('mobile', [AccountController::class, 'completeMobile']);
         Route::get('addresses', [AccountAddressController::class, 'index']);
         Route::post('addresses', [AccountAddressController::class, 'store']);
         Route::put('addresses/{addressId}', [AccountAddressController::class, 'update']);

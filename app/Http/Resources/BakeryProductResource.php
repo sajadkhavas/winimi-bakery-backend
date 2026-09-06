@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources;
 
+use App\Models\BakeryProduct;
 use App\Models\BakeryProductVariant;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
@@ -22,13 +23,31 @@ class BakeryProductResource extends JsonResource
         $images = $this->catalogImages();
         $contentVerified = (bool) $this->content_verified;
 
+        $inventoryVerified = $variants->isNotEmpty()
+            && $variants->every(
+                fn (BakeryProductVariant $variant): bool => (bool) $variant->inventory_verified
+            );
+
+        $preparationMinDays = $this->preparation_min_days
+            ?? $this->preparation_time_days;
+
+        $preparationMaxDays = $this->preparation_max_days
+            ?? $preparationMinDays;
+
+        // Compatibility-only until the storefront migrates to shippingPolicy.
+        $legacyShippingScope = $this->requires_cooling
+            ? 'tehran-karaj'
+            : 'nationwide';
+
         return [
             'id' => $this->public_id,
             'slug' => $this->slug,
             'name' => $this->name,
             'productCode' => $this->product_code,
             'shortDescription' => $this->short_description,
-            'longDescription' => $contentVerified ? $this->description : null,
+            'longDescription' => $contentVerified
+                ? $this->publicPlainText($this->description)
+                : null,
             'category' => $this->category?->name,
             'categorySlug' => $this->category?->slug,
             'categoryData' => $this->whenLoaded(
@@ -47,15 +66,31 @@ class BakeryProductResource extends JsonResource
             'stock' => $stock,
             'available' => $stock > 0,
             'requiresCooling' => (bool) $this->requires_cooling,
-            'shippingScope' => $this->requires_cooling ? 'tehran-karaj' : 'nationwide',
+            'shippingScope' => $legacyShippingScope,
             'shippingNote' => $this->requires_cooling
                 ? 'این محصول نیازمند روش تحویل سرد است و محدوده نهایی در Checkout تأیید می‌شود.'
                 : 'روش تحویل نهایی براساس مقصد و تنظیمات Checkout محاسبه می‌شود.',
-            'ingredients' => $contentVerified ? ($this->ingredients ?? []) : [],
-            'allergens' => $contentVerified ? ($this->allergens ?? []) : [],
+            'shippingPolicy' => [
+                'scope' => $this->shipping_scope,
+                'note' => $this->shipping_note,
+            ],
+            'availabilityMode' => $this->availability_mode,
+            'ingredients' => $contentVerified
+                ? BakeryProduct::normalizeTagList($this->ingredients)
+                : [],
+            'allergens' => $contentVerified
+                ? BakeryProduct::normalizeTagList($this->allergens)
+                : [],
             'shelfLife' => $contentVerified ? $this->shelf_life : null,
             'storageTips' => $contentVerified ? $this->storage_instructions : null,
-            'preparationTimeDays' => $this->preparation_time_days,
+            'preparationTimeDays' => $this->preparation_time_days
+                ?? $preparationMinDays,
+            'preparation' => $preparationMinDays === null
+                ? null
+                : [
+                    'minDays' => $preparationMinDays,
+                    'maxDays' => $preparationMaxDays,
+                ],
             'badges' => array_values(array_filter([
                 $this->requires_cooling ? 'نیازمند نگهداری سرد' : null,
                 $this->is_featured ? 'پیشنهاد وینیمی' : null,
@@ -64,7 +99,7 @@ class BakeryProductResource extends JsonResource
             'isFeatured' => (bool) $this->is_featured,
             'contentVerified' => $contentVerified,
             'mediaVerified' => (bool) $this->media_verified,
-            'inventoryVerified' => true,
+            'inventoryVerified' => $inventoryVerified,
             'variants' => BakeryVariantResource::collection($variants),
             'seo' => [
                 'title' => $this->meta_title ?: $this->name,
@@ -74,15 +109,101 @@ class BakeryProductResource extends JsonResource
         ];
     }
 
+    private function publicPlainText(?string $value): ?string
+    {
+        if ($value === null || trim($value) === '') {
+            return null;
+        }
+
+        $withoutExecutableBlocks = preg_replace(
+            '/<(script|style)\b[^>]*>.*?<\/\1>/isu',
+            '',
+            $value,
+        ) ?? $value;
+
+        $withReadableBreaks = preg_replace(
+            '/<(?:br\s*\/?|\/p|\/div|\/li|\/h[1-6])>/iu',
+            "\n",
+            $withoutExecutableBlocks,
+        ) ?? $withoutExecutableBlocks;
+
+        $plainText = html_entity_decode(
+            strip_tags($withReadableBreaks),
+            ENT_QUOTES | ENT_HTML5,
+            'UTF-8',
+        );
+
+        $plainText = preg_replace('/[\p{Z}\s]+/u', ' ', $plainText) ?? $plainText;
+        $plainText = trim($plainText);
+
+        return $plainText !== '' ? $plainText : null;
+    }
+
     private function catalogImages(): array
     {
         return $this->getMedia('catalog-main')
             ->concat($this->getMedia('catalog-gallery'))
-            ->map(fn ($media): array => [
-                'url' => $media->getFullUrl(),
-                'alt' => $media->getCustomProperty('alt', $this->name),
-                'verified' => (bool) $this->media_verified,
-            ])
+            ->map(function ($media): array {
+                $hasThumb = $media->hasGeneratedConversion(
+                    'thumb'
+                );
+
+                $hasCard = $media->hasGeneratedConversion(
+                    'card'
+                );
+
+                $hasDetail = $media->hasGeneratedConversion(
+                    'detail'
+                );
+
+                $srcSet = $hasDetail
+                    ? trim((string) $media->getSrcset('detail'))
+                    : '';
+
+                return [
+                    // Backward-compatible optimized URL.
+                    'url' => $hasDetail
+                        ? $media->getFullUrl('detail')
+                        : $media->getFullUrl(),
+
+                    'alt' => $media->getCustomProperty(
+                        'alt',
+                        $this->name,
+                    ),
+
+                    'verified' => (bool) $this->media_verified,
+
+                    'originalUrl' => $media->getFullUrl(),
+
+                    'thumbnailUrl' => $hasThumb
+                        ? $media->getFullUrl('thumb')
+                        : null,
+
+                    'cardUrl' => $hasCard
+                        ? $media->getFullUrl('card')
+                        : null,
+
+                    'detailUrl' => $hasDetail
+                        ? $media->getFullUrl('detail')
+                        : null,
+
+                    'srcSet' => $srcSet !== ''
+                        ? $srcSet
+                        : null,
+
+                    'width' => $media->getCustomProperty(
+                        'width'
+                    ),
+
+                    'height' => $media->getCustomProperty(
+                        'height'
+                    ),
+
+                    'mimeType' => $hasDetail
+                        ? 'image/webp'
+                        : $media->mime_type,
+                ];
+            })
             ->values()
             ->all();
     }

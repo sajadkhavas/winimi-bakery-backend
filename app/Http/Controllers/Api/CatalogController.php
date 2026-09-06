@@ -7,6 +7,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Resources\BakeryCategoryResource;
 use App\Http\Resources\BakeryProductResource;
 use App\Models\BakeryCategory;
+use App\Models\BakeryCategoryLanding;
 use App\Models\BakeryProduct;
 use App\Support\ApiResponse;
 use App\Support\Pagination;
@@ -41,7 +42,7 @@ class CatalogController extends Controller
             : false;
 
         $query = BakeryProduct::query()
-            ->active()
+            ->launchReady()
             ->with($this->catalogRelations());
 
         if (! empty($filters['category'])) {
@@ -101,7 +102,7 @@ class CatalogController extends Controller
     public function product(string $slug): JsonResponse
     {
         $product = BakeryProduct::query()
-            ->active()
+            ->launchReady()
             ->with($this->catalogRelations())
             ->where('slug', $slug)
             ->firstOrFail();
@@ -116,13 +117,38 @@ class CatalogController extends Controller
         $categories = BakeryCategory::query()
             ->active()
             ->withCount([
-                'products' => fn (Builder $products): Builder => $products->active(),
+                'products' => fn (Builder $products): Builder => $products->launchReady(),
             ])
             ->ordered()
             ->get();
+        $landings = BakeryCategoryLanding::query()
+            ->active()
+            ->ordered()
+            ->get()
+            ->map(fn (BakeryCategoryLanding $landing): array => [
+                'id' => $landing->public_id,
+                'slug' => $landing->public_slug,
+                'catalogCategorySlug' => $landing->catalog_category_slug,
+                'catalogSearch' => $landing->catalog_search,
+                'name' => $landing->name,
+                'eyebrow' => $landing->eyebrow,
+                'cardDescription' => $landing->card_description,
+                'seo' => [
+                    'title' => $landing->meta_title,
+                    'description' => $landing->meta_description,
+                ],
+                'heading' => $landing->heading,
+                'intro' => $landing->intro,
+                'sections' => $landing->sections ?? [],
+                'faq' => $landing->faq ?? [],
+                'guides' => $landing->guides ?? [],
+            ])
+            ->values()
+            ->all();
 
         return ApiResponse::success(
             BakeryCategoryResource::collection($categories)->resolve($request),
+            meta: ['categoryLandings' => $landings],
         );
     }
 

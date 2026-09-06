@@ -15,6 +15,10 @@ class CustomerResource extends JsonResource
             'fullName' => $this->full_name,
             'email' => $this->email,
             'mobileVerified' => $this->mobile_verified_at !== null,
+            'requiresMobileCompletion' => $this->mobile === null,
+            'googleLinked' => $this->oauthIdentities()
+                ->where('provider', 'google')
+                ->exists(),
             'marketingConsent' => (bool) $this->marketing_consent,
             'createdAt' => $this->created_at?->toISOString(),
             'updatedAt' => $this->updated_at?->toISOString(),

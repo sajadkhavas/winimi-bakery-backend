@@ -24,6 +24,10 @@ class CustomerOtpAuthTest extends TestCase
             'winimi.otp.expires_seconds' => 120,
             'winimi.otp.max_attempts' => 5,
             'session.driver' => 'array',
+            'sanctum.stateful' => [
+                'localhost:5173',
+                '127.0.0.1:4173',
+            ],
         ]);
     }
 

@@ -2,7 +2,6 @@ import path from "path";
 import react from "@vitejs/plugin-react-swc";
 import { defineConfig } from "vite";
 import { VitePWA } from "vite-plugin-pwa";
-import { componentTagger } from "lovable-tagger";
 
 /**
  * Legacy frontend snapshot.
@@ -18,7 +17,6 @@ export default defineConfig(({ mode }) => ({
   },
   plugins: [
     react(),
-    mode === "development" && componentTagger(),
     VitePWA({
       registerType: "autoUpdate",
       includeAssets: ["favicon.ico", "robots.txt", "icons/**/*"],

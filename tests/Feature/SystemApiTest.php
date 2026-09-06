@@ -2,10 +2,13 @@
 
 namespace Tests\Feature;
 
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 class SystemApiTest extends TestCase
 {
+    use RefreshDatabase;
+
     public function test_health_endpoint_returns_standard_metadata(): void
     {
         $response = $this->getJson('/api/system/health', [

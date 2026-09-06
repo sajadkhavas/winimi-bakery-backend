@@ -1,0 +1,101 @@
+name: F29S Trust Content
+
+on:
+  push:
+    branches:
+      - 'phase-29s-g/**'
+  pull_request:
+    branches:
+      - 'phase-29s/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  trust-content:
+    name: Validate local merchant trust reconciliation
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      APP_ENV: testing
+      APP_DEBUG: true
+      DB_CONNECTION: sqlite
+      DB_DATABASE: database/database.sqlite
+      CACHE_STORE: array
+      SESSION_DRIVER: array
+      QUEUE_CONNECTION: sync
+      MAIL_MAILER: array
+      TELESCOPE_ENABLED: false
+      PULSE_ENABLED: false
+
+    steps:
+      - name: Checkout exact branch head
+        uses: actions/checkout@v4
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: bcmath, ctype, curl, dom, fileinfo, gd, intl, mbstring, openssl, pdo_sqlite, sqlite3, tokenizer, xml, zip
+          coverage: none
+          tools: composer:v2
+
+      - name: Install Composer dependencies
+        run: composer install --prefer-dist --no-interaction --no-progress
+
+      - name: Prepare Laravel test environment
+        run: |
+          cp .env.example .env
+          mkdir -p database
+          : > database/database.sqlite
+          php artisan key:generate --force
+          php artisan optimize:clear
+
+      - name: Migrate database
+        run: php artisan migrate:fresh --force
+
+      - name: Seed controlled stale trust pages
+        run: php artisan db:seed --class=TrustContentStagingSeeder --force
+
+      - name: Dry-run trust reconciliation manifest
+        run: |
+          set -o pipefail
+          php artisan content:reconcile-trust-pages | tee /tmp/f29s-trust-dry-run.log
+          grep -F 'MODE=DRY_RUN' /tmp/f29s-trust-dry-run.log
+          grep -F 'CONTROLLED_PAGES=3' /tmp/f29s-trust-dry-run.log
+          grep -F 'AUDIT_FAILURES=0' /tmp/f29s-trust-dry-run.log
+          grep -F 'DATABASE_MUTATIONS=0' /tmp/f29s-trust-dry-run.log
+          grep -E '^MANIFEST_SHA256=[a-f0-9]{64}$' /tmp/f29s-trust-dry-run.log
+
+      - name: Run F29S trust content tests
+        run: php artisan test tests/Feature/TrustContentReconciliationTest.php
+
+      - name: Check formatting of F29S trust PHP changes
+        run: |
+          files=(
+            app/Support/Content/TrustReconciliationManifest.php
+            app/Console/Commands/ReconcileTrustPages.php
+            database/seeders/TrustContentStagingSeeder.php
+            tests/Feature/TrustContentReconciliationTest.php
+          )
+          if ! ./vendor/bin/pint --test "${files[@]}"; then
+            echo 'PINT_FORMAT_DIFF_BEGIN'
+            ./vendor/bin/pint "${files[@]}"
+            git --no-pager diff -- "${files[@]}"
+            echo 'PINT_FORMAT_DIFF_END'
+            exit 1
+          fi
+
+      - name: Verify guarded mutation boundary
+        run: |
+          grep -F "app()->environment('production')" database/seeders/TrustContentStagingSeeder.php
+          grep -F -- '--expected-sha256=' app/Console/Commands/ReconcileTrustPages.php
+          grep -F -- '--confirm=' app/Console/Commands/ReconcileTrustPages.php
+          grep -F 'RECONCILE_TRUST_PAGES' app/Console/Commands/ReconcileTrustPages.php
+
+      - name: F29S trust content gate summary
+        run: |
+          echo 'F29S_G_TRUST_CONTENT_GATE=PASS'
+          echo "EXACT_HEAD=${GITHUB_SHA}"
+          echo 'PRODUCTION_MUTATION=NO'

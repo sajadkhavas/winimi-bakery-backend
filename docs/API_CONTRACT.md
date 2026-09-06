@@ -121,6 +121,10 @@ Frozen product filters:
 
 Products use server-calculated Variant prices and reservation-aware stock. Public reviews include approved verified-purchase reviews only.
 
+Public catalog publication is fail-closed. A product is launch-ready only when the product and its category are active, product content and media are verified, and every active Variant has verified inventory. Draft or partially verified products are not exposed by catalog detail, catalog listing, category product counts or public review lookup.
+
+Catalog product responses also expose additive operational metadata used by the storefront: `shippingPolicy` (`nationwide`, `configured_zones`, or `pickup_only`), `availabilityMode`, `preparation.minDays`, `preparation.maxDays`, and Variant-level `packageQuantity`, `minOrderQuantity`, `maxOrderQuantity`, and `inventoryVerified`. Legacy `shippingScope` remains available for compatibility. These are additive response metadata; the frozen contract version remains `2026-07-20-phase-16`.
+
 ## Customer authentication and account
 
 ```text

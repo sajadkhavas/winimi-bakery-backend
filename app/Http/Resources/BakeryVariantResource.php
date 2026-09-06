@@ -14,6 +14,9 @@ class BakeryVariantResource extends JsonResource
             'name' => $this->name,
             'productCode' => $this->sku,
             'weightGrams' => $this->weight_grams,
+            'packageQuantity' => $this->package_quantity,
+            'minOrderQuantity' => $this->min_order_quantity,
+            'maxOrderQuantity' => $this->max_order_quantity,
             'weight' => $this->weight_grams
                 ? number_format($this->weight_grams).' گرم'
                 : null,
@@ -22,8 +25,10 @@ class BakeryVariantResource extends JsonResource
             'salePriceToman' => $this->hasValidSalePrice()
                 ? $this->sale_price_toman
                 : null,
+            'packagingFeeToman' => (int) $this->packaging_fee_toman,
             'stock' => $this->available_stock_quantity,
             'available' => $this->available,
+            'inventoryVerified' => (bool) $this->inventory_verified,
             'lowStock' => $this->low_stock,
             'isDefault' => $this->is_default,
         ];

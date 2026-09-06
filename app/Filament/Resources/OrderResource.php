@@ -53,8 +53,22 @@ class OrderResource extends Resource
                             fn (DeliveryMethod $method): array => [$method->value => $method->label()],
                         ))
                         ->disabled(),
-                    Forms\Components\TextInput::make('deliveryZone.name')->label('منطقه ارسال')->disabled(),
-                    Forms\Components\TextInput::make('tracking_code')->label('کد پیگیری')->disabled(),
+                    Forms\Components\TextInput::make('deliveryZone.name')
+                        ->label('منطقه ارسال (تاریخی)')
+                        ->placeholder('—')
+                        ->disabled(),
+                    Forms\Components\TextInput::make('courier_name')
+                        ->label('نام پیک')
+                        ->placeholder('ثبت نشده')
+                        ->disabled(),
+                    Forms\Components\TextInput::make('courier_mobile')
+                        ->label('موبایل پیک')
+                        ->placeholder('ثبت نشده')
+                        ->disabled(),
+                    Forms\Components\TextInput::make('tracking_code')
+                        ->label('کد پیگیری')
+                        ->placeholder('ثبت نشده')
+                        ->disabled(),
                     Forms\Components\TextInput::make('reservation_expires_at')->label('پایان رزرو')->disabled(),
                     Forms\Components\TextInput::make('placed_at')->label('زمان ثبت')->disabled(),
                     Forms\Components\TextInput::make('paid_at')->label('زمان پرداخت')->disabled(),
@@ -80,7 +94,10 @@ class OrderResource extends Resource
             Forms\Components\Section::make('مبالغ و آماده‌سازی')
                 ->schema([
                     Forms\Components\TextInput::make('subtotal_toman')->label('جمع اقلام')->disabled(),
-                    Forms\Components\TextInput::make('delivery_fee_toman')->label('هزینه ارسال')->disabled(),
+                    Forms\Components\TextInput::make('delivery_fee_toman')
+                        ->label('هزینه ارسال آنلاین')
+                        ->helperText('برای سفارش‌های جدید صفر است؛ هزینه پیک هنگام تحویل پرداخت می‌شود.')
+                        ->disabled(),
                     Forms\Components\TextInput::make('packaging_fee_toman')->label('هزینه بسته‌بندی')->disabled(),
                     Forms\Components\TextInput::make('discount_total_toman')->label('تخفیف')->disabled(),
                     Forms\Components\TextInput::make('grand_total_toman')->label('مبلغ نهایی')->disabled(),
@@ -152,7 +169,9 @@ class OrderResource extends Resource
                 Tables\Columns\TextColumn::make('delivery_method')
                     ->label('تحویل')
                     ->formatStateUsing(fn (DeliveryMethod $state): string => $state->label()),
-                Tables\Columns\TextColumn::make('deliveryZone.name')->label('منطقه')->placeholder('Fallback'),
+                Tables\Columns\TextColumn::make('deliveryZone.name')
+                    ->label('منطقه تاریخی')
+                    ->placeholder('—'),
                 Tables\Columns\TextColumn::make('grand_total_toman')
                     ->label('مبلغ نهایی')
                     ->numeric()

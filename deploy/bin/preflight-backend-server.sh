@@ -26,8 +26,9 @@ if command -v php >/dev/null 2>&1; then
   php_version=$(php -r 'echo PHP_MAJOR_VERSION.".".PHP_MINOR_VERSION;')
   [[ "$php_version" == "8.3" ]] || errors+=("production PHP must be 8.3, found $php_version")
   required_extensions=(bcmath ctype curl dom fileinfo gd intl mbstring openssl pdo tokenizer xml zip)
+  php_modules=$(php -m)
   for extension in "${required_extensions[@]}"; do
-    php -m | grep -Eqi "^${extension}$" || errors+=("missing PHP extension: $extension")
+    grep -Fxiq "$extension" <<< "$php_modules" || errors+=("missing PHP extension: $extension")
   done
 fi
 

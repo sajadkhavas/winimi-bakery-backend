@@ -26,7 +26,10 @@ class ReviewController extends Controller
             'page' => ['nullable', 'integer', 'min:1'],
             'perPage' => ['nullable', 'integer', 'min:1', 'max:'.config('winimi.policies.pagination.account_max', 30)],
         ]);
-        $product = BakeryProduct::query()->where('slug', $slug)->where('is_active', true)->firstOrFail();
+        $product = BakeryProduct::query()
+            ->launchReady()
+            ->where('slug', $slug)
+            ->firstOrFail();
         $reviews = ProductReview::query()
             ->approved()
             ->where('product_id', $product->getKey())

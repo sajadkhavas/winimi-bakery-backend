@@ -171,16 +171,19 @@ class EndToEndAcceptanceTest extends TestCase
 
         $this->stateful()->postJson('/api/checkout', [
             'addressId' => $addressId,
-            'deliveryMethod' => 'chilled',
+            'deliveryMethod' => 'standard',
             'items' => [[
                 'variantId' => $chilledVariant->public_id,
                 'quantity' => 1,
             ]],
         ], [
-            'Idempotency-Key' => 'phase18-chilled-tehran-0001',
+            'Idempotency-Key' => 'phase18-cooling-standard-0001',
         ])->assertCreated()
-            ->assertJsonPath('data.order.delivery.method', 'chilled')
+            ->assertJsonPath('data.order.delivery.method', 'standard')
             ->assertJsonPath('data.order.delivery.requiresCooling', true)
+            ->assertJsonPath('data.order.delivery.feeToman', 0)
+            ->assertJsonPath('data.order.delivery.feeIncludedInOrder', false)
+            ->assertJsonPath('data.order.totals.deliveryFeeToman', 0)
             ->assertJsonPath('data.order.recipient.city', 'تهران');
 
         $payment = $this->stateful()->postJson("/api/orders/{$orderId}/payments", [], [

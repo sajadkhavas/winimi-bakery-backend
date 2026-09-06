@@ -1,0 +1,89 @@
+{
+  "schemaVersion": 1,
+  "environment": "production",
+  "capturedAt": "2026-08-20",
+  "capturedFromRelease": "31c90260ad2d115c986c",
+  "purpose": "controlled-placeholder-main-replacement",
+  "policy": {
+    "automaticUnknownMediaDeletionAllowed": false,
+    "explicitReplacementFlagRequired": true,
+    "exactExistingMediaIdentityRequired": true,
+    "existingOriginalMustBeBackedUpBeforeDeletion": true,
+    "replacementFailureMustRestorePreviousMain": true,
+    "mediaVerifiedAutoEnableAllowed": false,
+    "galleryDeletionAllowed": false,
+    "giftBoxIncluded": false
+  },
+  "products": [
+    {
+      "productCode": "VIN-CW-001",
+      "publicId": "01KYCZMCVZCA8D60WV3MS475Z6",
+      "name": "کوکی شکلاتی گردویی",
+      "existingMain": {
+        "mediaId": 27,
+        "filename": "01KZDQ90QNJ7F9ER8NGTXST8Z5.png",
+        "mimeType": "image/png",
+        "sizeBytes": 1931389,
+        "sha256": "96d80c5176aa98e047ba1b2a8be2d134423d68afff59c3ed59babd8f71f9fae6",
+        "customPropertiesMustBeEmpty": true
+      },
+      "replacementSource": "IMG_8944.JPG"
+    },
+    {
+      "productCode": "VIN-MV-008",
+      "publicId": "01KYCZMCX4YA938VJ0DGEQCKJY",
+      "name": "مینی کوکی وانیلی با تکه‌های شکلات",
+      "existingMain": {
+        "mediaId": 9,
+        "filename": "3d446fc07a68-lifestyle-twine.jpg",
+        "mimeType": "image/jpeg",
+        "sizeBytes": 107774,
+        "sha256": "3d446fc07a68e98f7b72accee5ac0dd255e00b82024ca62a624e0bdf4540b71d",
+        "customPropertiesMustBeEmpty": true
+      },
+      "replacementSource": "IMG_8908.JPG"
+    },
+    {
+      "productCode": "VIN-SS-015",
+      "publicId": "01KYCZMCY3D3DVXR808YA5HV3Q",
+      "name": "چیزکیک سن سباستین",
+      "existingMain": {
+        "mediaId": 16,
+        "filename": "cb951eb86084-lifestyle-milk.jpg",
+        "mimeType": "image/jpeg",
+        "sizeBytes": 99442,
+        "sha256": "cb951eb860848cd13ed1c4c7612d78277a13ccc1837b0c0179235f5aef032327",
+        "customPropertiesMustBeEmpty": true
+      },
+      "replacementSource": "IMG_0490.JPG"
+    },
+    {
+      "productCode": "VIN-WP-027",
+      "publicId": "01KYCZMCZF4SZBN3RRK6S5HRAK",
+      "name": "کوکی پروتئین وی با مغزیجات",
+      "existingMain": {
+        "mediaId": 25,
+        "filename": "66ad6f8f2f08-product-white-choc-macadamia.jpg",
+        "mimeType": "image/jpeg",
+        "sizeBytes": 80452,
+        "sha256": "66ad6f8f2f086b24efbeaf00b871b645c655796601484e521487a077f44b313c",
+        "customPropertiesMustBeEmpty": true
+      },
+      "replacementSource": "IMG_9527.JPG"
+    },
+    {
+      "productCode": "VIN-CRL-024",
+      "publicId": "01KYCZMCZ6KNKAFE85NXY3CERB",
+      "name": "رول دارچینی",
+      "existingMain": {
+        "mediaId": 23,
+        "filename": "fd4877984eff-gallery-baking-process.jpg",
+        "mimeType": "image/jpeg",
+        "sizeBytes": 156387,
+        "sha256": "fd4877984effbaf9f19a6271a8ce54778fb9d504424a121aee0aa9dcc05a5dbb",
+        "customPropertiesMustBeEmpty": true
+      },
+      "replacementSource": "2.jpg"
+    }
+  ]
+}

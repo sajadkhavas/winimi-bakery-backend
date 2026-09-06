@@ -8,7 +8,7 @@ After=network-online.target
 Type=simple
 User=winimi
 Group=www-data
-WorkingDirectory=/var/www/winimi/backend/current
+WorkingDirectory=/var/www/winimi/backend/current/app
 ExecStart=/usr/bin/php artisan queue:work database --sleep=3 --tries=3 --backoff=5 --timeout=60 --max-time=3600
 Restart=always
 RestartSec=5s
@@ -22,7 +22,7 @@ PrivateTmp=true
 PrivateDevices=true
 ProtectSystem=strict
 ProtectHome=true
-ReadWritePaths=/var/www/winimi/backend/shared/storage /var/www/winimi/backend/current/bootstrap/cache
+ReadWritePaths=/var/www/winimi/backend/shared/storage /var/www/winimi/backend/current/app/bootstrap/cache
 ProtectKernelTunables=true
 ProtectKernelModules=true
 ProtectKernelLogs=true

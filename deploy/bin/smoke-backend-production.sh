@@ -3,7 +3,7 @@ set -Eeuo pipefail
 umask 027
 
 API_ORIGIN=${API_ORIGIN:-https://api.winimibakery.com}
-APP_ROOT=${BACKEND_CURRENT_ROOT:-/var/www/winimi/backend/current}
+APP_ROOT=${BACKEND_CURRENT_ROOT:-/var/www/winimi/backend/current/app}
 CURL_RESOLVE_API=${CURL_RESOLVE_API:-}
 
 args=(--fail --silent --show-error --max-time 20 --retry 3 --retry-delay 2)
@@ -16,7 +16,12 @@ meta=$(curl "${args[@]}" "$API_ORIGIN/api/system/meta")
 python3 - "$ready" "$contracts" "$meta" <<'PY'
 import json, sys
 ready, contracts, meta = map(json.loads, sys.argv[1:4])
-if ready.get('success') is not True or (ready.get('data') or {}).get('ready') is not True:
+ready_data = ready.get('data') or {}
+ready_ok = (
+    ready_data.get('ready') is True
+    or ready_data.get('status') == 'ready'
+)
+if ready.get('success') is not True or not ready_ok:
     raise SystemExit('production API readiness failed')
 if contracts.get('success') is not True:
     raise SystemExit('contracts endpoint failed')

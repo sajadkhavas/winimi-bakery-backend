@@ -90,16 +90,20 @@ foreach ([
     'test_checkout_uses_server_prices_snapshots_and_reserves_without_decrementing_physical_stock',
     'test_same_idempotency_key_replays_one_order_and_rejects_a_different_payload',
     'test_active_reservations_prevent_overselling',
-    'test_cooling_products_require_chilled_delivery_or_pickup',
+    'test_cooling_products_keep_operational_flag_on_standard_merchant_delivery_and_reject_legacy_chilled',
     'test_customer_can_only_view_own_orders_and_cancel_unpaid_order',
     'test_expired_orders_release_reservations_and_payment_consumption_decrements_stock_once',
 ] as $testName) {
     $require('tests', $testName, "checkout regression test {$testName}");
 }
 
+$require('tests', "->assertJsonPath('data.order.delivery.requiresCooling', true)", 'cooling operational flag regression assertion');
+$require('tests', "'chilled',", 'legacy chilled request regression coverage');
+$require('tests', "->assertJsonValidationErrors('deliveryMethod')", 'legacy chilled method rejection assertion');
+
 if ($errors !== []) {
     fwrite(STDERR, "Checkout and order audit failed:\n- ".implode("\n- ", $errors)."\n");
     exit(1);
 }
 
-echo 'Checkout and order audit passed: snapshots, idempotency, ownership, delivery and reservations verified.'.PHP_EOL;
+echo 'Checkout and order audit passed: snapshots, idempotency, ownership, current cooling delivery policy and reservations verified.'.PHP_EOL;

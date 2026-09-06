@@ -45,7 +45,7 @@ if [[ -L "$DEPLOY_ROOT/current" ]]; then
 fi
 
 if [[ -e "$TARGET" ]]; then
-  php "$SCRIPT_ROOT/scripts/verify-backend-release.php" "$TARGET"
+  php "$SCRIPT_ROOT/scripts/verify-backend-release.php" "$TARGET" --allow-runtime-links
 else
   trap 'rm -rf "$STAGING"' EXIT
   mkdir -p "$STAGING"
@@ -65,30 +65,46 @@ mkdir -p "$APP_DIR/bootstrap/cache"
 chmod 0770 "$APP_DIR/bootstrap/cache"
 
 maintenance_started=false
-if [[ "$BACKEND_MAINTENANCE" == "true" && -n "$PREVIOUS_TARGET" && -f "$DEPLOY_ROOT/current/artisan" ]]; then
-  (cd "$DEPLOY_ROOT/current" && php artisan down --retry=60 --no-interaction) || true
+if [[ "$BACKEND_MAINTENANCE" == "true" && -n "$PREVIOUS_TARGET" && -f "$DEPLOY_ROOT/current/app/artisan" ]]; then
+  (cd "$DEPLOY_ROOT/current/app" && php artisan down --retry=60 --no-interaction) || true
   maintenance_started=true
 fi
 
 cleanup_maintenance() {
-  if [[ "$maintenance_started" == "true" && -L "$DEPLOY_ROOT/current" && -f "$DEPLOY_ROOT/current/artisan" ]]; then
-    (cd "$DEPLOY_ROOT/current" && php artisan up --no-interaction) || true
+  if [[ "$maintenance_started" == "true" && -L "$DEPLOY_ROOT/current" && -f "$DEPLOY_ROOT/current/app/artisan" ]]; then
+    (cd "$DEPLOY_ROOT/current/app" && php artisan up --no-interaction) || true
   fi
 }
 trap cleanup_maintenance EXIT
 
 (
   cd "$APP_DIR"
-  php artisan optimize:clear --no-interaction
   if [[ "$BACKEND_RUN_MIGRATIONS" == "true" ]]; then
     php artisan migrate --force --no-interaction
   fi
+  php artisan optimize:clear --no-interaction
   php artisan storage:link --force --no-interaction
   php artisan config:cache --no-interaction
   php artisan route:cache --no-interaction
   php artisan view:cache --no-interaction
   php artisan backend:readiness --json
 )
+
+echo "===== NORMALIZING DEPLOYED BACKEND PERMISSIONS ====="
+
+chown -R winimi:www-data \
+  "$APP_DIR/bootstrap/cache" \
+  "$DEPLOY_ROOT/shared/storage"
+
+find \
+  "$APP_DIR/bootstrap/cache" \
+  "$DEPLOY_ROOT/shared/storage" \
+  -type d -exec chmod 2770 {} +
+
+find \
+  "$APP_DIR/bootstrap/cache" \
+  "$DEPLOY_ROOT/shared/storage" \
+  -type f -exec chmod 0660 {} +
 
 activate_release() {
   local target=$1
@@ -97,7 +113,7 @@ activate_release() {
 }
 restart_runtime() {
   if [[ -n "$BACKEND_RESTART_COMMAND" ]]; then
-    BACKEND_CURRENT="$DEPLOY_ROOT/current" bash -Eeuo pipefail -c "$BACKEND_RESTART_COMMAND"
+    BACKEND_CURRENT="$DEPLOY_ROOT/current/app" bash -Eeuo pipefail -c "$BACKEND_RESTART_COMMAND"
   fi
 }
 check_health() {
@@ -105,21 +121,34 @@ check_health() {
     curl --fail --silent --show-error --retry 20 --retry-delay 1 "$BACKEND_HEALTH_URL" >/dev/null
   fi
 }
-
-activate_release "releases/$RELEASE_ID"
-if ! restart_runtime || ! check_health; then
+restore_previous_release() {
   echo "Backend restart or health check failed; restoring previous release symlink." >&2
   if [[ -n "$PREVIOUS_TARGET" ]]; then
     activate_release "$PREVIOUS_TARGET"
     restart_runtime || true
+    (cd "$DEPLOY_ROOT/current/app" && php artisan up --no-interaction) || true
   fi
+  maintenance_started=false
+}
+
+activate_release "releases/$RELEASE_ID"
+
+if ! restart_runtime; then
+  restore_previous_release
   echo "Database migrations are not automatically reversed; inspect migration compatibility before retrying." >&2
   exit 1
 fi
 
-(cd "$DEPLOY_ROOT/current" && php artisan queue:restart --no-interaction) || true
 cleanup_maintenance
 maintenance_started=false
+
+if ! check_health; then
+  restore_previous_release
+  echo "Database migrations are not automatically reversed; inspect migration compatibility before retrying." >&2
+  exit 1
+fi
+
+(cd "$DEPLOY_ROOT/current/app" && php artisan queue:restart --no-interaction) || true
 printf '%s\n' "$RELEASE_ID" > "$DEPLOY_ROOT/active-release"
 chmod 0644 "$DEPLOY_ROOT/active-release"
 

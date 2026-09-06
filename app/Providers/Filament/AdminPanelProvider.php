@@ -41,7 +41,7 @@ class AdminPanelProvider extends PanelProvider
             ->path('admin')
             ->login()
             ->brandName(config('winimi.brand.name', 'وینیمی بیکری'))
-            ->favicon(asset('favicon.ico'))
+            ->favicon(asset('brand/shinethree-mark.svg'))
             ->colors(['primary' => Color::Emerald])
             ->font('Vazirmatn')
             ->discoverResources(in: app_path('Filament/Resources'), for: 'App\\Filament\\Resources')

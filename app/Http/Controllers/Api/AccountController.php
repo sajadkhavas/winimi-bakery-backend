@@ -6,9 +6,13 @@ use App\Http\Controllers\Controller;
 use App\Http\Resources\CustomerResource;
 use App\Models\Customer;
 use App\Support\ApiResponse;
+use App\Support\IranianMobile;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
+use InvalidArgumentException;
 
 class AccountController extends Controller
 {
@@ -54,5 +58,54 @@ class AccountController extends Controller
         return ApiResponse::success([
             'user' => (new CustomerResource($customer->fresh()))->resolve($request),
         ], 'اطلاعات حساب به‌روزرسانی شد.');
+    }
+
+    public function completeMobile(Request $request): JsonResponse
+    {
+        /** @var Customer $customer */
+        $customer = $request->user('customer');
+
+        if ($customer->mobile !== null) {
+            return ApiResponse::error(
+                'شماره موبایل این حساب قبلاً ثبت شده است.',
+                409,
+                [],
+                [],
+                'mobile_already_set',
+            );
+        }
+
+        $validated = $request->validate([
+            'mobile' => ['required', 'string', 'max:32'],
+        ]);
+
+        try {
+            $mobile = IranianMobile::normalize($validated['mobile']);
+        } catch (InvalidArgumentException $exception) {
+            throw ValidationException::withMessages([
+                'mobile' => [$exception->getMessage()],
+            ]);
+        }
+
+        if (Customer::withTrashed()->where('mobile', $mobile)->exists()) {
+            throw ValidationException::withMessages([
+                'mobile' => ['این شماره موبایل قبلاً استفاده شده است.'],
+            ]);
+        }
+
+        try {
+            $customer->forceFill([
+                'mobile' => $mobile,
+                'mobile_verified_at' => null,
+            ])->save();
+        } catch (QueryException) {
+            throw ValidationException::withMessages([
+                'mobile' => ['این شماره موبایل قبلاً استفاده شده است.'],
+            ]);
+        }
+
+        return ApiResponse::success([
+            'user' => (new CustomerResource($customer->fresh()))->resolve($request),
+        ], 'شماره موبایل ثبت شد؛ تأیید آن پس از فعال‌شدن OTP انجام می‌شود.');
     }
 }

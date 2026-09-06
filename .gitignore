@@ -34,7 +34,6 @@ yarn-error.log
 Thumbs.db
 
 .env.local
-.lovable/
 /dist/
 
 toolmaster_fix.sql

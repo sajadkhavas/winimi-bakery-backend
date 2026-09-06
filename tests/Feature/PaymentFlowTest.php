@@ -65,6 +65,8 @@ class PaymentFlowTest extends TestCase
             'slug' => 'chocolate-cookie',
             'product_code' => 'COOKIE-001',
             'preparation_time_days' => 2,
+            'content_verified' => true,
+            'media_verified' => true,
             'requires_cooling' => false,
             'is_active' => true,
         ]);
@@ -75,8 +77,10 @@ class PaymentFlowTest extends TestCase
             'sku' => 'COOKIE-001-6',
             'regular_price_toman' => 100_000,
             'sale_price_toman' => 80_000,
+            'packaging_fee_toman' => 10_000,
             'stock_quantity' => 5,
             'low_stock_threshold' => 2,
+            'inventory_verified' => true,
             'is_default' => true,
             'is_active' => true,
         ]);
@@ -234,6 +238,7 @@ class PaymentFlowTest extends TestCase
     {
         config([
             'winimi.payment.provider' => 'zarinpal',
+            'winimi.payment.currency' => 'IRR',
             'winimi.payment.zarinpal.merchant_id' => '00000000-0000-0000-0000-000000000000',
             'winimi.payment.zarinpal.request_url' => 'https://gateway.test/request',
             'winimi.payment.zarinpal.verify_url' => 'https://gateway.test/verify',
@@ -274,7 +279,14 @@ class PaymentFlowTest extends TestCase
             ->assertJsonPath('data.payment.referenceId', '987654321');
 
         Http::assertSent(fn (Request $request): bool => $request->url() === 'https://gateway.test/request'
-            && $request['amount'] === 1_200_000
+            && $request['amount'] === 900_000
+            && $request['currency'] === 'IRR'
+            && $request['merchant_id'] === '00000000-0000-0000-0000-000000000000');
+
+        Http::assertSent(fn (Request $request): bool => $request->url() === 'https://gateway.test/verify'
+            && $request['amount'] === 900_000
+            && $request['currency'] === 'IRR'
+            && $request['authority'] === 'A000000000000000000000000000000001'
             && $request['merchant_id'] === '00000000-0000-0000-0000-000000000000');
 
         $attempt = PaymentAttempt::query()->firstOrFail();

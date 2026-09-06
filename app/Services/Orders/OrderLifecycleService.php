@@ -63,8 +63,18 @@ final class OrderLifecycleService
         ?int $actorId,
         ?string $note = null,
         ?string $trackingCode = null,
+        ?string $courierName = null,
+        ?string $courierMobile = null,
     ): Order {
-        return DB::transaction(function () use ($order, $target, $actorId, $note, $trackingCode): Order {
+        return DB::transaction(function () use (
+            $order,
+            $target,
+            $actorId,
+            $note,
+            $trackingCode,
+            $courierName,
+            $courierMobile,
+        ): Order {
             $locked = Order::query()->whereKey($order->getKey())->lockForUpdate()->firstOrFail();
             $allowed = $this->allowedTargets($locked->status);
 
@@ -93,7 +103,9 @@ final class OrderLifecycleService
                 OrderStatus::Ready => ['ready_at' => now()],
                 OrderStatus::Dispatched => [
                     'dispatched_at' => now(),
-                    'tracking_code' => trim((string) $trackingCode),
+                    'tracking_code' => $this->nullableText($trackingCode),
+                    'courier_name' => $this->nullableText($courierName),
+                    'courier_mobile' => $this->nullableText($courierMobile),
                 ],
                 OrderStatus::Delivered => ['delivered_at' => now()],
                 default => [],
@@ -390,7 +402,7 @@ final class OrderLifecycleService
     {
         return match ($status) {
             OrderStatus::AwaitingPayment => [OrderStatus::Cancelled],
-            OrderStatus::Paid => [OrderStatus::Confirmed, OrderStatus::Cancelled],
+            OrderStatus::Paid => [OrderStatus::Preparing, OrderStatus::Cancelled],
             OrderStatus::Confirmed => [OrderStatus::Preparing, OrderStatus::Cancelled],
             OrderStatus::Preparing => [OrderStatus::Ready, OrderStatus::Cancelled],
             OrderStatus::Ready => [OrderStatus::Dispatched, OrderStatus::Delivered, OrderStatus::Cancelled],
@@ -408,11 +420,6 @@ final class OrderLifecycleService
                 ]);
             }
 
-            if (trim((string) $trackingCode) === '') {
-                throw ValidationException::withMessages([
-                    'trackingCode' => ['برای ثبت ارسال، کد پیگیری الزامی است.'],
-                ]);
-            }
         }
 
         if (
@@ -426,10 +433,15 @@ final class OrderLifecycleService
         }
     }
 
+    private function nullableText(?string $value): ?string
+    {
+        $value = trim((string) $value);
+
+        return $value === '' ? null : $value;
+    }
+
     private function nullableNote(?string $note): ?string
     {
-        $note = trim((string) $note);
-
-        return $note === '' ? null : $note;
+        return $this->nullableText($note);
     }
 }

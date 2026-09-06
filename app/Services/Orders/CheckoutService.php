@@ -16,6 +16,7 @@ use App\Models\Order;
 use App\Models\OrderStatusHistory;
 use App\Services\Store\DeliveryConfigurationService;
 use App\Support\IranianMobile;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -91,6 +92,10 @@ final class CheckoutService
         $variants = BakeryProductVariant::query()
             ->whereIn('public_id', $variantIds)
             ->where('is_active', true)
+            ->whereHas(
+                'product',
+                fn (Builder $product): Builder => $product->launchReady(),
+            )
             ->with(['product.category'])
             ->orderBy('id')
             ->lockForUpdate()
@@ -103,7 +108,7 @@ final class CheckoutService
             ]);
         }
 
-        $deliveryMethod = DeliveryMethod::from($payload['deliveryMethod']);
+        $deliveryMethod = DeliveryMethod::Standard;
         $requiresCooling = $variants->contains(
             fn (BakeryProductVariant $variant): bool => (bool) $variant->product?->requires_cooling,
         );
@@ -120,7 +125,9 @@ final class CheckoutService
 
         $itemSnapshots = [];
         $subtotal = 0;
-        $productPreparationDays = 0;
+        $packagingTotal = 0;
+        $productPreparationMinDays = 0;
+        $productPreparationMaxDays = 0;
 
         foreach ($items as $item) {
             /** @var BakeryProductVariant $variant */
@@ -133,12 +140,41 @@ final class CheckoutService
                 ]);
             }
 
+            if (! $variant->inventory_verified) {
+                throw ValidationException::withMessages([
+                    'items' => ["موجودی «{$variant->name}» هنوز توسط فروشگاه تأیید نشده است."],
+                ]);
+            }
+
+            $quantity = (int) $item['quantity'];
+
+            if (
+                $variant->min_order_quantity !== null
+                && $quantity < $variant->min_order_quantity
+            ) {
+                throw ValidationException::withMessages([
+                    'items' => [
+                        "حداقل تعداد سفارش «{$variant->name}» {$variant->min_order_quantity} عدد است.",
+                    ],
+                ]);
+            }
+
+            if (
+                $variant->max_order_quantity !== null
+                && $quantity > $variant->max_order_quantity
+            ) {
+                throw ValidationException::withMessages([
+                    'items' => [
+                        "حداکثر تعداد سفارش «{$variant->name}» {$variant->max_order_quantity} عدد است.",
+                    ],
+                ]);
+            }
+
             $reserved = (int) InventoryReservation::query()
                 ->where('variant_id', $variant->getKey())
                 ->active()
                 ->sum('quantity');
             $available = max(0, (int) $variant->stock_quantity - $reserved);
-            $quantity = (int) $item['quantity'];
 
             if ($quantity > $available) {
                 throw new InventoryUnavailable(
@@ -152,9 +188,27 @@ final class CheckoutService
             $unitPrice = $variant->current_price_toman;
             $lineTotal = $unitPrice * $quantity;
             $subtotal += $lineTotal;
-            $productPreparationDays = max(
-                $productPreparationDays,
-                (int) ($product->preparation_time_days ?? 0),
+            $packagingTotal += (int) $variant->packaging_fee_toman * $quantity;
+
+            $productMinDays = (int) (
+                $product->preparation_min_days
+                ?? $product->preparation_time_days
+                ?? 0
+            );
+
+            $productMaxDays = (int) (
+                $product->preparation_max_days
+                ?? $productMinDays
+            );
+
+            $productPreparationMinDays = max(
+                $productPreparationMinDays,
+                $productMinDays,
+            );
+
+            $productPreparationMaxDays = max(
+                $productPreparationMaxDays,
+                $productMaxDays,
             );
 
             $itemSnapshots[] = [
@@ -181,8 +235,16 @@ final class CheckoutService
             $subtotal,
             $requiresCooling,
         );
-        $preparationMinDays = max($productPreparationDays, $quote['preparation_min_days']);
-        $preparationMaxDays = max($preparationMinDays, $quote['preparation_max_days']);
+        $preparationMinDays = max(
+            $productPreparationMinDays,
+            $quote['preparation_min_days'],
+        );
+
+        $preparationMaxDays = max(
+            $preparationMinDays,
+            $productPreparationMaxDays,
+            $quote['preparation_max_days'],
+        );
         $reservationExpiresAt = now()->addMinutes(
             max(1, (int) config('winimi.checkout.reservation_minutes', 20)),
         );
@@ -195,13 +257,13 @@ final class CheckoutService
             'status' => OrderStatus::AwaitingPayment,
             'payment_status' => PaymentStatus::Unpaid,
             'delivery_method' => $deliveryMethod,
-            'delivery_zone_id' => $quote['zone']?->getKey(),
+            'delivery_zone_id' => null,
             'requires_cooling' => $requiresCooling,
             'subtotal_toman' => $subtotal,
-            'delivery_fee_toman' => $quote['fee_toman'],
-            'packaging_fee_toman' => $quote['packaging_fee_toman'],
+            'delivery_fee_toman' => 0,
+            'packaging_fee_toman' => $packagingTotal,
             'discount_total_toman' => 0,
-            'grand_total_toman' => $subtotal + $quote['fee_toman'] + $quote['packaging_fee_toman'],
+            'grand_total_toman' => $subtotal + $packagingTotal,
             'item_count' => $items->sum('quantity'),
             'preparation_time_days' => $preparationMinDays,
             'preparation_max_days' => $preparationMaxDays,
@@ -300,7 +362,7 @@ final class CheckoutService
                 'postalCode' => trim((string) ($payload['customer']['postalCode'] ?? '')),
                 'notes' => trim((string) ($payload['customer']['notes'] ?? '')),
             ],
-            'deliveryMethod' => $payload['deliveryMethod'],
+            'deliveryMethod' => DeliveryMethod::Standard->value,
             'items' => $items,
         ];
     }

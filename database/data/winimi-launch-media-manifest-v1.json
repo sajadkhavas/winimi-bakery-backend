@@ -1,0 +1,173 @@
+{
+  "schemaVersion": 1,
+  "brand": "وینیمی بیکری",
+  "purpose": "launch-media-selection",
+  "source": {
+    "type": "employer-original-images",
+    "receivedAt": "2026-08-20",
+    "originalsMustBePreserved": true
+  },
+  "launchPolicy": {
+    "oneRepresentativeProductPerCategory": true,
+    "unlistedProductsRemainForPostLaunchExpansion": true,
+    "giftBoxLaunchEnabled": false,
+    "mediaVerificationRequiresHumanReviewAfterAssignment": true
+  },
+  "products": [
+    {
+      "productCode": "VIN-CW-001",
+      "publicId": "01KYCZMCVZCA8D60WV3MS475Z6",
+      "name": "کوکی شکلاتی گردویی",
+      "category": "کوکی‌های خانگی",
+      "launchEnabled": true,
+      "verificationStatus": "identity_confirmed",
+      "images": [
+        {
+          "sourceFilename": "IMG_8944.JPG",
+          "roles": ["product_main"],
+          "alt": "کوکی شکلاتی گردویی وینیمی بیکری"
+        },
+        {
+          "sourceFilename": "IMG_8941.JPG",
+          "roles": ["product_gallery", "lifestyle"],
+          "alt": "کوکی شکلاتی گردویی وینیمی در کنار قهوه"
+        },
+        {
+          "sourceFilename": "IMG_8943.JPG",
+          "roles": ["product_gallery"],
+          "alt": "نمای کوکی شکلاتی گردویی وینیمی بیکری"
+        }
+      ]
+    },
+    {
+      "productCode": "VIN-MV-008",
+      "publicId": "01KYCZMCX4YA938VJ0DGEQCKJY",
+      "name": "مینی کوکی وانیلی با تکه‌های شکلات",
+      "category": "مینی کوکی",
+      "launchEnabled": true,
+      "verificationStatus": "identity_confirmed",
+      "images": [
+        {
+          "sourceFilename": "IMG_8908.JPG",
+          "roles": ["product_main"],
+          "alt": "مینی کوکی وانیلی با تکه‌های شکلات وینیمی"
+        },
+        {
+          "sourceFilename": "IMG_8909.JPG",
+          "roles": ["product_gallery", "detail"],
+          "alt": "نمای نزدیک مینی کوکی وانیلی با تکه‌های شکلات"
+        },
+        {
+          "sourceFilename": "IMG_8914.JPG",
+          "roles": ["product_gallery", "lifestyle"],
+          "alt": "مینی کوکی وانیلی وینیمی در کنار قهوه"
+        },
+        {
+          "sourceFilename": "IMG_8910.JPG",
+          "roles": ["product_gallery"],
+          "alt": "مینی کوکی وانیلی با تکه‌های شکلات وینیمی بیکری"
+        }
+      ]
+    },
+    {
+      "productCode": "VIN-SS-015",
+      "publicId": "01KYCZMCY3D3DVXR808YA5HV3Q",
+      "name": "چیزکیک سن سباستین",
+      "category": "کیک و دسر",
+      "launchEnabled": true,
+      "verificationStatus": "identity_confirmed",
+      "images": [
+        {
+          "sourceFilename": "IMG_0490.JPG",
+          "roles": ["product_main"],
+          "alt": "برش چیزکیک سن سباستین وینیمی بیکری"
+        },
+        {
+          "sourceFilename": "IMG_0487.JPG",
+          "roles": ["product_gallery", "detail"],
+          "alt": "بافت داخلی چیزکیک سن سباستین وینیمی"
+        },
+        {
+          "sourceFilename": "IMG_0835.JPG",
+          "roles": ["product_gallery", "serving_suggestion"],
+          "alt": "پیشنهاد سرو چیزکیک سن سباستین وینیمی",
+          "truthNote": "تصویر صرفاً پیشنهاد سرو است و نباید همراه بودن سس یا تزئینات با سفارش را القا کند."
+        }
+      ]
+    },
+    {
+      "productCode": "VIN-WP-027",
+      "publicId": "01KYCZMCZF4SZBN3RRK6S5HRAK",
+      "name": "کوکی پروتئین وی با مغزیجات",
+      "category": "رژیمی و بدون قند افزوده",
+      "launchEnabled": true,
+      "verificationStatus": "identity_confirmed_by_user",
+      "images": [
+        {
+          "sourceFilename": "IMG_9527.JPG",
+          "roles": ["product_main"],
+          "alt": "کوکی پروتئین وی با مغزیجات وینیمی"
+        }
+      ],
+      "claimSafety": {
+        "medicalClaimsAllowed": false,
+        "diabetesSuitabilityClaimAllowed": false,
+        "numericNutritionClaimsAllowedWithoutEvidence": false
+      }
+    },
+    {
+      "productCode": "VIN-CRL-024",
+      "publicId": "01KYCZMCZ6KNKAFE85NXY3CERB",
+      "name": "رول دارچینی",
+      "category": "رول و کروسان",
+      "launchEnabled": true,
+      "verificationStatus": "identity_confirmed_by_user",
+      "confirmedComposition": [
+        "گردو",
+        "شکلات",
+        "کرمفیل وانیلی"
+      ],
+      "images": [
+        {
+          "sourceFilename": "2.jpg",
+          "roles": ["product_main"],
+          "alt": "رول دارچینی با گردو، شکلات و کرمفیل وانیلی وینیمی"
+        },
+        {
+          "sourceFilename": "3.jpg",
+          "roles": ["product_gallery", "lifestyle"],
+          "alt": "رول دارچینی وینیمی با گردو و شکلات"
+        },
+        {
+          "sourceFilename": "1.jpg",
+          "roles": ["product_gallery", "hero_candidate"],
+          "alt": "رول دارچینی وینیمی با گردو و شکلات"
+        }
+      ]
+    }
+  ],
+  "brandAssets": [
+    {
+      "sourceFilename": "IMG_9530.JPG",
+      "roles": ["brand", "packaging"],
+      "productCode": null,
+      "verificationStatus": "brand_context_only",
+      "alt": "بسته‌بندی وینیمی بیکری"
+    }
+  ],
+  "excludedFromInitialLaunch": [
+    {
+      "publicId": "01KYCZMCZMV0TTV8Q1BQZDRJA7",
+      "name": "باکس هدیه وینیمی",
+      "category": "باکس هدیه",
+      "launchEnabled": false,
+      "reason": "طبق تصمیم فعلی، باکس هدیه پس از لانچ و در صورت درخواست کارفرما توسعه و فعال می‌شود."
+    },
+    {
+      "productCode": "VIN-VWC-028",
+      "name": "کوکی گردویی با تکه‌های شکلات",
+      "launchEnabled": false,
+      "reason": "محصولی مستقل از VIN-CW-001 است و در Wave اولیه Launch انتخاب نشده است."
+    }
+  ]
+}

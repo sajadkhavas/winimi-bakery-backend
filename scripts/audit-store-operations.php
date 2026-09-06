@@ -98,9 +98,12 @@ $require('addressController', '->ownedBy($request->user(\'customer\'))', 'server
 $require('checkout', 'resolveCustomerPayload', 'saved-address checkout resolution');
 $require('checkout', "'delivery_zone_id' =>", 'delivery zone snapshot');
 $require('delivery', 'StoreSetting::value', 'database operating settings');
-$require('deliveryZone', 'free_delivery_threshold_toman', 'free delivery threshold');
-$require('delivery', 'daily_order_limit', 'daily zone capacity');
-$require('deliveryZone', 'feeFor(DeliveryMethod $method, int $subtotalToman)', 'server-authoritative zone fee');
+$require('delivery', 'orders.accepting_orders', 'store-level order acceptance switch');
+$require('delivery', 'orders.minimum_total_toman', 'store-level minimum-order policy');
+$require('delivery', "'zone' => null", 'legacy delivery-zone isolation for new checkout');
+$require('delivery', "'fee_toman' => 0", 'merchant-arranged courier fee isolation');
+$require('deliveryZone', 'free_delivery_threshold_toman', 'legacy free delivery threshold metadata');
+$require('deliveryZone', 'feeFor(DeliveryMethod $method, int $subtotalToman)', 'legacy zone fee compatibility method');
 
 $require('lifecycle', 'allowedTargets', 'explicit fulfillment state machine');
 $require('lifecycle', 'InventoryReservationStatus::Restocked', 'one-time restock state');
@@ -148,7 +151,6 @@ $forbid('env', 'VITE_KAVENEGAR', 'frontend SMS secret');
 $forbid('env', 'VITE_ENAMAD', 'frontend trust-code injection');
 
 foreach ([
-    'confirm',
     'prepare',
     'ready',
     'dispatch',
@@ -158,15 +160,20 @@ foreach ([
 ] as $action) {
     $require('orderAdmin', "Action::make('{$action}')", "controlled order action {$action}");
 }
+$require('orderAdmin', '->requiresConfirmation()', 'confirmation boundary for destructive/status actions');
+$require('orderAdmin', '[OrderStatus::Paid, OrderStatus::Confirmed]', 'paid-or-confirmed preparation transition');
+$forbid('orderAdmin', "Action::make('confirm')", 'redundant manual confirm action');
 
 foreach ([
-    'test_customer_addresses_are_owned_and_checkout_snapshots_database_delivery_rules',
+    'test_customer_addresses_are_owned_and_checkout_ignores_legacy_delivery_zone_pricing',
     'test_store_content_is_published_separately_and_enamad_stays_hidden_until_enabled',
     'test_only_delivered_owned_items_can_receive_one_moderated_verified_review',
     'test_inquiries_use_honeypot_and_duplicate_protection',
 ] as $test) {
     $require('tests', $test, "store operations regression {$test}");
 }
+$require('tests', "->assertJsonPath('data.order.delivery.zone', null)", 'legacy delivery-zone isolation regression');
+$require('tests', "->assertJsonPath('data.order.delivery.feeToman', 0)", 'merchant-arranged courier fee regression');
 
 foreach ([
     'test_admin_fulfillment_transitions_are_controlled_and_queue_public_notifications',
@@ -185,4 +192,4 @@ if ($errors !== []) {
     exit(1);
 }
 
-echo 'Store operations audit passed: addresses, delivery zones, fulfillment, content, reviews, inquiries, outbox and administration verified.'.PHP_EOL;
+echo 'Store operations audit passed: addresses, current merchant-arranged delivery policy, fulfillment, content, reviews, inquiries, outbox and administration verified.'.PHP_EOL;
