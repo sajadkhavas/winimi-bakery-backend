@@ -7,6 +7,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Resources\BakeryCategoryResource;
 use App\Http\Resources\BakeryProductResource;
 use App\Models\BakeryCategory;
+use App\Models\BakeryCategoryLanding;
 use App\Models\BakeryProduct;
 use App\Support\ApiResponse;
 use App\Support\Pagination;
@@ -120,9 +121,33 @@ class CatalogController extends Controller
             ])
             ->ordered()
             ->get();
+        $landings = BakeryCategoryLanding::query()
+            ->active()
+            ->ordered()
+            ->get()
+            ->map(fn (BakeryCategoryLanding $landing): array => [
+                'id' => $landing->public_id,
+                'slug' => $landing->public_slug,
+                'catalogCategorySlug' => $landing->catalog_category_slug,
+                'catalogSearch' => $landing->catalog_search,
+                'name' => $landing->name,
+                'eyebrow' => $landing->eyebrow,
+                'cardDescription' => $landing->card_description,
+                'seo' => [
+                    'title' => $landing->meta_title,
+                    'description' => $landing->meta_description,
+                ],
+                'heading' => $landing->heading,
+                'intro' => $landing->intro,
+                'sections' => $landing->sections ?? [],
+                'faq' => $landing->faq ?? [],
+            ])
+            ->values()
+            ->all();
 
         return ApiResponse::success(
             BakeryCategoryResource::collection($categories)->resolve($request),
+            meta: ['categoryLandings' => $landings],
         );
     }
 
