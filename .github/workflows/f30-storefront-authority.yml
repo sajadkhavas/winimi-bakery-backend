@@ -1,0 +1,49 @@
+name: F30 Storefront Backend Authority
+
+on:
+  push:
+    branches:
+      - 'phase-30/**'
+  pull_request:
+    paths:
+      - 'app/Filament/Resources/StoreSettingResource.php'
+      - 'app/Filament/Resources/StoreSettingResource/**'
+      - 'database/migrations/2026_09_06_153500_seed_storefront_authority.php'
+      - 'tests/Feature/F30StorefrontAuthorityTest.php'
+      - '.github/workflows/f30-storefront-authority.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  backend-authority:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: mbstring, pdo_sqlite
+          coverage: none
+          tools: composer:v2
+
+      - name: Install dependencies
+        run: composer install --no-interaction --prefer-dist --no-progress
+
+      - name: Prepare Laravel test environment
+        run: |
+          cp .env.example .env
+          touch database/database.sqlite
+          php artisan key:generate --force
+
+      - name: F30 authority tests
+        run: php artisan test tests/Feature/F30StorefrontAuthorityTest.php tests/Feature/StoreOperationsTest.php tests/Feature/StoreOperationsFilamentTest.php
+
+      - name: Formatting gate
+        run: vendor/bin/pint --test app/Filament/Resources/StoreSettingResource.php app/Filament/Resources/StoreSettingResource/Pages/ManageStoreSettings.php database/migrations/2026_09_06_153500_seed_storefront_authority.php tests/Feature/F30StorefrontAuthorityTest.php
+
+      - name: Composer security audit
+        run: composer audit --no-interaction
