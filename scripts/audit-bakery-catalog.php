@@ -45,7 +45,11 @@ $requireText('app/Models/BakeryProduct.php', "'content_verified'", 'content veri
 $requireText('app/Models/BakeryProduct.php', "'media_verified'", 'media verification boundary');
 $requireText('app/Models/BakeryProductVariant.php', 'regular_price_toman', 'server-side variant pricing');
 $requireText('app/Models/BakeryProductVariant.php', 'stock_quantity', 'variant inventory');
-$requireText('app/Http/Resources/BakeryProductResource.php', "'inventoryVerified' => true", 'authoritative inventory marker');
+$requireText('app/Models/BakeryProductVariant.php', "'inventory_verified'", 'variant inventory verification boundary');
+$requireText('app/Http/Resources/BakeryProductResource.php', '$inventoryVerified = $variants->isNotEmpty()', 'derived authoritative inventory verification');
+$requireText('app/Http/Resources/BakeryProductResource.php', '(bool) $variant->inventory_verified', 'per-variant inventory verification');
+$requireText('app/Http/Resources/BakeryProductResource.php', "'inventoryVerified' => \$inventoryVerified", 'authoritative inventory response marker');
+$forbidText('app/Http/Resources/BakeryProductResource.php', "'inventoryVerified' => true", 'unconditional inventory verification marker');
 $requireText('app/Http/Resources/BakeryProductResource.php', "'contentVerified'", 'content verification response');
 $requireText('app/Http/Resources/BakeryProductResource.php', "'mediaVerified'", 'media verification response');
 $requireText('app/Http/Controllers/Api/CatalogController.php', "'price-asc'", 'server-side price sorting');
@@ -73,4 +77,4 @@ if ($errors !== []) {
     exit(1);
 }
 
-fwrite(STDOUT, 'Bakery catalog audit passed: Phase 11 domain, API and Filament contracts verified.'.PHP_EOL);
+fwrite(STDOUT, 'Bakery catalog audit passed: Phase 11 domain, API, verified inventory and Filament contracts verified.'.PHP_EOL);
