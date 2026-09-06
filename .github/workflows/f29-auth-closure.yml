@@ -64,22 +64,41 @@ jobs:
         run: php scripts/audit-f29-auth.php
 
       - name: Pint F29 implementation
+        id: pint
         run: |
-          php vendor/bin/pint --test \
-            app/Exceptions/GoogleAuthException.php \
-            app/Http/Controllers/GoogleAuthController.php \
-            app/Http/Controllers/Api/OtpAuthController.php \
-            app/Http/Controllers/Api/AccountController.php \
-            app/Http/Resources/CustomerResource.php \
-            app/Models/Customer.php \
-            app/Models/CustomerOAuthIdentity.php \
-            app/Services/Auth/GoogleOAuthService.php \
-            config/auth_features.php \
-            database/migrations/2026_09_06_140000_add_google_auth_to_customers.php \
-            routes/api.php \
-            routes/web.php \
-            tests/Feature/F29GoogleAuthTest.php \
+          set +e
+          FILES=(
+            app/Exceptions/GoogleAuthException.php
+            app/Http/Controllers/GoogleAuthController.php
+            app/Http/Controllers/Api/OtpAuthController.php
+            app/Http/Controllers/Api/AccountController.php
+            app/Http/Resources/CustomerResource.php
+            app/Models/Customer.php
+            app/Models/CustomerOAuthIdentity.php
+            app/Services/Auth/GoogleOAuthService.php
+            config/auth_features.php
+            database/migrations/2026_09_06_140000_add_google_auth_to_customers.php
+            routes/api.php
+            routes/web.php
+            tests/Feature/F29GoogleAuthTest.php
             scripts/audit-f29-auth.php
+          )
+          php vendor/bin/pint --test "${FILES[@]}"
+          STATUS=$?
+          if [ "$STATUS" -ne 0 ]; then
+            php vendor/bin/pint "${FILES[@]}"
+            git diff -- "${FILES[@]}" > f29-pint.patch
+          fi
+          exit "$STATUS"
+
+      - name: Upload Pint formatting patch
+        if: failure() && steps.pint.outcome == 'failure'
+        uses: actions/upload-artifact@v4
+        with:
+          name: f29-pint-formatting-patch
+          path: f29-pint.patch
+          if-no-files-found: error
+          retention-days: 3
 
       - name: Migration and route cache gate
         run: |
