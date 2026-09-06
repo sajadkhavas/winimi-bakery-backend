@@ -141,7 +141,11 @@ final class GoogleOAuthService
             }
         } catch (GoogleAuthException $exception) {
             throw $exception;
-        } catch (Throwable) {
+        } catch (Throwable $exception) {
+            if (app()->environment('testing')) {
+                throw $exception;
+            }
+
             throw new GoogleAuthException('provider_unreachable', $mode);
         }
 
