@@ -21,6 +21,7 @@ class BakeryCategoryLanding extends Model
         'intro',
         'sections',
         'faq',
+        'guides',
         'is_active',
         'sort_order',
     ];
@@ -30,6 +31,7 @@ class BakeryCategoryLanding extends Model
         return [
             'sections' => 'array',
             'faq' => 'array',
+            'guides' => 'array',
             'is_active' => 'boolean',
             'sort_order' => 'integer',
         ];
