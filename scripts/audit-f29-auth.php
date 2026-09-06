@@ -21,6 +21,7 @@ $sources = [];
 foreach ($files as $name => $path) {
     if (! is_file($path)) {
         $errors[] = "Missing F29 file: {$path}";
+
         continue;
     }
     $sources[$name] = (string) file_get_contents($path);
