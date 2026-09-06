@@ -141,6 +141,7 @@ class CatalogController extends Controller
                 'intro' => $landing->intro,
                 'sections' => $landing->sections ?? [],
                 'faq' => $landing->faq ?? [],
+                'guides' => $landing->guides ?? [],
             ])
             ->values()
             ->all();
