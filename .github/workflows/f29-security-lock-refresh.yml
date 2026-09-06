@@ -1,0 +1,48 @@
+name: F29 Security Lock Refresh
+
+on:
+  push:
+    branches:
+      - phase-29/google-login-auth-closure
+    paths:
+      - .github/workflows/f29-security-lock-refresh.yml
+
+permissions:
+  contents: write
+
+jobs:
+  refresh-livewire-lock:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v4
+        with:
+          ref: phase-29/google-login-auth-closure
+          fetch-depth: 0
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          tools: composer:v2
+          coverage: none
+
+      - name: Refresh only patched Livewire lock entry
+        run: |
+          composer update livewire/livewire:3.8.3 --with-dependencies --minimal-changes --no-interaction --no-progress
+          composer show livewire/livewire --locked | grep -E '^versions[[:space:]]*:.*v3\.8\.3'
+          composer audit --no-interaction
+
+      - name: Commit generated lockfile
+        run: |
+          git diff --exit-code -- composer.json
+          git diff -- composer.lock
+          if git diff --quiet -- composer.lock; then
+            echo 'composer.lock did not change' >&2
+            exit 1
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add composer.lock
+          git commit -m 'fix(security): upgrade Livewire to patched 3.8.3'
+          git push origin HEAD:phase-29/google-login-auth-closure
