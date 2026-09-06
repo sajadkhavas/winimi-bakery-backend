@@ -3,7 +3,6 @@
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
-use Illuminate\Support\Str;
 
 return new class extends Migration
 {
@@ -237,7 +236,6 @@ return new class extends Migration
         ) {
             DB::table('bakery_faqs')->insert([
                 [
-                    'public_id' => (string) Str::ulid(),
                     'category' => 'home-decision',
                     'question' => 'از کجا محصول مناسب را پیدا کنم؟',
                     'answer' => 'اگر نوع محصول را می‌دانی، از دسته‌بندی‌ها شروع کن. برای هدیه یا پذیرایی هم مسیرهای پیشنهادی، گزینه‌های مرتبط را کوتاه‌تر و روشن‌تر نشان می‌دهند.',
@@ -247,7 +245,6 @@ return new class extends Migration
                     'updated_at' => $now,
                 ],
                 [
-                    'public_id' => (string) Str::ulid(),
                     'category' => 'home-decision',
                     'question' => 'قیمت و موجودی هر محصول کجا نمایش داده می‌شود؟',
                     'answer' => 'قیمت، وضعیت موجودی و انتخاب‌های قابل سفارش در کارت و صفحه همان محصول نمایش داده می‌شوند و اطلاعات نهایی پیش از ثبت سفارش دوباره قابل بررسی است.',
@@ -257,7 +254,6 @@ return new class extends Migration
                     'updated_at' => $now,
                 ],
                 [
-                    'public_id' => (string) Str::ulid(),
                     'category' => 'home-decision',
                     'question' => 'روش تحویل چه زمانی مشخص می‌شود؟',
                     'answer' => 'روش‌های قابل انتخاب با توجه به مقصد و شرایط نگهداری محصول در مسیر سفارش نمایش داده می‌شوند؛ محصولات نیازمند سرمایش نیز نشان مشخص دارند.',
@@ -267,7 +263,6 @@ return new class extends Migration
                     'updated_at' => $now,
                 ],
                 [
-                    'public_id' => (string) Str::ulid(),
                     'category' => 'home-decision',
                     'question' => 'پیش از پرداخت چه اطلاعاتی می‌بینم؟',
                     'answer' => 'محصولات سبد، تعداد، مقصد، روش تحویل و مبلغ نهایی پیش از ورود به درگاه نمایش داده می‌شوند تا بتوانی سفارش را یک‌بار کامل بررسی کنی.',
