@@ -46,6 +46,11 @@ class Customer extends Authenticatable
         ];
     }
 
+    public function oauthIdentities(): HasMany
+    {
+        return $this->hasMany(CustomerOAuthIdentity::class);
+    }
+
     public function otpChallenges(): HasMany
     {
         return $this->hasMany(OtpChallenge::class);
