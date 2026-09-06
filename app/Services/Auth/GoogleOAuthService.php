@@ -173,7 +173,7 @@ final class GoogleOAuthService
     }
 
     /**
-     * @param array{sub: string, email: string, name: ?string} $profile
+     * @param  array{sub: string, email: string, name: ?string}  $profile
      */
     private function loginOrCreate(array $profile): Customer
     {
@@ -231,7 +231,7 @@ final class GoogleOAuthService
     }
 
     /**
-     * @param array{sub: string, email: string, name: ?string} $profile
+     * @param  array{sub: string, email: string, name: ?string}  $profile
      */
     private function linkIdentity(array $profile, mixed $linkCustomerId): Customer
     {
