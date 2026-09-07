@@ -100,7 +100,8 @@ return [
         /*
          * The database dump can be compressed to decrease disk space usage.
          *
-         * Out of the box Laravel-backup supplies Spatie\DbDumper\Compressors\GzipCompressor::class.
+         * Out of the box Laravel-backup supplies
+         * Spatie\DbDumper\Compressors\GzipCompressor::class.
          *
          * You can also create custom compressor. More info on that here:
          * https://github.com/spatie/db-dumper#using-compression
@@ -205,6 +206,9 @@ return [
     /*
      * You can get notified when specific events occur. Out of the box you can use 'mail' and 'slack'.
      * For Slack you need to install laravel/slack-notification-channel.
+     *
+     * You can also use your own notification classes, just make sure the class is named after one of
+     * the `Spatie\Backup\Notifications\Notifications` classes.
      */
     'notifications' => [
         'notifications' => [
@@ -319,7 +323,7 @@ return [
             'keep_weekly_backups_for_weeks' => 8,
 
             /*
-             * After the "keep_weekly_backups_for_days" period is over, the most recent backup
+             * After the "keep_weekly_backups_for_weeks" period is over, the most recent backup
              * of that month will be kept. Older backups within the same month will be removed.
              */
             'keep_monthly_backups_for_months' => 4,
@@ -344,7 +348,7 @@ return [
         'tries' => 1,
 
         /*
-         * The number of seconds to wait before attempting a new backup if the previous try failed
+         * The number of seconds to wait before attempting a new cleanup if the previous try failed
          * Set to `0` for none
          */
         'retry_delay' => 0,
