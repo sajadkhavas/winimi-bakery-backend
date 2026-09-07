@@ -28,10 +28,10 @@ Application source code is recovered from the signed GitHub release and is not d
 ```env
 BACKUP_DISK=local
 BACKUP_RETENTION_DAYS=14
-BACKUP_ENCRYPTION_PASSWORD=
+BACKUP_ARCHIVE_PASSWORD=
 ```
 
-Production should use a remote private disk even though local storage remains the development default. The encryption password is a server secret and must never be committed.
+Production should use a remote private disk even though local storage remains the development default. `BACKUP_ARCHIVE_PASSWORD` is the server-only secret consumed by `config/backup.php` for archive encryption and must never be committed.
 
 ## Production shared-storage coverage
 
