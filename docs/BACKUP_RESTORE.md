@@ -33,6 +33,29 @@ BACKUP_ENCRYPTION_PASSWORD=
 
 Production should use a remote private disk even though local storage remains the development default. The encryption password is a server secret and must never be committed.
 
+## Production shared-storage coverage
+
+Production uses immutable/zero-downtime releases with Laravel `storage` linked to `/var/www/winimi/backend/shared/storage`.
+
+Because backup file selection intentionally keeps `follow_links=false`, the persistent `storage/app` directory must also be included explicitly in `backup.source.files.include`.
+
+The production backup source therefore covers:
+
+- the application release source required by the existing package contract
+- the production database dump
+- shared `storage/app/public` media
+- persistent files under shared `storage/app`, including operational exports
+
+The following shared-storage paths are intentionally excluded:
+
+- `storage/app/backup-temp`
+- `storage/app/public/livewire-tmp`
+- the backup destination directory under `storage/app/private/<APP_NAME>`
+
+The backup destination exclusion is mandatory to prevent recursive inclusion of previous backup archives.
+
+A backup cannot be accepted as recoverable unless an isolated restore proves both the database dump and persistent media are present.
+
 ## Create a backup
 
 The project includes Spatie Laravel Backup. The production command is:

@@ -1,5 +1,8 @@
 <?php
 
+$storageAppPath = realpath(storage_path('app')) ?: storage_path('app');
+$backupArchivePath = $storageAppPath.'/private/'.env('APP_NAME', 'laravel-backup');
+
 return [
 
     'backup' => [
@@ -16,6 +19,12 @@ return [
                  */
                 'include' => [
                     base_path(),
+
+                    // Production uses zero-downtime releases where storage is
+                    // a symlink to shared persistent storage. Because
+                    // follow_links is intentionally false, include the real
+                    // persistent app storage explicitly.
+                    $storageAppPath,
                 ],
 
                 /*
@@ -26,6 +35,13 @@ return [
                 'exclude' => [
                     base_path('vendor'),
                     base_path('node_modules'),
+
+                    // Never archive the backup workspace or the backup
+                    // destination itself. The latter would recursively include
+                    // previous backup archives.
+                    $storageAppPath.'/backup-temp',
+                    $storageAppPath.'/public/livewire-tmp',
+                    $backupArchivePath,
                 ],
 
                 /*
