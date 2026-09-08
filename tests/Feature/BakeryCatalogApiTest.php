@@ -118,6 +118,35 @@ class BakeryCatalogApiTest extends TestCase
             ->assertJsonPath('meta.pagination.total', 1);
     }
 
+    public function test_retired_category_cannot_leak_through_catalog_endpoints(): void
+    {
+        $category = BakeryCategory::create([
+            'name' => 'باکس هدیه',
+            'slug' => 'gift',
+            'is_active' => true,
+        ]);
+        $product = $this->createProduct($category, [
+            'name' => 'باکس هدیه قدیمی',
+            'slug' => 'retired-gift-box',
+            'product_code' => 'WIN-GIFT-RETIRED',
+        ]);
+        $this->createVariant($product, [
+            'name' => 'یک باکس',
+            'sku' => 'WIN-GIFT-RETIRED-1',
+        ]);
+
+        $this->getJson('/api/catalog/categories')
+            ->assertOk()
+            ->assertJsonMissing(['slug' => 'gift']);
+
+        $this->getJson('/api/catalog/products')
+            ->assertOk()
+            ->assertJsonMissing(['slug' => 'retired-gift-box']);
+
+        $this->getJson('/api/catalog/products/retired-gift-box')
+            ->assertNotFound();
+    }
+
     public function test_product_detail_exposes_verified_content_and_active_variants_only(): void
     {
         $category = BakeryCategory::create([
