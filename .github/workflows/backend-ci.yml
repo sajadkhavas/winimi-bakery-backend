@@ -139,19 +139,12 @@ jobs:
 
       - name: Upload Pint diagnostics
         if: failure() && steps.pint.outcome == 'failure'
-        run: |
-          php vendor/bin/pint app/Services/Orders/CookieBulkDiscountService.php
-          git diff -- app/Services/Orders/CookieBulkDiscountService.php > pint-format.patch
-
-      - name: Upload Pint diagnostics artifact
-        if: failure() && steps.pint.outcome == 'failure'
         uses: actions/upload-artifact@v4
         with:
           name: pint-diagnostics
           path: |
             pint-existing.log
             pint-freeze.log
-            pint-format.patch
           if-no-files-found: error
           retention-days: 3
 
@@ -258,3 +251,5 @@ jobs:
         with:
           name: composer-audit-diagnostics
           path: composer-audit.log
+          if-no-files-found: error
+          retention-days: 3
