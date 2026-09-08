@@ -24,6 +24,8 @@ class BakeryCatalogApiTest extends TestCase
         $category = BakeryCategory::create([
             'name' => 'کوکی‌ها',
             'slug' => 'cookies',
+            'image_path' => 'bakery/categories/cookies.webp',
+            'image_alt' => 'کوکی‌های خانگی وینیمی روی سینی',
             'is_active' => true,
             'sort_order' => 1,
         ]);
@@ -49,7 +51,14 @@ class BakeryCatalogApiTest extends TestCase
             ->assertJsonCount(1, 'data')
             ->assertJsonPath('data.0.id', $category->public_id)
             ->assertJsonPath('data.0.slug', 'cookies')
+            ->assertJsonPath('data.0.imageAlt', 'کوکی‌های خانگی وینیمی روی سینی')
             ->assertJsonPath('data.0.productCount', 1);
+
+        $category->update(['image_alt' => null]);
+
+        $this->getJson('/api/catalog/categories')
+            ->assertOk()
+            ->assertJsonPath('data.0.imageAlt', 'کوکی‌ها');
     }
 
     public function test_product_listing_calculates_variant_price_stock_and_verification_boundaries(): void
