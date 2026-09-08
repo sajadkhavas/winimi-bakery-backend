@@ -18,12 +18,6 @@ class CheckoutRequest extends FormRequest
     public function rules(): array
     {
         $usesSavedAddress = $this->filled('addressId');
-        $bulkQuantityFloor = app(CookieBulkDiscountService::class)->checkoutQuantityFloor();
-        $maximumPerLine = max(
-            1,
-            $bulkQuantityFloor,
-            (int) config('winimi.checkout.max_quantity_per_line', 20),
-        );
 
         return [
             'addressId' => ['nullable', 'string', 'size:26'],
@@ -98,7 +92,6 @@ class CheckoutRequest extends FormRequest
                 'required',
                 'integer',
                 'min:1',
-                'max:'.$maximumPerLine,
             ],
         ];
     }
@@ -107,25 +100,22 @@ class CheckoutRequest extends FormRequest
     {
         return [
             function (Validator $validator): void {
-                $total = collect(
-                    $this->input('items', []),
-                )->sum(
-                    static fn (mixed $item): int => is_array($item)
-                        ? (int) ($item['quantity'] ?? 0)
-                        : 0,
-                );
+                // Shape/type errors take precedence; quantity policy only runs
+                // when every item has already passed the structural rules.
+                if ($validator->errors()->isNotEmpty()) {
+                    return;
+                }
 
-                $maximum = max(
-                    1,
-                    app(CookieBulkDiscountService::class)->checkoutQuantityFloor(),
-                    (int) config('winimi.checkout.max_total_units', 50),
-                );
+                $items = $this->input('items', []);
+                if (! is_array($items)) {
+                    return;
+                }
 
-                if ($total > $maximum) {
-                    $validator->errors()->add(
-                        'items',
-                        "تعداد کل اقلام هر سفارش نمی‌تواند بیشتر از {$maximum} باشد.",
-                    );
+                foreach (
+                    app(CookieBulkDiscountService::class)->checkoutQuantityViolations($items)
+                    as $message
+                ) {
+                    $validator->errors()->add('items', $message);
                 }
             },
         ];
