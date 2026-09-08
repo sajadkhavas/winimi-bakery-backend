@@ -110,9 +110,9 @@ class CheckoutRequest extends FormRequest
                 $total = collect(
                     $this->input('items', []),
                 )->sum(
-                    fn (array $item): int => (int) (
-                        $item['quantity'] ?? 0
-                    ),
+                    static fn (mixed $item): int => is_array($item)
+                        ? (int) ($item['quantity'] ?? 0)
+                        : 0,
                 );
 
                 $maximum = max(
