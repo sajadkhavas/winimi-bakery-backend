@@ -3,6 +3,7 @@
 namespace App\Http\Requests;
 
 use App\Enums\DeliveryMethod;
+use App\Services\Orders\CookieBulkDiscountService;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Validator;
@@ -17,6 +18,12 @@ class CheckoutRequest extends FormRequest
     public function rules(): array
     {
         $usesSavedAddress = $this->filled('addressId');
+        $bulkQuantityFloor = app(CookieBulkDiscountService::class)->checkoutQuantityFloor();
+        $maximumPerLine = max(
+            1,
+            $bulkQuantityFloor,
+            (int) config('winimi.checkout.max_quantity_per_line', 20),
+        );
 
         return [
             'addressId' => ['nullable', 'string', 'size:26'],
@@ -91,13 +98,7 @@ class CheckoutRequest extends FormRequest
                 'required',
                 'integer',
                 'min:1',
-                'max:'.max(
-                    1,
-                    (int) config(
-                        'winimi.checkout.max_quantity_per_line',
-                        20,
-                    ),
-                ),
+                'max:'.$maximumPerLine,
             ],
         ];
     }
@@ -116,10 +117,8 @@ class CheckoutRequest extends FormRequest
 
                 $maximum = max(
                     1,
-                    (int) config(
-                        'winimi.checkout.max_total_units',
-                        50,
-                    ),
+                    app(CookieBulkDiscountService::class)->checkoutQuantityFloor(),
+                    (int) config('winimi.checkout.max_total_units', 50),
                 );
 
                 if ($total > $maximum) {
