@@ -81,8 +81,7 @@ final class CookieBulkDiscountService
      * can pause the promotion without accidentally disabling legitimate large
      * cookie orders.
      *
-     * @param array<int, array{variantId?: mixed, quantity?: mixed}> $items
-     *
+     * @param  array<int, array{variantId?: mixed, quantity?: mixed}>  $items
      * @return list<string>
      */
     public function checkoutQuantityViolations(array $items): array
