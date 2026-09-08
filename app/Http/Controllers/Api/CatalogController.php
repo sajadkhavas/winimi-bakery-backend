@@ -43,6 +43,12 @@ class CatalogController extends Controller
 
         $query = BakeryProduct::query()
             ->launchReady()
+            ->whereHas(
+                'category',
+                fn (Builder $category): Builder => $category
+                    ->active()
+                    ->whereNotIn('slug', $this->retiredCategorySlugs()),
+            )
             ->with($this->catalogRelations());
 
         if (! empty($filters['category'])) {
@@ -103,6 +109,12 @@ class CatalogController extends Controller
     {
         $product = BakeryProduct::query()
             ->launchReady()
+            ->whereHas(
+                'category',
+                fn (Builder $category): Builder => $category
+                    ->active()
+                    ->whereNotIn('slug', $this->retiredCategorySlugs()),
+            )
             ->with($this->catalogRelations())
             ->where('slug', $slug)
             ->firstOrFail();
@@ -116,6 +128,7 @@ class CatalogController extends Controller
     {
         $categories = BakeryCategory::query()
             ->active()
+            ->whereNotIn('slug', $this->retiredCategorySlugs())
             ->withCount([
                 'products' => fn (Builder $products): Builder => $products->launchReady(),
             ])
@@ -123,6 +136,7 @@ class CatalogController extends Controller
             ->get();
         $landings = BakeryCategoryLanding::query()
             ->active()
+            ->whereNotIn('catalog_category_slug', $this->retiredCategorySlugs())
             ->ordered()
             ->get()
             ->map(fn (BakeryCategoryLanding $landing): array => [
@@ -161,6 +175,15 @@ class CatalogController extends Controller
                 'inventoryReservations as active_reserved_quantity' => fn (Builder $reservations): Builder => $reservations->active(),
             ], 'quantity'),
         ];
+    }
+
+    /** @return list<string> */
+    private function retiredCategorySlugs(): array
+    {
+        return array_values(array_filter(
+            config('winimi.storefront.retired_category_slugs', []),
+            static fn (mixed $slug): bool => is_string($slug) && $slug !== '',
+        ));
     }
 
     private function applySort(Builder $query, string $sort): void
