@@ -2,6 +2,7 @@
 
 namespace App\Services\Orders;
 
+use App\Models\BakeryProductVariant;
 use App\Models\Order;
 use App\Models\StoreSetting;
 
@@ -68,6 +69,92 @@ final class CookieBulkDiscountService
             && $configuration['category_slugs'] !== []
             ? $configuration['minimum_quantity']
             : 1;
+    }
+
+    /**
+     * Validate the ordinary checkout safety caps without making the bulk-cookie
+     * promotion impossible. Only categories explicitly configured for cookie
+     * bulk ordering are exempt from the generic per-line / total-unit caps;
+     * their real upper bounds remain variant max_order_quantity and inventory.
+     *
+     * The exemption is independent from the discount enabled flag so an admin
+     * can pause the promotion without accidentally disabling legitimate large
+     * cookie orders.
+     *
+     * @param array<int, array{variantId?: mixed, quantity?: mixed}> $items
+     * @return list<string>
+     */
+    public function checkoutQuantityViolations(array $items): array
+    {
+        $groupedQuantities = [];
+
+        foreach ($items as $item) {
+            if (! is_array($item)) {
+                continue;
+            }
+
+            $variantId = trim((string) ($item['variantId'] ?? ''));
+            $quantity = (int) ($item['quantity'] ?? 0);
+
+            if ($variantId === '' || $quantity < 1) {
+                continue;
+            }
+
+            $groupedQuantities[$variantId] = ($groupedQuantities[$variantId] ?? 0) + $quantity;
+        }
+
+        if ($groupedQuantities === []) {
+            return [];
+        }
+
+        $variants = BakeryProductVariant::query()
+            ->whereIn('public_id', array_keys($groupedQuantities))
+            ->with('product.category')
+            ->get()
+            ->keyBy('public_id');
+
+        $bulkCategorySlugs = $this->configuration()['category_slugs'];
+        $maximumPerLine = max(
+            1,
+            (int) config('winimi.checkout.max_quantity_per_line', 20),
+        );
+        $maximumStandardUnits = max(
+            1,
+            (int) config('winimi.checkout.max_total_units', 50),
+        );
+
+        $standardUnits = 0;
+        $violations = [];
+
+        foreach ($groupedQuantities as $variantId => $quantity) {
+            /** @var BakeryProductVariant|null $variant */
+            $variant = $variants->get($variantId);
+            if (! $variant) {
+                // Availability/launch validation remains authoritative in
+                // CheckoutService. Do not reinterpret an unknown variant here.
+                continue;
+            }
+
+            $categorySlug = $variant->product?->category?->slug;
+            $isBulkCookie = is_string($categorySlug)
+                && in_array($categorySlug, $bulkCategorySlugs, true);
+
+            if ($isBulkCookie) {
+                continue;
+            }
+
+            $standardUnits += $quantity;
+
+            if ($quantity > $maximumPerLine) {
+                $violations[] = "تعداد هر محصول در سفارش عادی نمی‌تواند بیشتر از {$maximumPerLine} عدد باشد.";
+            }
+        }
+
+        if ($standardUnits > $maximumStandardUnits) {
+            $violations[] = "تعداد کل محصولات غیرعمده در هر سفارش نمی‌تواند بیشتر از {$maximumStandardUnits} عدد باشد.";
+        }
+
+        return array_values(array_unique($violations));
     }
 
     /**
