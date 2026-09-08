@@ -7,6 +7,7 @@ use App\Models\BakeryProduct;
 use App\Models\BakeryProductVariant;
 use App\Models\Customer;
 use App\Models\StoreSetting;
+use App\Services\Orders\CookieBulkDiscountService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -107,6 +108,25 @@ class CookieBulkDiscountTest extends TestCase
             ->assertCreated()
             ->assertJsonPath('data.order.totals.discountToman', 0)
             ->assertJsonPath('data.order.totals.grandTotalToman', 1_000_000);
+    }
+
+    public function test_bulk_discount_fails_closed_when_settings_are_missing(): void
+    {
+        StoreSetting::query()
+            ->whereIn('key', [
+                CookieBulkDiscountService::ENABLED_KEY,
+                CookieBulkDiscountService::MIN_QUANTITY_KEY,
+                CookieBulkDiscountService::PERCENT_KEY,
+                CookieBulkDiscountService::CATEGORY_SLUGS_KEY,
+            ])
+            ->delete();
+
+        $service = app(CookieBulkDiscountService::class);
+        $configuration = $service->configuration();
+
+        $this->assertFalse($configuration['enabled']);
+        $this->assertSame([], $configuration['category_slugs']);
+        $this->assertSame(1, $service->checkoutQuantityFloor());
     }
 
     public function test_public_store_settings_expose_bulk_discount_contract(): void
