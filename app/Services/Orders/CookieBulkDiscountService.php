@@ -82,6 +82,7 @@ final class CookieBulkDiscountService
      * cookie orders.
      *
      * @param array<int, array{variantId?: mixed, quantity?: mixed}> $items
+     *
      * @return list<string>
      */
     public function checkoutQuantityViolations(array $items): array
@@ -89,7 +90,7 @@ final class CookieBulkDiscountService
         $groupedQuantities = [];
 
         foreach ($items as $item) {
-            if (! is_array($item)) {
+            if (is_array($item) === false) {
                 continue;
             }
 
@@ -100,7 +101,8 @@ final class CookieBulkDiscountService
                 continue;
             }
 
-            $groupedQuantities[$variantId] = ($groupedQuantities[$variantId] ?? 0) + $quantity;
+            $currentQuantity = (int) ($groupedQuantities[$variantId] ?? 0);
+            $groupedQuantities[$variantId] = $currentQuantity + $quantity;
         }
 
         if ($groupedQuantities === []) {
@@ -129,7 +131,7 @@ final class CookieBulkDiscountService
         foreach ($groupedQuantities as $variantId => $quantity) {
             /** @var BakeryProductVariant|null $variant */
             $variant = $variants->get($variantId);
-            if (! $variant) {
+            if ($variant === null) {
                 // Availability/launch validation remains authoritative in
                 // CheckoutService. Do not reinterpret an unknown variant here.
                 continue;
