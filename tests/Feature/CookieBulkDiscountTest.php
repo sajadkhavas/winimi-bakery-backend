@@ -129,6 +129,30 @@ class CookieBulkDiscountTest extends TestCase
         $this->assertSame(1, $service->checkoutQuantityFloor());
     }
 
+    public function test_malformed_checkout_item_returns_validation_error_instead_of_server_error(): void
+    {
+        $this->actingAs($this->customer, 'customer')
+            ->postJson('/api/checkout', [
+                'customer' => [
+                    'fullName' => 'مشتری تست',
+                    'mobile' => '09123456780',
+                    'province' => 'تهران',
+                    'city' => 'تهران',
+                    'address' => 'خیابان تست، پلاک ۱',
+                    'postalCode' => '1234567890',
+                    'notes' => null,
+                ],
+                'deliveryMethod' => 'standard',
+                'items' => ['malformed'],
+            ], [
+                'Idempotency-Key' => 'malformed-checkout-item-0001',
+                'Origin' => 'http://localhost:5173',
+                'Referer' => 'http://localhost:5173/',
+            ])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['items.0']);
+    }
+
     public function test_public_store_settings_expose_bulk_discount_contract(): void
     {
         $this->getJson('/api/store/settings')
