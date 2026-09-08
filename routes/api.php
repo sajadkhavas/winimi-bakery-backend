@@ -12,6 +12,7 @@ use App\Http\Controllers\Api\PaymentController;
 use App\Http\Controllers\Api\PerformanceMetricController;
 use App\Http\Controllers\Api\ReviewController;
 use App\Http\Controllers\Api\StoreContentController;
+use App\Http\Controllers\Api\StorefrontRedirectController;
 use App\Http\Controllers\Api\SystemController;
 use App\Http\Controllers\Api\V1\AuthController;
 use App\Http\Controllers\Api\V1\BlogController;
@@ -50,6 +51,7 @@ Route::get('delivery/options', [DeliveryController::class, 'options'])
 
 Route::prefix('store')->middleware('throttle:120,1')->group(function () {
     Route::get('settings', [StoreContentController::class, 'settings']);
+    Route::get('redirect', StorefrontRedirectController::class);
     Route::get('pages/{slug}', [StoreContentController::class, 'page']);
     Route::get('faqs', [StoreContentController::class, 'faqs']);
     Route::get('gallery', [StoreContentController::class, 'gallery']);
