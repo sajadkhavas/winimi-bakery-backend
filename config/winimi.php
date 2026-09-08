@@ -20,6 +20,12 @@ return [
         'name_en' => env('WINIMI_BRAND_NAME_EN', 'Winimi Bakery'),
     ],
 
+    'storefront' => [
+        // Kept in configuration so a retired offer cannot be republished by an
+        // accidental admin toggle. Removing a slug here is an explicit launch.
+        'retired_category_slugs' => ['gift'],
+    ],
+
     'api' => [
         'version' => '1',
         'contract_version' => '2026-07-20-phase-16',
