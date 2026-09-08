@@ -120,7 +120,7 @@ final class StorefrontRedirectService
                 ->where('is_active', true)
                 ->when(
                     $ignoreRedirectId !== null,
-                    fn ($query) => $query->whereKeyNot($ignoreRedirectId),
+                    fn ($query) => $query->where('id', '!=', $ignoreRedirectId),
                 )
                 ->first();
 
