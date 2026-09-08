@@ -15,35 +15,92 @@ final class CookieBulkDiscountService
 
     public const CATEGORY_SLUGS_KEY = 'pricing.cookie_bulk_discount.category_slugs';
 
+    public const DEFAULT_MINIMUM_QUANTITY = 100;
+
+    public const DEFAULT_PERCENT = 10;
+
+    public const MAXIMUM_MINIMUM_QUANTITY = 1_000;
+
+    public const MAXIMUM_CATEGORY_COUNT = 30;
+
+    /**
+     * @return array{
+     *     enabled: bool,
+     *     minimum_quantity: int,
+     *     percent: int,
+     *     category_slugs: list<string>
+     * }
+     */
+    public function configuration(): array
+    {
+        return [
+            'enabled' => (bool) StoreSetting::value(self::ENABLED_KEY, true),
+            'minimum_quantity' => min(
+                self::MAXIMUM_MINIMUM_QUANTITY,
+                max(
+                    1,
+                    (int) StoreSetting::value(
+                        self::MIN_QUANTITY_KEY,
+                        self::DEFAULT_MINIMUM_QUANTITY,
+                    ),
+                ),
+            ),
+            'percent' => min(
+                100,
+                max(
+                    0,
+                    (int) StoreSetting::value(
+                        self::PERCENT_KEY,
+                        self::DEFAULT_PERCENT,
+                    ),
+                ),
+            ),
+            'category_slugs' => $this->categorySlugs(),
+        ];
+    }
+
+    public function checkoutQuantityFloor(): int
+    {
+        $configuration = $this->configuration();
+
+        return $configuration['enabled'] && $configuration['percent'] > 0
+            ? $configuration['minimum_quantity']
+            : 1;
+    }
+
     /**
      * Recalculate the order-level bulk discount from persisted, server-priced
-     * order items. The resulting amount is snapshotted on the order and is not
-     * recalculated after checkout unless order items themselves are created.
+     * order items. The resulting amount is snapshotted on the order before a
+     * payment attempt can be initiated.
      */
     public function applyToOrder(Order $order): void
     {
-        $enabled = (bool) StoreSetting::value(self::ENABLED_KEY, true);
-        $minimumQuantity = max(1, (int) StoreSetting::value(self::MIN_QUANTITY_KEY, 100));
-        $percent = min(100, max(0, (int) StoreSetting::value(self::PERCENT_KEY, 10)));
-        $categorySlugs = $this->categorySlugs();
-
+        $configuration = $this->configuration();
         $discount = 0;
 
-        if ($enabled && $percent > 0 && $categorySlugs !== []) {
+        if (
+            $configuration['enabled']
+            && $configuration['percent'] > 0
+            && $configuration['category_slugs'] !== []
+        ) {
             $eligibleItems = $order->items()
                 ->with('product.category')
                 ->get()
-                ->filter(function ($item) use ($categorySlugs): bool {
+                ->filter(function ($item) use ($configuration): bool {
                     $slug = $item->product?->category?->slug;
 
-                    return is_string($slug) && in_array($slug, $categorySlugs, true);
+                    return is_string($slug)
+                        && in_array($slug, $configuration['category_slugs'], true);
                 });
 
             $eligibleQuantity = (int) $eligibleItems->sum('quantity');
 
-            if ($eligibleQuantity >= $minimumQuantity) {
+            if ($eligibleQuantity >= $configuration['minimum_quantity']) {
                 $eligibleSubtotal = (int) $eligibleItems->sum('line_total_toman');
-                $discount = intdiv($eligibleSubtotal * $percent, 100);
+                $discount = intdiv(
+                    $eligibleSubtotal * $configuration['percent'],
+                    100,
+                );
             }
         }
 
@@ -73,12 +130,21 @@ final class CookieBulkDiscountService
             return [];
         }
 
-        return array_values(array_unique(array_filter(
-            array_map(
-                static fn ($slug): string => trim((string) $slug),
-                $configured,
-            ),
-            static fn (string $slug): bool => $slug !== '',
-        )));
+        $slugs = [];
+        foreach (array_slice($configured, 0, self::MAXIMUM_CATEGORY_COUNT) as $candidate) {
+            $slug = trim((string) $candidate);
+            if (
+                $slug === ''
+                || strlen($slug) > 180
+                || preg_match('/^[a-z0-9]+(?:-[a-z0-9]+)*$/', $slug) !== 1
+                || in_array($slug, $slugs, true)
+            ) {
+                continue;
+            }
+
+            $slugs[] = $slug;
+        }
+
+        return $slugs;
     }
 }
