@@ -146,12 +146,13 @@ class F30StorefrontAuthorityTest extends TestCase
     {
         $this->getJson('/api/catalog/categories')
             ->assertOk()
-            ->assertJsonCount(7, 'meta.categoryLandings')
+            ->assertJsonCount(6, 'meta.categoryLandings')
             ->assertJsonPath('meta.categoryLandings.0.slug', 'cookies')
             ->assertJsonPath('meta.categoryLandings.0.catalogCategorySlug', 'kokyhay-khangy')
             ->assertJsonPath('meta.categoryLandings.0.seo.title', 'خرید کوکی خانگی | انواع کوکی وینیمی')
             ->assertJsonPath('meta.categoryLandings.4.slug', 'cheesecakes')
-            ->assertJsonPath('meta.categoryLandings.4.catalogSearch', 'چیزکیک');
+            ->assertJsonPath('meta.categoryLandings.4.catalogSearch', 'چیزکیک')
+            ->assertJsonMissing(['slug' => 'gift-boxes']);
     }
 
     public function test_filament_storefront_contract_cannot_be_created_or_deleted_from_the_panel(): void
