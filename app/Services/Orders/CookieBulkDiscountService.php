@@ -90,7 +90,7 @@ final class CookieBulkDiscountService
         $groupedQuantities = [];
 
         foreach ($items as $item) {
-            if (is_array($item) === false) {
+            if (! is_array($item)) {
                 continue;
             }
 
