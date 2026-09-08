@@ -111,10 +111,10 @@ class CheckoutRequest extends FormRequest
                     return;
                 }
 
-                foreach (
-                    app(CookieBulkDiscountService::class)->checkoutQuantityViolations($items)
-                    as $message
-                ) {
+                $violations = app(CookieBulkDiscountService::class)
+                    ->checkoutQuantityViolations($items);
+
+                foreach ($violations as $message) {
                     $validator->errors()->add('items', $message);
                 }
             },
