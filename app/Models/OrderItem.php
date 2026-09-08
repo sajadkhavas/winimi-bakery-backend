@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\Orders\CookieBulkDiscountService;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Str;
@@ -29,6 +30,15 @@ class OrderItem extends Model
     {
         static::creating(function (self $item): void {
             $item->public_id ??= (string) Str::ulid();
+        });
+
+        static::created(function (self $item): void {
+            $order = $item->order;
+            if (! $order) {
+                return;
+            }
+
+            app(CookieBulkDiscountService::class)->applyToOrder($order);
         });
     }
 
