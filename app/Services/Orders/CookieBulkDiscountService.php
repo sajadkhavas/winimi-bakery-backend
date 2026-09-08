@@ -34,7 +34,7 @@ final class CookieBulkDiscountService
     public function configuration(): array
     {
         return [
-            'enabled' => (bool) StoreSetting::value(self::ENABLED_KEY, true),
+            'enabled' => (bool) StoreSetting::value(self::ENABLED_KEY, false),
             'minimum_quantity' => min(
                 self::MAXIMUM_MINIMUM_QUANTITY,
                 max(
@@ -63,7 +63,9 @@ final class CookieBulkDiscountService
     {
         $configuration = $this->configuration();
 
-        return $configuration['enabled'] && $configuration['percent'] > 0
+        return $configuration['enabled']
+            && $configuration['percent'] > 0
+            && $configuration['category_slugs'] !== []
             ? $configuration['minimum_quantity']
             : 1;
     }
@@ -121,10 +123,7 @@ final class CookieBulkDiscountService
     /** @return list<string> */
     private function categorySlugs(): array
     {
-        $configured = StoreSetting::value(self::CATEGORY_SLUGS_KEY, [
-            'kokyhay-khangy',
-            'myny-koky',
-        ]);
+        $configured = StoreSetting::value(self::CATEGORY_SLUGS_KEY, []);
 
         if (! is_array($configured)) {
             return [];
