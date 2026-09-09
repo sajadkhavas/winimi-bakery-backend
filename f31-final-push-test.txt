@@ -1,0 +1,9 @@
+
+   PASS  Tests\Feature\WebPushSubscriptionTest
+  ✓ capability is fail closed without vapid configuration                0.76s  
+  ✓ customer can manage an encrypted subscription and preferences        0.16s  
+  ✓ subscription endpoint rejects use while push is disabled             0.13s  
+
+  Tests:    3 passed (17 assertions)
+  Duration: 1.09s
+
