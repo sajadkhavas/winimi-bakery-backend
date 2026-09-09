@@ -1,4 +1,4 @@
-name: F31 secure Excel lock
+name: F31 remove vulnerable unused Excel plugin
 on:
   push:
     paths:
@@ -16,7 +16,7 @@ jobs:
       - uses: shivammathur/setup-php@v2
         with:
           php-version: '8.3'
-      - run: composer update maatwebsite/excel --with-all-dependencies --no-interaction --prefer-dist
+      - run: composer update --with-all-dependencies --no-interaction --prefer-dist
       - run: composer audit --no-interaction
       - run: php artisan test
       - run: |
