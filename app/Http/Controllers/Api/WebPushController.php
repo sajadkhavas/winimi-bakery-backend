@@ -64,6 +64,7 @@ class WebPushController extends Controller
             ['endpoint_hash' => hash('sha256', $validated['endpoint'])],
             [
                 'customer_id' => $customer->getKey(),
+                'guest_token_hash' => null,
                 'endpoint' => $validated['endpoint'],
                 'public_key' => $validated['keys']['p256dh'],
                 'auth_token' => $validated['keys']['auth'],
@@ -84,6 +85,53 @@ class WebPushController extends Controller
             ['subscribed' => true],
             status: $subscription->wasRecentlyCreated ? 201 : 200,
         );
+    }
+
+    public function subscribeGuest(Request $request): JsonResponse
+    {
+        abort_unless($this->isConfigured(), 503, 'Push notifications are not configured.');
+        $validated = $request->validate([
+            'guestToken' => ['required', 'string', 'min:43', 'max:128'],
+            'endpoint' => ['required', 'url:https', 'max:2048'],
+            'keys.p256dh' => ['required', 'string', 'max:512'],
+            'keys.auth' => ['required', 'string', 'max:255'],
+            'contentEncoding' => ['nullable', 'in:aes128gcm,aesgcm'],
+            'marketingEnabled' => ['accepted'],
+        ]);
+
+        $subscription = WebPushSubscription::query()->updateOrCreate(
+            ['endpoint_hash' => hash('sha256', $validated['endpoint'])],
+            [
+                'customer_id' => null,
+                'guest_token_hash' => hash('sha256', $validated['guestToken']),
+                'endpoint' => $validated['endpoint'],
+                'public_key' => $validated['keys']['p256dh'],
+                'auth_token' => $validated['keys']['auth'],
+                'content_encoding' => $validated['contentEncoding'] ?? 'aes128gcm',
+                'user_agent' => mb_substr((string) $request->userAgent(), 0, 500),
+                'transactional_enabled' => false,
+                'marketing_enabled' => true,
+                'last_seen_at' => now(),
+                'revoked_at' => null,
+            ],
+        );
+
+        return ApiResponse::success(['subscribed' => true], status: $subscription->wasRecentlyCreated ? 201 : 200);
+    }
+
+    public function unsubscribeGuest(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'guestToken' => ['required', 'string', 'min:43', 'max:128'],
+            'endpoint' => ['required', 'url:https', 'max:2048'],
+        ]);
+
+        WebPushSubscription::query()
+            ->where('endpoint_hash', hash('sha256', $validated['endpoint']))
+            ->where('guest_token_hash', hash('sha256', $validated['guestToken']))
+            ->update(['revoked_at' => now(), 'marketing_enabled' => false]);
+
+        return ApiResponse::success(['subscribed' => false]);
     }
 
     public function updatePreferences(Request $request): JsonResponse

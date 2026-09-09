@@ -52,6 +52,10 @@ Route::get('delivery/options', [DeliveryController::class, 'options'])
 
 Route::get('push/capabilities', [WebPushController::class, 'capabilities'])
     ->middleware('throttle:60,1');
+Route::post('push/subscriptions', [WebPushController::class, 'subscribeGuest'])
+    ->middleware('throttle:10,1');
+Route::delete('push/subscriptions', [WebPushController::class, 'unsubscribeGuest'])
+    ->middleware('throttle:10,1');
 
 Route::prefix('store')->middleware('throttle:120,1')->group(function () {
     Route::get('settings', [StoreContentController::class, 'settings']);

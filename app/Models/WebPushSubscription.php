@@ -10,6 +10,7 @@ class WebPushSubscription extends Model
 {
     protected $fillable = [
         'customer_id',
+        'guest_token_hash',
         'endpoint_hash',
         'endpoint',
         'public_key',
@@ -25,6 +26,7 @@ class WebPushSubscription extends Model
     protected $hidden = [
         'id',
         'customer_id',
+        'guest_token_hash',
         'endpoint',
         'public_key',
         'auth_token',

@@ -4,6 +4,7 @@ namespace App\Filament\Resources;
 
 use App\Filament\Resources\NavigationItemResource\Pages;
 use App\Models\NavigationItem;
+use App\Models\BakeryCategory;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
@@ -38,6 +39,18 @@ class NavigationItemResource extends Resource
                     ->nullable()
                     ->placeholder('منوی اصلی (بدون والد)'),
 
+                Forms\Components\Select::make('linked_category_id')
+                    ->label('دسته محصول مرتبط')
+                    ->options(fn () => BakeryCategory::query()->orderBy('sort_order')->pluck('name', 'id'))
+                    ->searchable()
+                    ->nullable(),
+
+                Forms\Components\Select::make('placement')
+                    ->label('محل نمایش')
+                    ->options(['all' => 'همه‌جا', 'header' => 'فقط هدر', 'mobile' => 'فقط موبایل', 'footer' => 'فقط فوتر'])
+                    ->default('all')
+                    ->required(),
+
                 Forms\Components\TextInput::make('sort_order')
                     ->label('ترتیب نمایش')
                     ->numeric()
@@ -50,6 +63,18 @@ class NavigationItemResource extends Resource
                 Forms\Components\Textarea::make('description')
                     ->label('توضیحات (اختیاری)')
                     ->rows(2),
+
+                Forms\Components\FileUpload::make('image_path')
+                    ->label('تصویر منو (اختیاری)')
+                    ->image()
+                    ->directory('navigation'),
+
+                Forms\Components\Toggle::make('open_in_new_tab')
+                    ->label('بازشدن در تب جدید'),
+
+                Forms\Components\Toggle::make('hide_when_empty')
+                    ->label('مخفی‌کردن دسته بدون محصول')
+                    ->helperText('فقط وقتی دسته محصول مرتبط انتخاب شده باشد.'),
 
                 Forms\Components\Toggle::make('is_active')
                     ->label('فعال')
@@ -74,6 +99,10 @@ class NavigationItemResource extends Resource
                 Tables\Columns\TextColumn::make('parent.label')
                     ->label('والد')
                     ->default('منوی اصلی'),
+
+                Tables\Columns\TextColumn::make('placement')
+                    ->label('محل نمایش')
+                    ->badge(),
 
                 Tables\Columns\TextColumn::make('sort_order')
                     ->label('ترتیب')

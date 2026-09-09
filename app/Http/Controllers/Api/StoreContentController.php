@@ -51,8 +51,13 @@ class StoreContentController extends Controller
         $items = NavigationItem::query()
             ->whereNull('parent_id')
             ->where('is_active', true)
+            ->whereIn('placement', ['all', 'header', 'mobile'])
             ->with(['children' => fn ($query) => $query
                 ->where('is_active', true)
+                ->whereIn('placement', ['all', 'header', 'mobile'])
+                ->with(['linkedCategory' => fn ($query) => $query->withCount([
+                    'products' => fn ($products) => $products->active(),
+                ])])
                 ->orderBy('sort_order')
                 ->orderBy('id')])
             ->orderBy('sort_order')
@@ -63,11 +68,21 @@ class StoreContentController extends Controller
                 'label' => $item->label,
                 'href' => $item->href,
                 'description' => $item->description,
-                'children' => $item->children->map(fn (NavigationItem $child): array => [
+                'icon' => $item->icon,
+                'imageUrl' => $item->image_path ? asset('storage/'.$item->image_path) : null,
+                'openInNewTab' => $item->open_in_new_tab,
+                'children' => $item->children
+                    ->reject(fn (NavigationItem $child): bool => $child->hide_when_empty
+                        && $child->linked_category_id !== null
+                        && (int) ($child->linkedCategory?->products_count ?? 0) === 0)
+                    ->map(fn (NavigationItem $child): array => [
                     'id' => $child->getKey(),
                     'label' => $child->label,
                     'href' => $child->href,
                     'description' => $child->description,
+                    'icon' => $child->icon,
+                    'imageUrl' => $child->image_path ? asset('storage/'.$child->image_path) : null,
+                    'openInNewTab' => $child->open_in_new_tab,
                 ])->values()->all(),
             ])->values()->all();
 
