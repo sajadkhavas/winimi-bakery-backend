@@ -1,4 +1,4 @@
-name: F31 last regression diagnostic
+name: F31 last regression diagnostic R2
 on:
   push:
     paths:
