@@ -251,24 +251,50 @@ class BakeryProductResource extends Resource
                     Forms\Components\Tabs\Tab::make('محتوای کامل محصول')
                         ->icon('heroicon-o-document-text')
                         ->schema([
-                            Forms\Components\TagsInput::make('taste_notes')->label('طعم‌ها و نت‌های مزه'),
-                            Forms\Components\TagsInput::make('texture_notes')->label('ویژگی‌های بافت'),
-                            Forms\Components\TagsInput::make('use_cases')->label('مناسب برای / کاربردها'),
-                            Forms\Components\Textarea::make('serving_suggestions')->label('پیشنهاد سرو')->rows(4)->columnSpanFull(),
+                            Forms\Components\TagsInput::make('taste_notes')
+                                ->label('طعم‌ها و نت‌های مزه'),
+                            Forms\Components\TagsInput::make('texture_notes')
+                                ->label('ویژگی‌های بافت'),
+                            Forms\Components\TagsInput::make('use_cases')
+                                ->label('مناسب برای / کاربردها'),
+                            Forms\Components\Textarea::make('serving_suggestions')
+                                ->label('پیشنهاد سرو')
+                                ->rows(4)
+                                ->columnSpanFull(),
                             Forms\Components\Repeater::make('specifications')
                                 ->label('مشخصات محصول')
                                 ->schema([
-                                    Forms\Components\TextInput::make('label')->label('عنوان')->required()->maxLength(100),
-                                    Forms\Components\TextInput::make('value')->label('مقدار')->required()->maxLength(220),
-                                ])->columns(2)->reorderableWithButtons()->columnSpanFull(),
+                                    Forms\Components\TextInput::make('label')
+                                        ->label('عنوان')
+                                        ->required()
+                                        ->maxLength(100),
+                                    Forms\Components\TextInput::make('value')
+                                        ->label('مقدار')
+                                        ->required()
+                                        ->maxLength(220),
+                                ])
+                                ->columns(2)
+                                ->reorderableWithButtons()
+                                ->columnSpanFull(),
                             Forms\Components\Repeater::make('product_faqs')
                                 ->label('پرسش‌های همین محصول')
                                 ->schema([
-                                    Forms\Components\TextInput::make('question')->label('پرسش')->required()->maxLength(220),
-                                    Forms\Components\Textarea::make('answer')->label('پاسخ')->required()->rows(3),
-                                ])->reorderableWithButtons()->columnSpanFull(),
-                            Forms\Components\TextInput::make('content_version')->label('نسخه محتوا')->maxLength(40),
-                            Forms\Components\DateTimePicker::make('content_reviewed_at')->label('آخرین بازبینی محتوا'),
+                                    Forms\Components\TextInput::make('question')
+                                        ->label('پرسش')
+                                        ->required()
+                                        ->maxLength(220),
+                                    Forms\Components\Textarea::make('answer')
+                                        ->label('پاسخ')
+                                        ->required()
+                                        ->rows(3),
+                                ])
+                                ->reorderableWithButtons()
+                                ->columnSpanFull(),
+                            Forms\Components\TextInput::make('content_version')
+                                ->label('نسخه محتوا')
+                                ->maxLength(40),
+                            Forms\Components\DateTimePicker::make('content_reviewed_at')
+                                ->label('آخرین بازبینی محتوا'),
                         ])->columns(2),
                     Forms\Components\Tabs\Tab::make('رسانه')
                         ->icon('heroicon-o-photo')

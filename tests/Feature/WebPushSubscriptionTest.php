@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\Customer;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
 class WebPushSubscriptionTest extends TestCase
@@ -35,7 +36,7 @@ class WebPushSubscriptionTest extends TestCase
             'marketingEnabled' => false,
         ])->assertCreated()->assertJsonPath('data.subscribed', true);
 
-        $raw = (array) \DB::table('web_push_subscriptions')->first();
+        $raw = (array) DB::table('web_push_subscriptions')->first();
         $this->assertNotSame($endpoint, $raw['endpoint']);
         $this->assertNotSame('browser-public-key', $raw['public_key']);
         $this->assertNotSame('browser-auth-secret', $raw['auth_token']);

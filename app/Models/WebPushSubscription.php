@@ -22,7 +22,13 @@ class WebPushSubscription extends Model
         'revoked_at',
     ];
 
-    protected $hidden = ['id', 'customer_id', 'endpoint', 'public_key', 'auth_token'];
+    protected $hidden = [
+        'id',
+        'customer_id',
+        'endpoint',
+        'public_key',
+        'auth_token',
+    ];
 
     protected function casts(): array
     {

@@ -24,8 +24,14 @@ return new class extends Migration
     {
         Schema::table('bakery_products', function (Blueprint $table): void {
             $table->dropColumn([
-                'taste_notes', 'texture_notes', 'use_cases', 'serving_suggestions',
-                'specifications', 'product_faqs', 'content_version', 'content_reviewed_at',
+                'taste_notes',
+                'texture_notes',
+                'use_cases',
+                'serving_suggestions',
+                'specifications',
+                'product_faqs',
+                'content_version',
+                'content_reviewed_at',
             ]);
         });
     }

@@ -35,7 +35,10 @@ class WebPushController extends Controller
                 'transactionalEnabled' => $customer->webPushSubscriptions()->active()
                     ->where('transactional_enabled', true)->exists(),
                 'marketingEnabled' => $customer->marketing_consent
-                    && $customer->webPushSubscriptions()->active()->where('marketing_enabled', true)->exists(),
+                    && $customer->webPushSubscriptions()
+                        ->active()
+                        ->where('marketing_enabled', true)
+                        ->exists(),
             ],
         ]);
     }
@@ -77,7 +80,10 @@ class WebPushController extends Controller
             $customer->update(['marketing_consent' => true]);
         }
 
-        return ApiResponse::success(['subscribed' => true], status: $subscription->wasRecentlyCreated ? 201 : 200);
+        return ApiResponse::success(
+            ['subscribed' => true],
+            status: $subscription->wasRecentlyCreated ? 201 : 200,
+        );
     }
 
     public function updatePreferences(Request $request): JsonResponse
@@ -100,13 +106,19 @@ class WebPushController extends Controller
 
     public function unsubscribe(Request $request): JsonResponse
     {
-        $validated = $request->validate(['endpoint' => ['required', 'url:https', 'max:2048']]);
+        $validated = $request->validate([
+            'endpoint' => ['required', 'url:https', 'max:2048'],
+        ]);
         /** @var Customer $customer */
         $customer = $request->user('customer');
 
         $customer->webPushSubscriptions()
             ->where('endpoint_hash', hash('sha256', $validated['endpoint']))
-            ->update(['revoked_at' => now(), 'transactional_enabled' => false, 'marketing_enabled' => false]);
+            ->update([
+                'revoked_at' => now(),
+                'transactional_enabled' => false,
+                'marketing_enabled' => false,
+            ]);
 
         return ApiResponse::success(['subscribed' => false]);
     }
