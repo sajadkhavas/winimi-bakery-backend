@@ -14,7 +14,6 @@ use App\Http\Controllers\Api\ReviewController;
 use App\Http\Controllers\Api\StoreContentController;
 use App\Http\Controllers\Api\StorefrontRedirectController;
 use App\Http\Controllers\Api\SystemController;
-use App\Http\Controllers\Api\WebPushController;
 use App\Http\Controllers\Api\V1\AuthController;
 use App\Http\Controllers\Api\V1\BlogController;
 use App\Http\Controllers\Api\V1\BrandController;
@@ -30,6 +29,7 @@ use App\Http\Controllers\Api\V1\SearchController;
 use App\Http\Controllers\Api\V1\SeoController;
 use App\Http\Controllers\Api\V1\SettingsController;
 use App\Http\Controllers\Api\V1\SliderController;
+use App\Http\Controllers\Api\WebPushController;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('system')->middleware('throttle:60,1')->group(function () {
