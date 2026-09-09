@@ -16,15 +16,15 @@ class StoreSettingResource extends Resource
 
     protected static ?string $navigationIcon = 'heroicon-o-cog-6-tooth';
 
-    protected static ?string $navigationLabel = 'تنظیمات فروشگاه';
+    protected static ?string $navigationLabel = 'محتوای سایت و صفحه اصلی';
 
     protected static ?string $modelLabel = 'تنظیم';
 
-    protected static ?string $pluralModelLabel = 'تنظیمات فروشگاه';
+    protected static ?string $pluralModelLabel = 'محتوای سایت و صفحه اصلی';
 
     protected static ?string $navigationGroup = 'تنظیمات';
 
-    protected static ?int $navigationSort = 1;
+    protected static ?int $navigationSort = 2;
 
     public static function form(Form $form): Form
     {

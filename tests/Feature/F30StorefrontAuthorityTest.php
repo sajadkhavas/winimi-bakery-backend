@@ -2,7 +2,9 @@
 
 namespace Tests\Feature;
 
+use App\Filament\Pages\SiteSettings;
 use App\Filament\Resources\BakeryCategoryLandingResource;
+use App\Filament\Resources\NavigationItemResource;
 use App\Filament\Resources\StoreSettingResource;
 use App\Models\BakeryCategoryLanding;
 use App\Models\StoreSetting;
@@ -168,6 +170,26 @@ class F30StorefrontAuthorityTest extends TestCase
         $this->assertStringContainsString('->disabled()', $resourceSource);
         $this->assertStringContainsString('->dehydrated(false)', $resourceSource);
         $this->assertStringNotContainsString('CreateAction::make()', $pageSource);
+    }
+
+    public function test_legacy_site_settings_editor_cannot_create_a_second_storefront_source_of_truth(): void
+    {
+        $legacySource = file_get_contents(app_path('Filament/Pages/SiteSettings.php'));
+
+        $this->assertFalse(SiteSettings::shouldRegisterNavigation());
+        $this->assertStringContainsString('StoreSettingResource::getUrl()', $legacySource);
+        $this->assertStringNotContainsString('SiteSetting::updateOrCreate', $legacySource);
+    }
+
+    public function test_navigation_admin_explains_how_to_create_store_header_children(): void
+    {
+        $source = file_get_contents(app_path('Filament/Resources/NavigationItemResource.php'));
+
+        $this->assertSame('منوی هدر و زیرمنوها', NavigationItemResource::getNavigationLabel());
+        $this->assertStringContainsString("Select::make('parent_id')", $source);
+        $this->assertStringContainsString('«فروشگاه» را انتخاب کنید', $source);
+        $this->assertStringContainsString("Select::make('linked_category_id')", $source);
+        $this->assertStringContainsString("Select::make('placement')", $source);
     }
 
     public function test_category_landing_filament_resource_exposes_seo_and_internal_link_control(): void
