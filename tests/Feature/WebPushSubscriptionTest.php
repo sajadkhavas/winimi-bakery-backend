@@ -71,4 +71,40 @@ class WebPushSubscriptionTest extends TestCase
             'keys' => ['p256dh' => 'key', 'auth' => 'secret'],
         ])->assertServiceUnavailable();
     }
+
+    public function test_guest_can_explicitly_opt_in_and_only_revoke_own_subscription(): void
+    {
+        config([
+            'winimi.push.enabled' => true,
+            'winimi.push.vapid_public_key' => 'public-key',
+            'winimi.push.vapid_private_key' => 'private-key',
+        ]);
+        $token = str_repeat('a', 43);
+        $endpoint = 'https://push.example.test/subscriptions/guest-device';
+
+        $this->postJson('/api/push/subscriptions', [
+            'guestToken' => $token,
+            'endpoint' => $endpoint,
+            'keys' => ['p256dh' => 'guest-public-key', 'auth' => 'guest-auth-secret'],
+            'marketingEnabled' => true,
+        ])->assertCreated()->assertJsonPath('data.subscribed', true);
+
+        $subscription = DB::table('web_push_subscriptions')->first();
+        $this->assertNull($subscription->customer_id);
+        $this->assertSame(hash('sha256', $token), $subscription->guest_token_hash);
+        $this->assertFalse((bool) $subscription->transactional_enabled);
+        $this->assertTrue((bool) $subscription->marketing_enabled);
+
+        $this->deleteJson('/api/push/subscriptions', [
+            'guestToken' => str_repeat('b', 43),
+            'endpoint' => $endpoint,
+        ])->assertOk();
+        $this->assertNull(DB::table('web_push_subscriptions')->value('revoked_at'));
+
+        $this->deleteJson('/api/push/subscriptions', [
+            'guestToken' => $token,
+            'endpoint' => $endpoint,
+        ])->assertOk();
+        $this->assertNotNull(DB::table('web_push_subscriptions')->value('revoked_at'));
+    }
 }
