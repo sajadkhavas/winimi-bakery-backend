@@ -27,7 +27,10 @@ class WebPushSubscriptionTest extends TestCase
             'winimi.push.vapid_public_key' => 'public-key',
             'winimi.push.vapid_private_key' => 'private-key',
         ]);
-        $customer = Customer::factory()->create(['marketing_consent' => false]);
+        $customer = Customer::query()->create([
+            'mobile' => '09120000001',
+            'marketing_consent' => false,
+        ]);
         $endpoint = 'https://push.example.test/subscriptions/device-1';
 
         $this->actingAs($customer, 'customer')->postJson('/api/account/push/subscriptions', [
@@ -59,7 +62,9 @@ class WebPushSubscriptionTest extends TestCase
 
     public function test_subscription_endpoint_rejects_use_while_push_is_disabled(): void
     {
-        $customer = Customer::factory()->create();
+        $customer = Customer::query()->create([
+            'mobile' => '09120000002',
+        ]);
 
         $this->actingAs($customer, 'customer')->postJson('/api/account/push/subscriptions', [
             'endpoint' => 'https://push.example.test/device',
