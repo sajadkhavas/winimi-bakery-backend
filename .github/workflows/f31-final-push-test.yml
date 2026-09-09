@@ -16,7 +16,7 @@ jobs:
         with: { php-version: '8.3' }
       - run: composer install --no-interaction --prefer-dist
       - run: cp .env.example .env && php artisan key:generate
-      - run: php artisan test tests/Feature/WebPushSubscriptionTest.php > f31-final-push-test.txt 2>&1 || true
+      - run: php artisan test > /tmp/f31-full-test.txt 2>&1 || true\n      - run: tail -n 350 /tmp/f31-full-test.txt > f31-final-push-test.txt
       - run: |
           git config user.name github-actions[bot]
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
