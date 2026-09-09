@@ -76,14 +76,14 @@ class StoreContentController extends Controller
                         && $child->linked_category_id !== null
                         && (int) ($child->linkedCategory?->products_count ?? 0) === 0)
                     ->map(fn (NavigationItem $child): array => [
-                    'id' => $child->getKey(),
-                    'label' => $child->label,
-                    'href' => $child->href,
-                    'description' => $child->description,
-                    'icon' => $child->icon,
-                    'imageUrl' => $child->image_path ? asset('storage/'.$child->image_path) : null,
-                    'openInNewTab' => $child->open_in_new_tab,
-                ])->values()->all(),
+                        'id' => $child->getKey(),
+                        'label' => $child->label,
+                        'href' => $child->href,
+                        'description' => $child->description,
+                        'icon' => $child->icon,
+                        'imageUrl' => $child->image_path ? asset('storage/'.$child->image_path) : null,
+                        'openInNewTab' => $child->open_in_new_tab,
+                    ])->values()->all(),
             ])->values()->all();
 
         return ApiResponse::success($items);
