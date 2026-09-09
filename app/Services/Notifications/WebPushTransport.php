@@ -3,6 +3,7 @@
 namespace App\Services\Notifications;
 
 use App\Models\WebPushSubscription;
+use GuzzleHttp\Client;
 use Minishlink\WebPush\Subscription;
 use Minishlink\WebPush\WebPush;
 use RuntimeException;
@@ -23,13 +24,17 @@ final class WebPushTransport
             throw new RuntimeException('Web Push is not configured.');
         }
 
+        $timeout = max(1, (int) config('winimi.notifications.timeout_seconds', 8));
         $transport = new WebPush([
             'VAPID' => [
                 'subject' => config('winimi.push.vapid_subject'),
                 'publicKey' => config('winimi.push.vapid_public_key'),
                 'privateKey' => config('winimi.push.vapid_private_key'),
             ],
-        ], [], (int) config('winimi.notifications.timeout_seconds', 8));
+        ], [], new Client([
+            'timeout' => $timeout,
+            'connect_timeout' => $timeout,
+        ]));
         $subscription = Subscription::create([
             'endpoint' => $stored->endpoint,
             'publicKey' => $stored->public_key,

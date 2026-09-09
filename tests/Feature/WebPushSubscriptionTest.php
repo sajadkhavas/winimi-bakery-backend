@@ -43,6 +43,9 @@ class WebPushSubscriptionTest extends TestCase
         $this->assertNotSame($endpoint, $raw['endpoint']);
         $this->assertNotSame('browser-public-key', $raw['public_key']);
         $this->assertNotSame('browser-auth-secret', $raw['auth_token']);
+        $this->assertTrue((bool) $raw['transactional_enabled']);
+        $this->assertTrue((bool) $raw['marketing_enabled']);
+        $this->assertTrue($customer->fresh()->marketing_consent);
 
         $this->actingAs($customer, 'customer')->patchJson('/api/account/push/preferences', [
             'transactionalEnabled' => true,
@@ -58,6 +61,20 @@ class WebPushSubscriptionTest extends TestCase
         ])->assertOk()->assertJsonPath('data.subscribed', false);
 
         $this->assertNotNull($customer->webPushSubscriptions()->firstOrFail()->revoked_at);
+    }
+
+    public function test_web_push_transport_uses_a_psr_http_client_with_version_eleven(): void
+    {
+        $source = file_get_contents(app_path('Services/Notifications/WebPushTransport.php'));
+
+        $this->assertIsString($source);
+        $this->assertStringContainsString('new Client([', $source);
+        $this->assertStringContainsString("'connect_timeout' => \$timeout", $source);
+        $this->assertStringContainsString('], [], new Client([', $source);
+        $this->assertStringNotContainsString(
+            "], [], (int) config('winimi.notifications.timeout_seconds', 8)",
+            $source,
+        );
     }
 
     public function test_subscription_endpoint_rejects_use_while_push_is_disabled(): void

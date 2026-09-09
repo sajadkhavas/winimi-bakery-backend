@@ -58,7 +58,7 @@ class WebPushController extends Controller
 
         /** @var Customer $customer */
         $customer = $request->user('customer');
-        $marketing = (bool) ($validated['marketingEnabled'] ?? false);
+        $marketing = true;
 
         $subscription = WebPushSubscription::query()->updateOrCreate(
             ['endpoint_hash' => hash('sha256', $validated['endpoint'])],
@@ -70,7 +70,7 @@ class WebPushController extends Controller
                 'auth_token' => $validated['keys']['auth'],
                 'content_encoding' => $validated['contentEncoding'] ?? 'aes128gcm',
                 'user_agent' => mb_substr((string) $request->userAgent(), 0, 500),
-                'transactional_enabled' => (bool) ($validated['transactionalEnabled'] ?? true),
+                'transactional_enabled' => true,
                 'marketing_enabled' => $marketing,
                 'last_seen_at' => now(),
                 'revoked_at' => null,

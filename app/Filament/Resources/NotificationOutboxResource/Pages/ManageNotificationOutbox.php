@@ -24,7 +24,7 @@ class ManageNotificationOutbox extends ManageRecords
                 ->label('ارسال اعلان عمومی')
                 ->icon('heroicon-o-megaphone')
                 ->color('success')
-                ->modalDescription('فقط برای دستگاه‌هایی ارسال می‌شود که کاربر روی همان دستگاه اجازه اعلان و رضایت پیام‌های عمومی را داده است.')
+                ->modalDescription('برای تمام دستگاه‌هایی ارسال می‌شود که کاربر روی همان دستگاه اعلان‌های وینیمی را فعال کرده است.')
                 ->form([
                     Forms\Components\TextInput::make('title')
                         ->label('عنوان اعلان')
@@ -47,7 +47,6 @@ class ManageNotificationOutbox extends ManageRecords
                     $count = DB::transaction(function () use ($data): int {
                         $subscriptions = WebPushSubscription::query()
                             ->active()
-                            ->where('marketing_enabled', true)
                             ->lockForUpdate()
                             ->get();
 
