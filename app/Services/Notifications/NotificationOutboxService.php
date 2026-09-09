@@ -89,6 +89,14 @@ final class NotificationOutboxService
 
     public function dispatchOne(int $id): bool
     {
+        $channel = NotificationOutbox::query()->whereKey($id)->value('channel');
+        if ($channel === NotificationChannel::Sms->value && ! $this->providers->ready()) {
+            return false;
+        }
+        if ($channel === NotificationChannel::WebPush->value && ! $this->webPush->ready()) {
+            return false;
+        }
+
         $notification = DB::transaction(function () use ($id): ?NotificationOutbox {
             $locked = NotificationOutbox::query()->whereKey($id)->lockForUpdate()->first();
             if (! $locked || $locked->status !== NotificationStatus::Pending) {
