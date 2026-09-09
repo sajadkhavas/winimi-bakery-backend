@@ -14,6 +14,7 @@ use App\Http\Controllers\Api\ReviewController;
 use App\Http\Controllers\Api\StoreContentController;
 use App\Http\Controllers\Api\StorefrontRedirectController;
 use App\Http\Controllers\Api\SystemController;
+use App\Http\Controllers\Api\WebPushController;
 use App\Http\Controllers\Api\V1\AuthController;
 use App\Http\Controllers\Api\V1\BlogController;
 use App\Http\Controllers\Api\V1\BrandController;
@@ -49,8 +50,12 @@ Route::prefix('catalog')->middleware('throttle:120,1')->group(function () {
 Route::get('delivery/options', [DeliveryController::class, 'options'])
     ->middleware('throttle:120,1');
 
+Route::get('push/capabilities', [WebPushController::class, 'capabilities'])
+    ->middleware('throttle:60,1');
+
 Route::prefix('store')->middleware('throttle:120,1')->group(function () {
     Route::get('settings', [StoreContentController::class, 'settings']);
+    Route::get('navigation', [StoreContentController::class, 'navigation']);
     Route::get('redirect', StorefrontRedirectController::class);
     Route::get('pages/{slug}', [StoreContentController::class, 'page']);
     Route::get('faqs', [StoreContentController::class, 'faqs']);
@@ -89,6 +94,12 @@ Route::middleware(['auth:customer', 'customer.active'])->group(function () {
         ->middleware('throttle:20,1');
 
     Route::prefix('account')->middleware('throttle:60,1')->group(function () {
+        Route::get('push/preferences', [WebPushController::class, 'preferences']);
+        Route::post('push/subscriptions', [WebPushController::class, 'subscribe'])
+            ->middleware('throttle:10,1');
+        Route::patch('push/preferences', [WebPushController::class, 'updatePreferences']);
+        Route::delete('push/subscriptions', [WebPushController::class, 'unsubscribe'])
+            ->middleware('throttle:10,1');
         Route::patch('profile', [AccountController::class, 'updateProfile']);
         Route::patch('mobile', [AccountController::class, 'completeMobile']);
         Route::get('addresses', [AccountAddressController::class, 'index']);

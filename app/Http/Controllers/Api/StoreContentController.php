@@ -8,6 +8,7 @@ use App\Models\BakeryContentPage;
 use App\Models\BakeryFaq;
 use App\Models\BakeryGalleryItem;
 use App\Models\BakeryPost;
+use App\Models\NavigationItem;
 use App\Models\StoreSetting;
 use App\Support\ApiResponse;
 use App\Support\Pagination;
@@ -43,6 +44,34 @@ class StoreContentController extends Controller
                 ],
             ],
         ]);
+    }
+
+    public function navigation(): JsonResponse
+    {
+        $items = NavigationItem::query()
+            ->whereNull('parent_id')
+            ->where('is_active', true)
+            ->with(['children' => fn ($query) => $query
+                ->where('is_active', true)
+                ->orderBy('sort_order')
+                ->orderBy('id')])
+            ->orderBy('sort_order')
+            ->orderBy('id')
+            ->get()
+            ->map(fn (NavigationItem $item): array => [
+                'id' => $item->getKey(),
+                'label' => $item->label,
+                'href' => $item->href,
+                'description' => $item->description,
+                'children' => $item->children->map(fn (NavigationItem $child): array => [
+                    'id' => $child->getKey(),
+                    'label' => $child->label,
+                    'href' => $child->href,
+                    'description' => $child->description,
+                ])->values()->all(),
+            ])->values()->all();
+
+        return ApiResponse::success($items);
     }
 
     public function page(string $slug): JsonResponse

@@ -48,6 +48,14 @@ class BakeryProductResource extends JsonResource
             'longDescription' => $contentVerified
                 ? $this->publicPlainText($this->description)
                 : null,
+            'tasteNotes' => $contentVerified ? BakeryProduct::normalizeTagList($this->taste_notes) : [],
+            'textureNotes' => $contentVerified ? BakeryProduct::normalizeTagList($this->texture_notes) : [],
+            'useCases' => $contentVerified ? BakeryProduct::normalizeTagList($this->use_cases) : [],
+            'servingSuggestions' => $contentVerified ? $this->publicPlainText($this->serving_suggestions) : null,
+            'specifications' => $contentVerified ? array_values($this->specifications ?? []) : [],
+            'productFaqs' => $contentVerified ? array_values($this->product_faqs ?? []) : [],
+            'contentVersion' => $contentVerified ? $this->content_version : null,
+            'contentReviewedAt' => $contentVerified ? $this->content_reviewed_at?->toISOString() : null,
             'category' => $this->category?->name,
             'categorySlug' => $this->category?->slug,
             'categoryData' => $this->whenLoaded(
