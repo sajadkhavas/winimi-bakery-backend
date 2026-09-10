@@ -12,25 +12,21 @@ use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
+use Illuminate\Support\Facades\Artisan;
 
 class BakeryMediaAssetResource extends Resource
 {
     protected static ?string $model = BakeryMediaAsset::class;
 
-    protected static ?string $navigationIcon =
-        'heroicon-o-photo';
+    protected static ?string $navigationIcon = 'heroicon-o-photo';
 
-    protected static ?string $navigationLabel =
-        'کتابخانه رسانه';
+    protected static ?string $navigationLabel = 'کتابخانه رسانه';
 
-    protected static ?string $modelLabel =
-        'رسانه';
+    protected static ?string $modelLabel = 'رسانه';
 
-    protected static ?string $pluralModelLabel =
-        'کتابخانه رسانه';
+    protected static ?string $pluralModelLabel = 'کتابخانه رسانه';
 
-    protected static ?string $navigationGroup =
-        'فروشگاه وینیمی';
+    protected static ?string $navigationGroup = 'فروشگاه وینیمی';
 
     protected static ?int $navigationSort = 3;
 
@@ -38,9 +34,7 @@ class BakeryMediaAssetResource extends Resource
     {
         return $form
             ->schema([
-                SpatieMediaLibraryFileUpload::make(
-                    'source_image'
-                )
+                SpatieMediaLibraryFileUpload::make('source_image')
                     ->label('فایل اصلی')
                     ->collection('source')
                     ->image()
@@ -54,79 +48,44 @@ class BakeryMediaAssetResource extends Resource
                     ->rules([
                         'dimensions:max_width=6000,max_height=6000',
                     ])
-                    ->helperText(
-                        'فایل اصلی حفظ می‌شود؛ نسخه‌های WebP پیش‌نمایش به‌صورت خودکار ساخته می‌شوند.'
-                    )
+                    ->helperText('فایل اصلی حفظ می‌شود. نسخه‌های WebP در صف پردازش رسانه ساخته می‌شوند و وضعیت واقعی آن‌ها در جدول نمایش داده می‌شود.')
                     ->columnSpanFull(),
-
-                Forms\Components\TextInput::make(
-                    'title'
-                )
+                Forms\Components\TextInput::make('title')
                     ->label('عنوان داخلی')
                     ->required()
                     ->maxLength(220),
-
-                Forms\Components\TextInput::make(
-                    'alt_text'
-                )
+                Forms\Components\TextInput::make('alt_text')
                     ->label('Alt پیشنهادی')
                     ->maxLength(500),
-
-                Forms\Components\Select::make(
-                    'product_id'
-                )
+                Forms\Components\Select::make('product_id')
                     ->label('محصول مرتبط')
-                    ->relationship(
-                        'product',
-                        'name',
-                    )
+                    ->relationship('product', 'name')
                     ->searchable()
                     ->preload()
                     ->nullable(),
-
-                Forms\Components\Select::make(
-                    'usage'
-                )
+                Forms\Components\Select::make('usage')
                     ->label('نوع استفاده')
                     ->options([
                         BakeryMediaAsset::USAGE_UNASSIGNED => 'تخصیص‌نیافته',
-
                         BakeryMediaAsset::USAGE_PRODUCT_MAIN => 'تصویر اصلی محصول',
-
                         BakeryMediaAsset::USAGE_PRODUCT_GALLERY => 'گالری محصول',
-
                         BakeryMediaAsset::USAGE_HERO => 'Hero / بنر',
-
                         BakeryMediaAsset::USAGE_BRAND => 'برند / Lifestyle',
-
                         BakeryMediaAsset::USAGE_CATEGORY => 'دسته‌بندی',
                     ])
-                    ->default(
-                        BakeryMediaAsset::USAGE_UNASSIGNED
-                    )
+                    ->default(BakeryMediaAsset::USAGE_UNASSIGNED)
                     ->required(),
-
-                Forms\Components\Select::make(
-                    'status'
-                )
+                Forms\Components\Select::make('status')
                     ->label('وضعیت')
                     ->options([
                         BakeryMediaAsset::STATUS_PENDING => 'نیازمند بررسی',
-
                         BakeryMediaAsset::STATUS_READY => 'آماده تخصیص',
-
                         BakeryMediaAsset::STATUS_ASSIGNED => 'تخصیص داده شده',
-
                         BakeryMediaAsset::STATUS_REJECTED => 'رد شده',
                     ])
-                    ->default(
-                        BakeryMediaAsset::STATUS_PENDING
-                    )
+                    ->default(BakeryMediaAsset::STATUS_PENDING)
                     ->required(),
-
-                Forms\Components\Textarea::make(
-                    'notes'
-                )
+                Forms\Components\Textarea::make('notes')
                     ->label('یادداشت داخلی')
                     ->rows(3)
                     ->columnSpanFull(),
@@ -134,368 +93,222 @@ class BakeryMediaAssetResource extends Resource
             ->columns(2);
     }
 
-    public static function table(
-        Table $table,
-    ): Table {
+    public static function table(Table $table): Table
+    {
         return $table
             ->columns([
-                Tables\Columns\ImageColumn::make(
-                    'preview'
-                )
+                Tables\Columns\ImageColumn::make('preview')
                     ->label('تصویر')
-                    ->getStateUsing(
-                        fn (
-                            BakeryMediaAsset $record
-                        ): ?string => $record->previewUrl(),
-                    )
+                    ->getStateUsing(fn (BakeryMediaAsset $record): ?string => $record->previewUrl())
                     ->square(),
-
-                Tables\Columns\TextColumn::make(
-                    'title'
-                )
+                Tables\Columns\TextColumn::make('title')
                     ->label('عنوان')
                     ->searchable()
                     ->wrap(),
-
-                Tables\Columns\TextColumn::make(
-                    'product.name'
-                )
+                Tables\Columns\TextColumn::make('product.name')
                     ->label('محصول')
                     ->placeholder('—')
                     ->searchable(),
-
-                Tables\Columns\TextColumn::make(
-                    'usage'
-                )
+                Tables\Columns\TextColumn::make('usage')
                     ->label('کاربرد')
-                    ->formatStateUsing(
-                        fn (string $state): string => match ($state) {
-                            BakeryMediaAsset::USAGE_PRODUCT_MAIN => 'تصویر اصلی محصول',
-
-                            BakeryMediaAsset::USAGE_PRODUCT_GALLERY => 'گالری محصول',
-
-                            BakeryMediaAsset::USAGE_HERO => 'Hero / بنر',
-
-                            BakeryMediaAsset::USAGE_BRAND => 'برند / Lifestyle',
-
-                            BakeryMediaAsset::USAGE_CATEGORY => 'دسته‌بندی',
-
-                            default => 'تخصیص‌نیافته',
-                        },
-                    )
+                    ->formatStateUsing(fn (string $state): string => match ($state) {
+                        BakeryMediaAsset::USAGE_PRODUCT_MAIN => 'تصویر اصلی محصول',
+                        BakeryMediaAsset::USAGE_PRODUCT_GALLERY => 'گالری محصول',
+                        BakeryMediaAsset::USAGE_HERO => 'Hero / بنر',
+                        BakeryMediaAsset::USAGE_BRAND => 'برند / Lifestyle',
+                        BakeryMediaAsset::USAGE_CATEGORY => 'دسته‌بندی',
+                        default => 'تخصیص‌نیافته',
+                    })
                     ->badge(),
-
-                Tables\Columns\TextColumn::make(
-                    'status'
-                )
+                Tables\Columns\TextColumn::make('status')
                     ->label('وضعیت')
-                    ->formatStateUsing(
-                        fn (string $state): string => match ($state) {
-                            BakeryMediaAsset::STATUS_READY => 'آماده',
-
-                            BakeryMediaAsset::STATUS_ASSIGNED => 'تخصیص‌شده',
-
-                            BakeryMediaAsset::STATUS_REJECTED => 'رد شده',
-
-                            default => 'نیازمند بررسی',
-                        },
-                    )
+                    ->formatStateUsing(fn (string $state): string => match ($state) {
+                        BakeryMediaAsset::STATUS_READY => 'آماده',
+                        BakeryMediaAsset::STATUS_ASSIGNED => 'تخصیص‌شده',
+                        BakeryMediaAsset::STATUS_REJECTED => 'رد شده',
+                        default => 'نیازمند بررسی',
+                    })
                     ->badge(),
-
-                Tables\Columns\TextColumn::make(
-                    'updated_at'
-                )
+                Tables\Columns\TextColumn::make('conversion_state')
+                    ->label('WebP')
+                    ->state(fn (BakeryMediaAsset $record): string => $record->conversionState())
+                    ->formatStateUsing(fn (string $state): string => match ($state) {
+                        'ready' => 'آماده',
+                        'missing' => 'فایل اصلی ندارد',
+                        default => 'در انتظار پردازش',
+                    })
+                    ->color(fn (string $state): string => match ($state) {
+                        'ready' => 'success',
+                        'missing' => 'danger',
+                        default => 'warning',
+                    })
+                    ->badge(),
+                Tables\Columns\TextColumn::make('updated_at')
                     ->label('آخرین تغییر')
                     ->dateTime('Y/m/d H:i')
                     ->sortable(),
             ])
             ->filters([
-                Tables\Filters\SelectFilter::make(
-                    'status'
-                )
+                Tables\Filters\SelectFilter::make('status')
                     ->label('وضعیت')
                     ->options([
                         BakeryMediaAsset::STATUS_PENDING => 'نیازمند بررسی',
-
                         BakeryMediaAsset::STATUS_READY => 'آماده',
-
                         BakeryMediaAsset::STATUS_ASSIGNED => 'تخصیص‌شده',
-
                         BakeryMediaAsset::STATUS_REJECTED => 'رد شده',
                     ]),
-
-                Tables\Filters\SelectFilter::make(
-                    'usage'
-                )
+                Tables\Filters\SelectFilter::make('usage')
                     ->label('کاربرد')
                     ->options([
                         BakeryMediaAsset::USAGE_UNASSIGNED => 'تخصیص‌نیافته',
-
                         BakeryMediaAsset::USAGE_PRODUCT_MAIN => 'تصویر اصلی محصول',
-
                         BakeryMediaAsset::USAGE_PRODUCT_GALLERY => 'گالری محصول',
-
                         BakeryMediaAsset::USAGE_HERO => 'Hero / بنر',
-
                         BakeryMediaAsset::USAGE_BRAND => 'برند / Lifestyle',
-
                         BakeryMediaAsset::USAGE_CATEGORY => 'دسته‌بندی',
                     ]),
             ])
             ->actions([
-                Tables\Actions\Action::make(
-                    'assignToProduct'
-                )
+                Tables\Actions\Action::make('regeneratePreviews')
+                    ->label('بازسازی WebP')
+                    ->icon('heroicon-o-arrow-path')
+                    ->color('warning')
+                    ->visible(fn (BakeryMediaAsset $record): bool => $record->sourceMedia() !== null && ! $record->conversionsReady())
+                    ->requiresConfirmation()
+                    ->modalDescription('فقط نسخه‌های مشتق‌شده thumb و preview بازسازی می‌شوند؛ فایل اصلی حذف یا جایگزین نمی‌شود.')
+                    ->action(function (BakeryMediaAsset $record): void {
+                        $media = $record->sourceMedia();
+                        if ($media === null) {
+                            Notification::make()->danger()->title('فایل اصلی پیدا نشد.')->send();
+
+                            return;
+                        }
+
+                        try {
+                            Artisan::call('media-library:regenerate', [
+                                '--ids' => [(string) $media->getKey()],
+                                '--only' => ['thumb', 'preview'],
+                                '--only-missing' => true,
+                            ]);
+
+                            $record->unsetRelation('media');
+                            $record->load('media');
+                            Notification::make()
+                                ->success()
+                                ->title($record->conversionsReady() ? 'نسخه‌های WebP آماده شدند.' : 'بازسازی ثبت شد؛ پردازش صف را بررسی کنید.')
+                                ->send();
+                        } catch (\Throwable $exception) {
+                            report($exception);
+                            Notification::make()->danger()->title('بازسازی WebP ناموفق بود.')->send();
+                        }
+                    }),
+                Tables\Actions\Action::make('assignToProduct')
                     ->label('اتصال به محصول')
-                    ->icon(
-                        'heroicon-o-link'
-                    )
-                    ->visible(
-                        fn (
-                            BakeryMediaAsset $record
-                        ): bool => $record->status
-                                === BakeryMediaAsset::STATUS_READY
-                            && $record->sourceMedia() !== null
-                    )
+                    ->icon('heroicon-o-link')
+                    ->visible(fn (BakeryMediaAsset $record): bool => $record->status === BakeryMediaAsset::STATUS_READY && $record->sourceMedia() !== null)
                     ->form([
-                        Forms\Components\Select::make(
-                            'product_id'
-                        )
+                        Forms\Components\Select::make('product_id')
                             ->label('محصول مقصد')
-                            ->options(
-                                fn (): array => BakeryProduct::query()
-                                    ->orderBy('name')
-                                    ->pluck(
-                                        'name',
-                                        'id',
-                                    )
-                                    ->all()
-                            )
+                            ->options(fn (): array => BakeryProduct::query()->orderBy('name')->pluck('name', 'id')->all())
                             ->searchable()
                             ->required(),
-
-                        Forms\Components\Select::make(
-                            'usage'
-                        )
+                        Forms\Components\Select::make('usage')
                             ->label('محل استفاده')
                             ->options([
                                 BakeryMediaAsset::USAGE_PRODUCT_MAIN => 'تصویر اصلی محصول',
-
                                 BakeryMediaAsset::USAGE_PRODUCT_GALLERY => 'گالری محصول',
                             ])
                             ->required(),
-
-                        Forms\Components\TextInput::make(
-                            'alt_text'
-                        )
-                            ->label(
-                                'متن جایگزین تصویر'
-                            )
+                        Forms\Components\TextInput::make('alt_text')
+                            ->label('متن جایگزین تصویر')
                             ->maxLength(500)
-                            ->helperText(
-                                'در صورت خالی بودن، Alt ثبت‌شده در کتابخانه یا عنوان رسانه استفاده می‌شود.'
-                            ),
+                            ->helperText('در صورت خالی بودن، Alt ثبت‌شده در کتابخانه یا عنوان رسانه استفاده می‌شود.'),
                     ])
                     ->requiresConfirmation()
-                    ->modalHeading(
-                        'اتصال رسانه به محصول'
-                    )
-                    ->modalDescription(
-                        'فایل اصلی در کتابخانه حفظ می‌شود. اگر مقصد «تصویر اصلی» باشد و محصول از قبل تصویر اصلی داشته باشد، عملیات رد می‌شود و هیچ جایگزینی خودکاری انجام نخواهد شد.'
-                    )
-                    ->action(
-                        function (
-                            BakeryMediaAsset $record,
-                            array $data,
-                        ): void {
-                            $product =
-                                BakeryProduct::query()
-                                    ->findOrFail(
-                                        (int) $data[
-                                            'product_id'
-                                        ]
-                                    );
+                    ->modalHeading('اتصال رسانه به محصول')
+                    ->modalDescription('فایل اصلی در کتابخانه حفظ می‌شود. اگر مقصد «تصویر اصلی» باشد و محصول از قبل تصویر اصلی داشته باشد، عملیات رد می‌شود و هیچ جایگزینی خودکاری انجام نخواهد شد.')
+                    ->action(function (BakeryMediaAsset $record, array $data): void {
+                        $product = BakeryProduct::query()->findOrFail((int) $data['product_id']);
+
+                        try {
+                            $record->assignToProduct(
+                                $product,
+                                (string) $data['usage'],
+                                isset($data['alt_text']) ? (string) $data['alt_text'] : null,
+                            );
+                        } catch (\DomainException|\InvalidArgumentException $exception) {
+                            Notification::make()->danger()->title('اتصال انجام نشد')->body($exception->getMessage())->send();
+
+                            return;
+                        } catch (\Throwable $exception) {
+                            report($exception);
+                            Notification::make()->danger()->title('خطای غیرمنتظره در اتصال رسانه')->send();
+
+                            return;
+                        }
+
+                        Notification::make()->success()->title('رسانه به محصول متصل شد.')->send();
+                    }),
+                Tables\Actions\EditAction::make(),
+            ])
+            ->bulkActions([
+                Tables\Actions\BulkAction::make('assignGallery')
+                    ->label('اتصال گروهی به گالری محصول')
+                    ->icon('heroicon-o-photo')
+                    ->form([
+                        Forms\Components\Select::make('product_id')
+                            ->label('محصول مقصد')
+                            ->options(fn (): array => BakeryProduct::query()->orderBy('name')->pluck('name', 'id')->all())
+                            ->searchable()
+                            ->required(),
+                    ])
+                    ->requiresConfirmation()
+                    ->modalHeading('اتصال گروهی به گالری')
+                    ->modalDescription('فقط رسانه‌های آماده تخصیص پردازش می‌شوند. Source اصلی هر تصویر در کتابخانه باقی می‌ماند.')
+                    ->action(function ($records, array $data): void {
+                        $product = BakeryProduct::query()->findOrFail((int) $data['product_id']);
+                        $assigned = 0;
+                        $failed = 0;
+
+                        foreach ($records as $record) {
+                            if (! $record instanceof BakeryMediaAsset) {
+                                $failed++;
+                                continue;
+                            }
 
                             try {
                                 $record->assignToProduct(
                                     $product,
-                                    (string) $data[
-                                        'usage'
-                                    ],
-                                    isset(
-                                        $data[
-                                            'alt_text'
-                                        ]
-                                    )
-                                        ? (string) $data[
-                                            'alt_text'
-                                        ]
-                                        : null,
+                                    BakeryMediaAsset::USAGE_PRODUCT_GALLERY,
+                                    $record->alt_text ?: $record->title,
                                 );
-                            } catch (
-                                \DomainException
-                                |\InvalidArgumentException
-                                $exception
-                            ) {
-                                Notification::make()
-                                    ->danger()
-                                    ->title(
-                                        'اتصال انجام نشد'
-                                    )
-                                    ->body(
-                                        $exception
-                                            ->getMessage()
-                                    )
-                                    ->send();
-
-                                return;
-                            } catch (
-                                \Throwable $exception
-                            ) {
+                                $assigned++;
+                            } catch (\Throwable $exception) {
                                 report($exception);
-
-                                Notification::make()
-                                    ->danger()
-                                    ->title(
-                                        'خطای غیرمنتظره در اتصال رسانه'
-                                    )
-                                    ->send();
-
-                                return;
+                                $failed++;
                             }
+                        }
 
-                            Notification::make()
-                                ->success()
-                                ->title(
-                                    'رسانه به محصول متصل شد.'
-                                )
-                                ->send();
-                        },
-                    ),
+                        $notification = Notification::make()
+                            ->title($failed === 0 ? 'اتصال گروهی کامل شد.' : 'اتصال گروهی با هشدار تمام شد.')
+                            ->body("موفق: {$assigned} | ناموفق: {$failed}");
 
-                Tables\Actions\EditAction::make(),
+                        if ($failed === 0) {
+                            $notification->success();
+                        } else {
+                            $notification->warning();
+                        }
+
+                        $notification->send();
+                    }),
             ])
-            ->bulkActions([
-                Tables\Actions\BulkAction::make(
-                    'assignGallery'
-                )
-                    ->label(
-                        'اتصال گروهی به گالری محصول'
-                    )
-                    ->icon(
-                        'heroicon-o-photo'
-                    )
-                    ->form([
-                        Forms\Components\Select::make(
-                            'product_id'
-                        )
-                            ->label('محصول مقصد')
-                            ->options(
-                                fn (): array => BakeryProduct::query()
-                                    ->orderBy('name')
-                                    ->pluck(
-                                        'name',
-                                        'id',
-                                    )
-                                    ->all()
-                            )
-                            ->searchable()
-                            ->required(),
-                    ])
-                    ->requiresConfirmation()
-                    ->modalHeading(
-                        'اتصال گروهی به گالری'
-                    )
-                    ->modalDescription(
-                        'فقط رسانه‌های آماده تخصیص پردازش می‌شوند. Source اصلی هر تصویر در کتابخانه باقی می‌ماند.'
-                    )
-                    ->action(
-                        function (
-                            $records,
-                            array $data,
-                        ): void {
-                            $product =
-                                BakeryProduct::query()
-                                    ->findOrFail(
-                                        (int) $data[
-                                            'product_id'
-                                        ]
-                                    );
-
-                            $assigned = 0;
-                            $failed = 0;
-
-                            foreach (
-                                $records as $record
-                            ) {
-                                if (
-                                    ! $record
-                                        instanceof BakeryMediaAsset
-                                ) {
-                                    $failed++;
-
-                                    continue;
-                                }
-
-                                try {
-                                    $record
-                                        ->assignToProduct(
-                                            $product,
-                                            BakeryMediaAsset::USAGE_PRODUCT_GALLERY,
-                                            $record
-                                                ->alt_text
-                                            ?: $record
-                                                ->title,
-                                        );
-
-                                    $assigned++;
-                                } catch (
-                                    \Throwable
-                                    $exception
-                                ) {
-                                    report(
-                                        $exception
-                                    );
-
-                                    $failed++;
-                                }
-                            }
-
-                            $notification =
-                                Notification::make()
-                                    ->title(
-                                        $failed === 0
-                                            ? 'اتصال گروهی کامل شد.'
-                                            : 'اتصال گروهی با هشدار تمام شد.'
-                                    )
-                                    ->body(
-                                        "موفق: {$assigned} | ناموفق: {$failed}"
-                                    );
-
-                            if ($failed === 0) {
-                                $notification
-                                    ->success();
-                            } else {
-                                $notification
-                                    ->warning();
-                            }
-
-                            $notification->send();
-                        },
-                    ),
-            ])
-            ->defaultSort(
-                'created_at',
-                'desc',
-            );
+            ->defaultSort('created_at', 'desc');
     }
 
     public static function getPages(): array
     {
         return [
-            'index' => Pages\ManageBakeryMediaAssets::route(
-                '/'
-            ),
+            'index' => Pages\ManageBakeryMediaAssets::route('/'),
         ];
     }
 }
