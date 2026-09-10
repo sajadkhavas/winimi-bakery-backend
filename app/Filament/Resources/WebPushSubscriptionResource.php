@@ -58,25 +58,7 @@ class WebPushSubscriptionResource extends Resource
                     ->label('نوع عضو')
                     ->nullable(),
             ])
-            ->actions([
-                Tables\Actions\Action::make('revoke')
-                    ->label('لغو امن')
-                    ->icon('heroicon-o-no-symbol')
-                    ->color('danger')
-                    ->requiresConfirmation()
-                    ->visible(fn (WebPushSubscription $record): bool => $record->revoked_at === null)
-                    ->action(function (WebPushSubscription $record): void {
-                        $record->update(['revoked_at' => now()]);
-                        activity('web-push')
-                            ->causedBy(auth()->user())
-                            ->performedOn($record)
-                            ->withProperties([
-                                'action' => 'admin_revoke',
-                                'audience' => $record->customer_id ? 'customer' : 'guest',
-                            ])
-                            ->log('Web push subscription revoked by operator');
-                    }),
-            ])
+            ->actions([])
             ->bulkActions([])
             ->defaultSort('last_seen_at', 'desc');
     }
