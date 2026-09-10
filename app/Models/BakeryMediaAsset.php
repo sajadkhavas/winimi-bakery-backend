@@ -136,15 +136,12 @@ class BakeryMediaAsset extends Model implements HasMedia
 
         $collection = match ($usage) {
             self::USAGE_PRODUCT_MAIN => 'catalog-main',
-
             self::USAGE_PRODUCT_GALLERY => 'catalog-gallery',
         };
 
         if (
             $collection === 'catalog-main'
-            && $product->getFirstMedia(
-                'catalog-main'
-            ) instanceof Media
+            && $product->getFirstMedia('catalog-main') instanceof Media
         ) {
             throw new \DomainException(
                 'این محصول از قبل تصویر اصلی دارد؛ جایگزینی خودکار انجام نشد.'
@@ -170,28 +167,16 @@ class BakeryMediaAsset extends Model implements HasMedia
 
         try {
             $copiedMedia
-                ->setCustomProperty(
-                    'alt',
-                    $resolvedAlt,
-                )
-                ->setCustomProperty(
-                    'source_asset_id',
-                    (int) $this->getKey(),
-                )
-                ->setCustomProperty(
-                    'source_asset_title',
-                    $this->title,
-                )
+                ->setCustomProperty('alt', $resolvedAlt)
+                ->setCustomProperty('source_asset_id', (int) $this->getKey())
+                ->setCustomProperty('source_asset_title', $this->title)
                 ->save();
 
             $this
                 ->forceFill([
                     'product_id' => $product->getKey(),
-
                     'usage' => $usage,
-
                     'status' => self::STATUS_ASSIGNED,
-
                     'alt_text' => $resolvedAlt,
                 ])
                 ->save();
@@ -206,9 +191,25 @@ class BakeryMediaAsset extends Model implements HasMedia
 
     public function sourceMedia(): ?Media
     {
-        return $this->getFirstMedia(
-            'source'
-        );
+        return $this->getFirstMedia('source');
+    }
+
+    public function conversionsReady(): bool
+    {
+        $media = $this->sourceMedia();
+
+        return $media !== null
+            && $media->hasGeneratedConversion('thumb')
+            && $media->hasGeneratedConversion('preview');
+    }
+
+    public function conversionState(): string
+    {
+        if ($this->sourceMedia() === null) {
+            return 'missing';
+        }
+
+        return $this->conversionsReady() ? 'ready' : 'pending';
     }
 
     public function previewUrl(): ?string
@@ -219,9 +220,7 @@ class BakeryMediaAsset extends Model implements HasMedia
             return null;
         }
 
-        return $media->hasGeneratedConversion(
-            'thumb'
-        )
+        return $media->hasGeneratedConversion('thumb')
             ? $media->getFullUrl('thumb')
             : $media->getFullUrl();
     }
