@@ -9,6 +9,8 @@ use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
+use FilamentTiptapEditor\Enums\TiptapOutput;
+use FilamentTiptapEditor\TiptapEditor;
 
 class BakeryFaqResource extends Resource
 {
@@ -51,22 +53,23 @@ class BakeryFaqResource extends Resource
                 ->required()
                 ->maxLength(500)
                 ->columnSpanFull(),
-            Forms\Components\RichEditor::make('answer')
+            TiptapEditor::make('answer')
                 ->label('پاسخ')
                 ->required()
-                ->toolbarButtons([
+                ->tools([
+                    'bullet-list',
+                    'ordered-list',
                     'blockquote',
                     'bold',
-                    'bulletList',
                     'italic',
-                    'link',
-                    'orderedList',
-                    'redo',
                     'strike',
                     'underline',
-                    'undo',
+                    'link',
                 ])
-                ->helperText('پاسخ را کوتاه و قابل اسکن نگه دارید؛ لینک و فهرست در صورت نیاز مجاز است.')
+                ->output(TiptapOutput::Html)
+                ->maxContentWidth('full')
+                ->extraInputAttributes(['style' => 'min-height: 10rem;'])
+                ->helperText('پاسخ را کوتاه و قابل اسکن نگه دارید. خروجی HTML سازگار با Frontend است و ابزارهای کد، Embed و آپلود رسانه در این فیلد فعال نیستند.')
                 ->columnSpanFull(),
         ])->columns(3);
     }
