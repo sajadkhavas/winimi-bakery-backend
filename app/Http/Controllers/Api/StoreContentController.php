@@ -107,6 +107,7 @@ class StoreContentController extends Controller
                 'slug' => $page->slug,
                 'title' => $page->title,
                 'excerpt' => $page->excerpt,
+                'coverUrl' => $page->cover_url,
                 'content' => $page->content,
                 'seo' => [
                     'title' => $page->meta_title,
