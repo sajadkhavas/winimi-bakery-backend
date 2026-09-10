@@ -3,54 +3,80 @@
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\UserResource\Pages;
-use App\Filament\Resources\UserResource\RelationManagers;
 use App\Models\User;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
-use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\SoftDeletingScope;
 
 class UserResource extends Resource
 {
     protected static ?string $model = User::class;
 
-    protected static ?string $navigationIcon = 'heroicon-o-rectangle-stack';
+    protected static ?string $navigationIcon = 'heroicon-o-user-group';
+
+    protected static ?string $navigationLabel = 'کاربران پنل';
+
+    protected static ?string $modelLabel = 'کاربر پنل';
+
+    protected static ?string $pluralModelLabel = 'کاربران پنل';
+
+    protected static ?string $navigationGroup = 'سیستم';
+
+    protected static ?int $navigationSort = 90;
 
     public static function form(Form $form): Form
     {
         return $form
             ->schema([
-                Forms\Components\TextInput::make('name')
-                    ->required()
-                    ->maxLength(255),
-                Forms\Components\TextInput::make('email')
-                    ->email()
-                    ->required()
-                    ->maxLength(255),
-                Forms\Components\TextInput::make('phone')
-                    ->tel()
-                    ->maxLength(20),
-                Forms\Components\TextInput::make('company')
-                    ->maxLength(100),
-                Forms\Components\TextInput::make('role')
-                    ->required()
-                    ->maxLength(20)
-                    ->default('customer'),
-                Forms\Components\TextInput::make('avatar')
-                    ->maxLength(255),
-                Forms\Components\DateTimePicker::make('email_verified_at'),
-                Forms\Components\TextInput::make('password')
-                    ->password()
-                    ->required()
-                    ->maxLength(255),
-                Forms\Components\Textarea::make('two_factor_secret')
-                    ->columnSpanFull(),
-                Forms\Components\Textarea::make('two_factor_recovery_codes')
-                    ->columnSpanFull(),
-                Forms\Components\DateTimePicker::make('two_factor_confirmed_at'),
+                Forms\Components\Section::make('اطلاعات کاربر پنل')
+                    ->description('مدیریت کاربران پنل فقط برای مدیر ارشد در دسترس است. اسرار ورود دومرحله‌ای هرگز در فرم نمایش داده نمی‌شوند.')
+                    ->schema([
+                        Forms\Components\TextInput::make('name')
+                            ->label('نام')
+                            ->required()
+                            ->maxLength(255),
+                        Forms\Components\TextInput::make('email')
+                            ->label('ایمیل')
+                            ->email()
+                            ->required()
+                            ->maxLength(255)
+                            ->unique(ignoreRecord: true),
+                        Forms\Components\TextInput::make('phone')
+                            ->label('شماره تماس')
+                            ->tel()
+                            ->maxLength(20),
+                        Forms\Components\TextInput::make('company')
+                            ->label('مجموعه')
+                            ->maxLength(100),
+                        Forms\Components\Select::make('roles')
+                            ->label('نقش‌های دسترسی')
+                            ->relationship('roles', 'name')
+                            ->multiple()
+                            ->searchable()
+                            ->preload()
+                            ->required()
+                            ->helperText('دسترسی واقعی از نقش‌های Spatie/Shield اعمال می‌شود؛ فیلد متنی قدیمی role دیگر در پنل قابل ویرایش نیست.')
+                            ->columnSpanFull(),
+                        Forms\Components\TextInput::make('password')
+                            ->label('رمز عبور')
+                            ->password()
+                            ->revealable()
+                            ->required(fn (string $operation): bool => $operation === 'create')
+                            ->dehydrated(fn (?string $state): bool => filled($state))
+                            ->maxLength(255)
+                            ->helperText('برای کاربر موجود خالی بگذارید تا رمز فعلی تغییر نکند.'),
+                        Forms\Components\DateTimePicker::make('email_verified_at')
+                            ->label('زمان تأیید ایمیل')
+                            ->disabled()
+                            ->dehydrated(false),
+                        Forms\Components\DateTimePicker::make('two_factor_confirmed_at')
+                            ->label('فعال‌سازی ورود دومرحله‌ای')
+                            ->disabled()
+                            ->dehydrated(false),
+                    ])
+                    ->columns(2),
             ]);
     }
 
@@ -59,50 +85,62 @@ class UserResource extends Resource
         return $table
             ->columns([
                 Tables\Columns\TextColumn::make('name')
+                    ->label('نام')
                     ->searchable(),
                 Tables\Columns\TextColumn::make('email')
+                    ->label('ایمیل')
                     ->searchable(),
+                Tables\Columns\TextColumn::make('roles.name')
+                    ->label('نقش‌ها')
+                    ->badge(),
                 Tables\Columns\TextColumn::make('phone')
-                    ->searchable(),
+                    ->label('تماس')
+                    ->searchable()
+                    ->toggleable(),
                 Tables\Columns\TextColumn::make('company')
-                    ->searchable(),
-                Tables\Columns\TextColumn::make('role')
-                    ->searchable(),
-                Tables\Columns\TextColumn::make('avatar')
-                    ->searchable(),
-                Tables\Columns\TextColumn::make('email_verified_at')
-                    ->dateTime()
-                    ->sortable(),
+                    ->label('مجموعه')
+                    ->searchable()
+                    ->toggleable(),
                 Tables\Columns\TextColumn::make('two_factor_confirmed_at')
-                    ->dateTime()
+                    ->label('ورود دومرحله‌ای')
+                    ->dateTime('Y/m/d H:i')
+                    ->placeholder('فعال نشده')
                     ->sortable(),
                 Tables\Columns\TextColumn::make('created_at')
-                    ->dateTime()
-                    ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
-                Tables\Columns\TextColumn::make('updated_at')
-                    ->dateTime()
-                    ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
-            ])
-            ->filters([
-                //
+                    ->label('ایجاد')
+                    ->dateTime('Y/m/d H:i')
+                    ->sortable(),
             ])
             ->actions([
-                Tables\Actions\EditAction::make(),
+                Tables\Actions\EditAction::make()->label('ویرایش'),
             ])
-            ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
-                ]),
-            ]);
+            ->bulkActions([])
+            ->defaultSort('created_at', 'desc');
     }
 
-    public static function getRelations(): array
+    public static function shouldRegisterNavigation(): bool
     {
-        return [
-            //
-        ];
+        return auth()->user()?->hasRole('super_admin') ?? false;
+    }
+
+    public static function canViewAny(): bool
+    {
+        return auth()->user()?->hasRole('super_admin') ?? false;
+    }
+
+    public static function canCreate(): bool
+    {
+        return auth()->user()?->hasRole('super_admin') ?? false;
+    }
+
+    public static function canEdit($record): bool
+    {
+        return auth()->user()?->hasRole('super_admin') ?? false;
+    }
+
+    public static function canDelete($record): bool
+    {
+        return false;
     }
 
     public static function getPages(): array
