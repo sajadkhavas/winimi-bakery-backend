@@ -20,6 +20,9 @@ class Inquiry extends Model
         'message',
         'metadata',
         'status',
+        'assigned_user_id',
+        'internal_note',
+        'last_action_at',
         'ip_hash',
         'user_agent_hash',
     ];
@@ -37,11 +40,17 @@ class Inquiry extends Model
             'type' => InquiryType::class,
             'status' => InquiryStatus::class,
             'metadata' => 'array',
+            'last_action_at' => 'datetime',
         ];
     }
 
     public function customer(): BelongsTo
     {
         return $this->belongsTo(Customer::class);
+    }
+
+    public function assignedUser(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'assigned_user_id');
     }
 }
