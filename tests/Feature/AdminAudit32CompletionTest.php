@@ -151,13 +151,13 @@ class AdminAudit32CompletionTest extends TestCase
         );
         $paths[] = app_path('Providers/Filament/AdminPanelProvider.php');
 
+        $pattern = <<<'REGEX'
+/(?:\$navigationGroup\s*=\s*|->navigationGroup\()'([^']+)'/
+REGEX;
+
         foreach ($paths as $path) {
             $source = File::get($path);
-            preg_match_all(
-                "/(?:\\$navigationGroup\\s*=\\s*|->navigationGroup\\()'([^']+)'/",
-                $source,
-                $matches,
-            );
+            preg_match_all($pattern, $source, $matches);
 
             foreach ($matches[1] ?? [] as $group) {
                 $this->assertContains($group, $allowed, "Unexpected navigation group [{$group}] in {$path}");
