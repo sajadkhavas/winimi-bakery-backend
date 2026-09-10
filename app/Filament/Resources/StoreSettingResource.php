@@ -52,29 +52,164 @@ class StoreSettingResource extends Resource
                         ->label('قابل نمایش در API عمومی')
                         ->disabled()
                         ->dehydrated(false),
-                    Forms\Components\Textarea::make('value')
-                        ->label('مقدار')
-                        ->rows(5)
-                        ->helperText(fn (?StoreSetting $record): string => match ($record?->type) {
-                            'boolean' => 'برای گزینه بله/خیر فقط 1 (فعال) یا 0 (غیرفعال) وارد کنید.',
-                            'integer' => 'فقط عدد صحیح وارد کنید.',
-                            'json' => 'JSON معتبر وارد کنید. این نوع فقط برای تنظیمات ساختاری ثبت‌شده استفاده می‌شود.',
-                            default => str_contains((string) $record?->key, '_href')
-                                ? 'برای لینک‌های داخلی مسیر با / شروع شود. لینک‌های خارجی فقط در فیلدهای مشخص‌شده استفاده می‌شوند.'
-                                : (str_contains((string) $record?->key, '_image_url')
-                                    ? 'URL تصویر را وارد کنید؛ خالی بماند تا تصویر پیش‌فرض Frontend استفاده شود.'
-                                    : 'متن قابل نمایش در سایت را وارد کنید.'),
-                        })
-                        ->rules(fn (?StoreSetting $record): array => match ($record?->type) {
-                            'boolean' => ['nullable', 'in:0,1'],
-                            'integer' => ['nullable', 'integer'],
-                            'json' => ['nullable', 'json'],
-                            default => ['nullable', 'string'],
-                        })
+                    Forms\Components\Group::make()
+                        ->schema(fn (?StoreSetting $record): array => [self::makeValueField($record)])
                         ->columnSpanFull(),
                 ])
                 ->columns(2),
         ]);
+    }
+
+    public static function editorKind(?StoreSetting $record): string
+    {
+        if (! $record) {
+            return 'text';
+        }
+
+        if ($record->key === 'pwa.shortcuts') {
+            return 'shortcuts';
+        }
+
+        if (in_array($record->key, ['pwa.theme_color', 'pwa.background_color'], true)) {
+            return 'color';
+        }
+
+        if ($record->key === 'integrations.google_tag_mode') {
+            return 'tag-mode';
+        }
+
+        if ($record->key === 'integrations.google_tag_id') {
+            return 'tag-id';
+        }
+
+        if ($record->type === 'boolean') {
+            return 'boolean';
+        }
+
+        if ($record->type === 'integer') {
+            return 'integer';
+        }
+
+        if ($record->type === 'json') {
+            return 'json';
+        }
+
+        if (str_contains($record->key, 'email')) {
+            return 'email';
+        }
+
+        if (str_contains($record->key, '_url')) {
+            return 'url';
+        }
+
+        if (str_contains($record->key, 'phone')) {
+            return 'phone';
+        }
+
+        if (str_contains($record->key, '_description')
+            || str_contains($record->key, '_text')
+            || str_contains($record->key, '_copy')
+            || str_contains($record->key, '_message')
+            || str_contains($record->key, 'badge_code')) {
+            return 'long-text';
+        }
+
+        return 'text';
+    }
+
+    private static function makeValueField(?StoreSetting $record): Forms\Components\Field
+    {
+        $kind = self::editorKind($record);
+
+        return match ($kind) {
+            'shortcuts' => Forms\Components\Repeater::make('value')
+                ->label('میانبرهای اپ')
+                ->formatStateUsing(function ($state): array {
+                    if (is_array($state)) {
+                        return array_values($state);
+                    }
+
+                    $decoded = json_decode((string) $state, true);
+
+                    return is_array($decoded) ? array_values($decoded) : [];
+                })
+                ->dehydrateStateUsing(fn ($state): string => json_encode(
+                    array_values(is_array($state) ? $state : []),
+                    JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES,
+                ) ?: '[]')
+                ->schema([
+                    Forms\Components\TextInput::make('name')
+                        ->label('نام')
+                        ->required()
+                        ->maxLength(80),
+                    Forms\Components\TextInput::make('short_name')
+                        ->label('نام کوتاه')
+                        ->maxLength(40),
+                    Forms\Components\TextInput::make('description')
+                        ->label('توضیح')
+                        ->maxLength(160)
+                        ->columnSpanFull(),
+                    Forms\Components\TextInput::make('url')
+                        ->label('مسیر داخلی')
+                        ->required()
+                        ->helperText('مسیر با / شروع شود و آدرس خارجی وارد نشود.')
+                        ->rules(['string', 'max:255', 'regex:/^\/(?!\/).+/']),
+                ])
+                ->columns(2)
+                ->maxItems(4)
+                ->addActionLabel('افزودن میانبر')
+                ->reorderable(),
+            'color' => Forms\Components\ColorPicker::make('value')
+                ->label('رنگ')
+                ->required()
+                ->rules(['regex:/^#[0-9A-Fa-f]{6}$/']),
+            'tag-mode' => Forms\Components\Select::make('value')
+                ->label('روش اتصال Google Tag')
+                ->options([
+                    'none' => 'غیرفعال',
+                    'gtag' => 'Google Analytics 4 (gtag)',
+                    'gtm' => 'Google Tag Manager',
+                ])
+                ->required()
+                ->native(false),
+            'tag-id' => Forms\Components\TextInput::make('value')
+                ->label('شناسه عمومی Google Tag')
+                ->placeholder('G-XXXXXXXX یا GTM-XXXXXXX')
+                ->helperText('فقط شناسه عمومی GA4/GTM؛ هیچ Secret یا Credential اینجا وارد نشود.')
+                ->rules(['nullable', 'regex:/^(G-[A-Z0-9]+|GTM-[A-Z0-9]+)$/i']),
+            'boolean' => Forms\Components\Toggle::make('value')
+                ->label('فعال')
+                ->formatStateUsing(fn ($state): bool => filter_var($state, FILTER_VALIDATE_BOOL))
+                ->dehydrateStateUsing(fn ($state): string => $state ? '1' : '0'),
+            'integer' => Forms\Components\TextInput::make('value')
+                ->label('مقدار عددی')
+                ->numeric()
+                ->rules(['nullable', 'integer']),
+            'json' => Forms\Components\Textarea::make('value')
+                ->label('داده ساختاریافته JSON')
+                ->rows(8)
+                ->helperText('فقط JSON معتبر. برای ساختارهای ازپیش‌تعریف‌شده استفاده می‌شود.')
+                ->rules(['nullable', 'json']),
+            'email' => Forms\Components\TextInput::make('value')
+                ->label('ایمیل')
+                ->email()
+                ->maxLength(255),
+            'url' => Forms\Components\TextInput::make('value')
+                ->label('نشانی اینترنتی')
+                ->url()
+                ->maxLength(2048),
+            'phone' => Forms\Components\TextInput::make('value')
+                ->label('شماره تماس')
+                ->tel()
+                ->maxLength(40),
+            'long-text' => Forms\Components\Textarea::make('value')
+                ->label('متن')
+                ->rows(5)
+                ->maxLength(5000),
+            default => Forms\Components\TextInput::make('value')
+                ->label('مقدار')
+                ->maxLength(1000),
+        };
     }
 
     public static function table(Table $table): Table
