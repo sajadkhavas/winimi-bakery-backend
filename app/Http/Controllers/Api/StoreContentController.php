@@ -8,6 +8,7 @@ use App\Models\BakeryContentPage;
 use App\Models\BakeryFaq;
 use App\Models\BakeryGalleryItem;
 use App\Models\BakeryPost;
+use App\Models\NavigationItem;
 use App\Models\StoreSetting;
 use App\Support\ApiResponse;
 use App\Support\Pagination;
@@ -43,6 +44,53 @@ class StoreContentController extends Controller
                 ],
             ],
         ]);
+    }
+
+    public function navigation(Request $request): JsonResponse
+    {
+        $placement = $request->validate([
+            'placement' => ['nullable', 'in:header,mobile,footer'],
+        ])['placement'] ?? 'header';
+
+        $items = NavigationItem::query()
+            ->whereNull('parent_id')
+            ->where('is_active', true)
+            ->whereIn('placement', ['all', $placement])
+            ->with(['children' => fn ($query) => $query
+                ->where('is_active', true)
+                ->whereIn('placement', ['all', $placement])
+                ->with(['linkedCategory' => fn ($query) => $query->withCount([
+                    'products' => fn ($products) => $products->active(),
+                ])])
+                ->orderBy('sort_order')
+                ->orderBy('id')])
+            ->orderBy('sort_order')
+            ->orderBy('id')
+            ->get()
+            ->map(fn (NavigationItem $item): array => [
+                'id' => $item->getKey(),
+                'label' => $item->label,
+                'href' => $item->href,
+                'description' => $item->description,
+                'icon' => $item->icon,
+                'imageUrl' => $item->image_path ? asset('storage/'.$item->image_path) : null,
+                'openInNewTab' => $item->open_in_new_tab,
+                'children' => $item->children
+                    ->reject(fn (NavigationItem $child): bool => $child->hide_when_empty
+                        && $child->linked_category_id !== null
+                        && (int) ($child->linkedCategory?->products_count ?? 0) === 0)
+                    ->map(fn (NavigationItem $child): array => [
+                        'id' => $child->getKey(),
+                        'label' => $child->label,
+                        'href' => $child->href,
+                        'description' => $child->description,
+                        'icon' => $child->icon,
+                        'imageUrl' => $child->image_path ? asset('storage/'.$child->image_path) : null,
+                        'openInNewTab' => $child->open_in_new_tab,
+                    ])->values()->all(),
+            ])->values()->all();
+
+        return ApiResponse::success($items, meta: ['placement' => $placement]);
     }
 
     public function page(string $slug): JsonResponse

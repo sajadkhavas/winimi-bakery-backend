@@ -24,6 +24,8 @@ class BakeryCatalogApiTest extends TestCase
         $category = BakeryCategory::create([
             'name' => 'کوکی‌ها',
             'slug' => 'cookies',
+            'image_path' => 'bakery/categories/cookies.webp',
+            'image_alt' => 'کوکی‌های خانگی وینیمی روی سینی',
             'is_active' => true,
             'sort_order' => 1,
         ]);
@@ -49,7 +51,14 @@ class BakeryCatalogApiTest extends TestCase
             ->assertJsonCount(1, 'data')
             ->assertJsonPath('data.0.id', $category->public_id)
             ->assertJsonPath('data.0.slug', 'cookies')
+            ->assertJsonPath('data.0.imageAlt', 'کوکی‌های خانگی وینیمی روی سینی')
             ->assertJsonPath('data.0.productCount', 1);
+
+        $category->update(['image_alt' => null]);
+
+        $this->getJson('/api/catalog/categories')
+            ->assertOk()
+            ->assertJsonPath('data.0.imageAlt', 'کوکی‌ها');
     }
 
     public function test_product_listing_calculates_variant_price_stock_and_verification_boundaries(): void
@@ -107,6 +116,35 @@ class BakeryCatalogApiTest extends TestCase
             ->assertJsonPath('data.0.variants.0.id', $firstVariant->public_id)
             ->assertJsonPath('data.0.variants.0.inventoryVerified', true)
             ->assertJsonPath('meta.pagination.total', 1);
+    }
+
+    public function test_retired_category_cannot_leak_through_catalog_endpoints(): void
+    {
+        $category = BakeryCategory::create([
+            'name' => 'باکس هدیه',
+            'slug' => 'gift',
+            'is_active' => true,
+        ]);
+        $product = $this->createProduct($category, [
+            'name' => 'باکس هدیه قدیمی',
+            'slug' => 'retired-gift-box',
+            'product_code' => 'WIN-GIFT-RETIRED',
+        ]);
+        $this->createVariant($product, [
+            'name' => 'یک باکس',
+            'sku' => 'WIN-GIFT-RETIRED-1',
+        ]);
+
+        $this->getJson('/api/catalog/categories')
+            ->assertOk()
+            ->assertJsonMissing(['slug' => 'gift']);
+
+        $this->getJson('/api/catalog/products')
+            ->assertOk()
+            ->assertJsonMissing(['slug' => 'retired-gift-box']);
+
+        $this->getJson('/api/catalog/products/retired-gift-box')
+            ->assertNotFound();
     }
 
     public function test_product_detail_exposes_verified_content_and_active_variants_only(): void

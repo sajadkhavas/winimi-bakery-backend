@@ -3,6 +3,7 @@
 namespace App\Http\Requests;
 
 use App\Enums\DeliveryMethod;
+use App\Services\Orders\CookieBulkDiscountService;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Validator;
@@ -91,13 +92,6 @@ class CheckoutRequest extends FormRequest
                 'required',
                 'integer',
                 'min:1',
-                'max:'.max(
-                    1,
-                    (int) config(
-                        'winimi.checkout.max_quantity_per_line',
-                        20,
-                    ),
-                ),
             ],
         ];
     }
@@ -106,27 +100,22 @@ class CheckoutRequest extends FormRequest
     {
         return [
             function (Validator $validator): void {
-                $total = collect(
-                    $this->input('items', []),
-                )->sum(
-                    fn (array $item): int => (int) (
-                        $item['quantity'] ?? 0
-                    ),
-                );
+                // Shape/type errors take precedence; quantity policy only runs
+                // when every item has already passed the structural rules.
+                if ($validator->errors()->isNotEmpty()) {
+                    return;
+                }
 
-                $maximum = max(
-                    1,
-                    (int) config(
-                        'winimi.checkout.max_total_units',
-                        50,
-                    ),
-                );
+                $items = $this->input('items', []);
+                if (! is_array($items)) {
+                    return;
+                }
 
-                if ($total > $maximum) {
-                    $validator->errors()->add(
-                        'items',
-                        "تعداد کل اقلام هر سفارش نمی‌تواند بیشتر از {$maximum} باشد.",
-                    );
+                $violations = app(CookieBulkDiscountService::class)
+                    ->checkoutQuantityViolations($items);
+
+                foreach ($violations as $message) {
+                    $validator->errors()->add('items', $message);
                 }
             },
         ];

@@ -17,6 +17,11 @@ use Filament\Tables\Table;
 
 class SitePageResource extends Resource
 {
+    public static function shouldRegisterNavigation(): bool
+    {
+        return false;
+    }
+
     protected static ?string $model = SitePage::class;
     protected static ?string $navigationIcon  = 'heroicon-o-document-text';
     protected static ?string $navigationLabel = 'صفحات سایت';

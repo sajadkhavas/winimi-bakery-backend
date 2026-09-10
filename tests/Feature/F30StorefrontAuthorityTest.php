@@ -2,11 +2,17 @@
 
 namespace Tests\Feature;
 
+use App\Filament\Pages\SiteSettings;
 use App\Filament\Resources\BakeryCategoryLandingResource;
+use App\Filament\Resources\NavigationItemResource;
 use App\Filament\Resources\StoreSettingResource;
 use App\Models\BakeryCategoryLanding;
+use App\Models\NavigationItem;
 use App\Models\StoreSetting;
+use App\Models\User;
+use App\Policies\NavigationItemPolicy;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 class F30StorefrontAuthorityTest extends TestCase
@@ -146,12 +152,13 @@ class F30StorefrontAuthorityTest extends TestCase
     {
         $this->getJson('/api/catalog/categories')
             ->assertOk()
-            ->assertJsonCount(7, 'meta.categoryLandings')
+            ->assertJsonCount(6, 'meta.categoryLandings')
             ->assertJsonPath('meta.categoryLandings.0.slug', 'cookies')
             ->assertJsonPath('meta.categoryLandings.0.catalogCategorySlug', 'kokyhay-khangy')
             ->assertJsonPath('meta.categoryLandings.0.seo.title', 'خرید کوکی خانگی | انواع کوکی وینیمی')
             ->assertJsonPath('meta.categoryLandings.4.slug', 'cheesecakes')
-            ->assertJsonPath('meta.categoryLandings.4.catalogSearch', 'چیزکیک');
+            ->assertJsonPath('meta.categoryLandings.4.catalogSearch', 'چیزکیک')
+            ->assertJsonMissing(['slug' => 'gift-boxes']);
     }
 
     public function test_filament_storefront_contract_cannot_be_created_or_deleted_from_the_panel(): void
@@ -167,6 +174,55 @@ class F30StorefrontAuthorityTest extends TestCase
         $this->assertStringContainsString('->disabled()', $resourceSource);
         $this->assertStringContainsString('->dehydrated(false)', $resourceSource);
         $this->assertStringNotContainsString('CreateAction::make()', $pageSource);
+    }
+
+    public function test_legacy_site_settings_editor_cannot_create_a_second_storefront_source_of_truth(): void
+    {
+        $legacySource = file_get_contents(app_path('Filament/Pages/SiteSettings.php'));
+
+        $this->assertFalse(SiteSettings::shouldRegisterNavigation());
+        $this->assertStringContainsString('StoreSettingResource::getUrl()', $legacySource);
+        $this->assertStringNotContainsString('SiteSetting::updateOrCreate', $legacySource);
+    }
+
+    public function test_navigation_admin_explains_how_to_create_store_header_children(): void
+    {
+        $source = file_get_contents(app_path('Filament/Resources/NavigationItemResource.php'));
+
+        $this->assertSame('منوی هدر و زیرمنوها', NavigationItemResource::getNavigationLabel());
+        $this->assertStringContainsString("Select::make('parent_id')", $source);
+        $this->assertStringContainsString('«فروشگاه» را انتخاب کنید', $source);
+        $this->assertStringContainsString("Select::make('linked_category_id')", $source);
+        $this->assertStringContainsString("Select::make('placement')", $source);
+    }
+
+    public function test_panel_operator_can_manage_navigation_without_stale_shield_permissions(): void
+    {
+        $role = Role::create([
+            'name' => 'panel_user',
+            'guard_name' => 'web',
+        ]);
+        $operator = User::query()->create([
+            'name' => 'Panel Operator',
+            'email' => 'panel-operator@example.test',
+            'password' => bcrypt('password'),
+        ]);
+        $operator->assignRole($role);
+        $item = NavigationItem::query()->create([
+            'label' => 'فروشگاه',
+            'href' => '/products',
+            'placement' => 'all',
+            'sort_order' => 10,
+            'is_active' => true,
+        ]);
+        $policy = app(NavigationItemPolicy::class);
+
+        $this->assertTrue($policy->viewAny($operator));
+        $this->assertTrue($policy->view($operator, $item));
+        $this->assertTrue($policy->create($operator));
+        $this->assertTrue($policy->update($operator, $item));
+        $this->assertTrue($policy->delete($operator, $item));
+        $this->assertTrue($policy->reorder($operator));
     }
 
     public function test_category_landing_filament_resource_exposes_seo_and_internal_link_control(): void

@@ -28,6 +28,7 @@ final class CheckoutService
 {
     public function __construct(
         private readonly DeliveryConfigurationService $delivery,
+        private readonly CookieBulkDiscountService $cookieBulkDiscount,
     ) {}
 
     /**
@@ -281,6 +282,7 @@ final class CheckoutService
         ]);
 
         $order->items()->createMany($itemSnapshots);
+        $this->cookieBulkDiscount->applyToOrder($order);
 
         foreach ($itemSnapshots as $snapshot) {
             $order->reservations()->create([

@@ -20,6 +20,12 @@ return [
         'name_en' => env('WINIMI_BRAND_NAME_EN', 'Winimi Bakery'),
     ],
 
+    'storefront' => [
+        // Kept in configuration so a retired offer cannot be republished by an
+        // accidental admin toggle. Removing a slug here is an explicit launch.
+        'retired_category_slugs' => ['gift'],
+    ],
+
     'api' => [
         'version' => '1',
         'contract_version' => '2026-07-20-phase-16',
@@ -110,6 +116,13 @@ return [
             'sender' => env('KAVENEGAR_ORDER_SENDER'),
             'base_url' => env('KAVENEGAR_BASE_URL', 'https://api.kavenegar.com/v1'),
         ],
+    ],
+
+    'push' => [
+        'enabled' => $boolean('PUSH_ENABLED'),
+        'vapid_subject' => env('VAPID_SUBJECT'),
+        'vapid_public_key' => env('VAPID_PUBLIC_KEY'),
+        'vapid_private_key' => env('VAPID_PRIVATE_KEY'),
     ],
 
     'policies' => [

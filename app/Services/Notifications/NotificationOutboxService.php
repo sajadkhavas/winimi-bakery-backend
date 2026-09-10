@@ -7,6 +7,7 @@ use App\Enums\NotificationStatus;
 use App\Models\NotificationOutbox;
 use App\Models\NotificationTemplate;
 use App\Models\Order;
+use App\Models\WebPushSubscription;
 use Illuminate\Support\Facades\DB;
 use RuntimeException;
 use Throwable;
@@ -15,11 +16,12 @@ final class NotificationOutboxService
 {
     public function __construct(
         private readonly SmsProviderManager $providers,
+        private readonly WebPushTransport $webPush,
     ) {}
 
     public function queueOrder(Order $order, string $templateKey, array $payload = []): NotificationOutbox
     {
-        return NotificationOutbox::query()->create([
+        $sms = NotificationOutbox::query()->create([
             'customer_id' => $order->customer_id,
             'order_id' => $order->getKey(),
             'channel' => NotificationChannel::Sms,
@@ -34,14 +36,31 @@ final class NotificationOutboxService
             'provider' => strtolower(trim((string) config('winimi.notifications.sms_provider', 'disabled'))),
             'available_at' => now(),
         ]);
+
+        if ($this->webPush->ready()) {
+            $order->customer?->webPushSubscriptions()
+                ->active()
+                ->where('transactional_enabled', true)
+                ->each(function (WebPushSubscription $subscription) use ($order, $templateKey): void {
+                    NotificationOutbox::query()->create([
+                        'customer_id' => $order->customer_id,
+                        'order_id' => $order->getKey(),
+                        'channel' => NotificationChannel::WebPush,
+                        'destination' => (string) $subscription->getKey(),
+                        'template_key' => $templateKey,
+                        'payload' => $this->safePushPayload($order, $templateKey),
+                        'status' => NotificationStatus::Pending,
+                        'provider' => 'web-push-vapid',
+                        'available_at' => now(),
+                    ]);
+                });
+        }
+
+        return $sms;
     }
 
     public function dispatchPending(int $limit = 50): int
     {
-        if (! $this->providers->ready()) {
-            return 0;
-        }
-
         NotificationOutbox::query()
             ->where('status', NotificationStatus::Processing->value)
             ->where('updated_at', '<=', now()->subMinutes(10))
@@ -70,7 +89,11 @@ final class NotificationOutboxService
 
     public function dispatchOne(int $id): bool
     {
-        if (! $this->providers->ready()) {
+        $channel = NotificationOutbox::query()->whereKey($id)->first()?->channel;
+        if ($channel === NotificationChannel::Sms && ! $this->providers->ready()) {
+            return false;
+        }
+        if ($channel === NotificationChannel::WebPush && ! $this->webPush->ready()) {
             return false;
         }
 
@@ -83,7 +106,9 @@ final class NotificationOutboxService
             $locked->forceFill([
                 'status' => NotificationStatus::Processing,
                 'attempts' => $locked->attempts + 1,
-                'provider' => strtolower(trim((string) config('winimi.notifications.sms_provider', 'disabled'))),
+                'provider' => $locked->channel === NotificationChannel::WebPush
+                    ? 'web-push-vapid'
+                    : strtolower(trim((string) config('winimi.notifications.sms_provider', 'disabled'))),
             ])->save();
 
             return $locked->fresh();
@@ -94,6 +119,14 @@ final class NotificationOutboxService
         }
 
         try {
+            if ($notification->channel === NotificationChannel::WebPush) {
+                return $this->dispatchWebPush($notification);
+            }
+
+            if (! $this->providers->ready()) {
+                throw new RuntimeException('SMS provider is not configured.');
+            }
+
             $template = NotificationTemplate::query()
                 ->where('key', $notification->template_key)
                 ->where('channel', NotificationChannel::Sms->value)
@@ -131,6 +164,42 @@ final class NotificationOutboxService
 
             return false;
         }
+    }
+
+    private function dispatchWebPush(NotificationOutbox $notification): bool
+    {
+        $subscription = WebPushSubscription::query()
+            ->active()
+            ->whereKey((int) $notification->destination)
+            ->firstOrFail();
+        $providerMessageId = $this->webPush->send($subscription, $notification->payload ?? []);
+
+        $notification->forceFill([
+            'status' => NotificationStatus::Sent,
+            'provider' => 'web-push-vapid',
+            'provider_message_id' => $providerMessageId,
+            'last_error' => null,
+            'sent_at' => now(),
+            'failed_at' => null,
+        ])->save();
+
+        return true;
+    }
+
+    private function safePushPayload(Order $order, string $templateKey): array
+    {
+        $body = match ($templateKey) {
+            'order.paid' => 'پرداخت سفارش شما تأیید شد.',
+            'order.cancelled' => 'وضعیت سفارش شما به لغوشده تغییر کرد.',
+            default => 'وضعیت سفارش شما به‌روزرسانی شد.',
+        };
+
+        return [
+            'title' => 'وینیمی بیکری',
+            'body' => $body,
+            'url' => '/account/orders/'.$order->public_id,
+            'tag' => 'order-status-'.$order->public_id,
+        ];
     }
 
     private function recordFailure(NotificationOutbox $notification, Throwable $exception): void

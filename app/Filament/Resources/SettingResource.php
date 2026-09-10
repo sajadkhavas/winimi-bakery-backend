@@ -13,6 +13,11 @@ use Illuminate\Support\Facades\DB;
 
 class SettingResource extends Resource
 {
+    public static function shouldRegisterNavigation(): bool
+    {
+        return false;
+    }
+
     protected static ?string $model = \App\Models\Setting::class;
     protected static ?string $navigationIcon = 'heroicon-o-cog-6-tooth';
     protected static ?string $navigationLabel = 'تنظیمات سایت';

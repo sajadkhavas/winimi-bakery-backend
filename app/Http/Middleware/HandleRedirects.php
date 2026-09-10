@@ -1,26 +1,29 @@
 <?php
+
 namespace App\Http\Middleware;
-use App\Models\Redirect;
+
+use App\Services\Store\StorefrontRedirectService;
 use Closure;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Cache;
 use Symfony\Component\HttpFoundation\Response;
+
 class HandleRedirects
 {
+    public function __construct(
+        private readonly StorefrontRedirectService $redirects,
+    ) {}
+
     public function handle(Request $request, Closure $next): Response
     {
-        $path = '/' . ltrim($request->path(), '/');
+        if (! $request->isMethod('GET') && ! $request->isMethod('HEAD')) {
+            return $next($request);
+        }
 
-        $redirect = Cache::remember(
-            "redirect:{$path}",
-            3600,
-            fn() => Redirect::findRedirect($path)
-        );
+        $source = '/'.ltrim($request->path(), '/');
+        $redirect = $this->redirects->resolve($source, incrementHit: true);
 
-        if ($redirect) {
-            // hit count رو async آپدیت کن — cache رو نپاک
-            Redirect::where('id', $redirect->id)->increment('hit_count');
-            return redirect($redirect->to_url, $redirect->status_code);
+        if ($redirect !== null) {
+            return redirect($redirect['location'], $redirect['statusCode']);
         }
 
         return $next($request);

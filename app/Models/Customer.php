@@ -81,6 +81,11 @@ class Customer extends Authenticatable
         return $this->hasMany(NotificationOutbox::class)->latest('id');
     }
 
+    public function webPushSubscriptions(): HasMany
+    {
+        return $this->hasMany(WebPushSubscription::class)->latest('id');
+    }
+
     public function scopeActive(Builder $query): Builder
     {
         return $query->where('is_active', true);

@@ -50,6 +50,11 @@ class BakeryCategoryResource extends Resource
                         ->imageEditor()
                         ->directory('bakery/categories')
                         ->columnSpanFull(),
+                    Forms\Components\TextInput::make('image_alt')
+                        ->label('متن جایگزین تصویر (Alt)')
+                        ->maxLength(255)
+                        ->helperText('تصویر را کوتاه، دقیق و طبیعی توصیف کنید؛ از تکرار مصنوعی کلمات کلیدی پرهیز شود. اگر خالی بماند نام دسته به‌عنوان fallback استفاده می‌شود.')
+                        ->columnSpanFull(),
                     Forms\Components\Toggle::make('is_active')
                         ->label('فعال در فروشگاه')
                         ->helperText(
@@ -93,6 +98,10 @@ class BakeryCategoryResource extends Resource
                     ->label('Slug')
                     ->searchable()
                     ->toggleable(),
+                Tables\Columns\TextColumn::make('image_alt')
+                    ->label('Alt تصویر')
+                    ->limit(40)
+                    ->toggleable(isToggledHiddenByDefault: true),
                 Tables\Columns\TextColumn::make('products_count')
                     ->label('محصولات')
                     ->counts('products')

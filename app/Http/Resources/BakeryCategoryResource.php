@@ -18,6 +18,9 @@ class BakeryCategoryResource extends JsonResource
             'image' => $this->image_path
                 ? Storage::disk('public')->url($this->image_path)
                 : null,
+            'imageAlt' => $this->image_path
+                ? (filled($this->image_alt) ? trim((string) $this->image_alt) : $this->name)
+                : null,
             'productCount' => $this->whenCounted('products'),
             'seo' => [
                 'title' => $this->meta_title ?: $this->name,

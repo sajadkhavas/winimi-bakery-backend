@@ -12,6 +12,11 @@ use Filament\Tables\Table;
 
 class ReviewResource extends Resource
 {
+    public static function shouldRegisterNavigation(): bool
+    {
+        return false;
+    }
+
     protected static ?string $model = Review::class;
     protected static ?string $navigationIcon = 'heroicon-o-star';
     protected static ?string $navigationGroup = 'بازاریابی';

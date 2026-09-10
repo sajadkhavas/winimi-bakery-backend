@@ -19,6 +19,7 @@ class BakeryCategory extends Model
         'slug',
         'description',
         'image_path',
+        'image_alt',
         'meta_title',
         'meta_description',
         'is_active',

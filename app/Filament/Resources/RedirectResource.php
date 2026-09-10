@@ -5,26 +5,32 @@ namespace App\Filament\Resources;
 use App\Filament\Resources\RedirectResource\Pages;
 use App\Models\Redirect;
 use Filament\Forms\Components\Grid;
+use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Select;
+use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
-use Filament\Forms\Components\Textarea;
-use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
-use Filament\Tables\Table;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Filters\TernaryFilter;
+use Filament\Tables\Table;
 
 class RedirectResource extends Resource
 {
     protected static ?string $model = Redirect::class;
-    protected static ?string $navigationIcon   = 'heroicon-o-arrow-uturn-right';
-    protected static ?string $navigationLabel  = 'Redirect Manager';
-    protected static ?string $navigationGroup  = 'سئو';
-    protected static ?int    $navigationSort   = 1;
-    protected static ?string $modelLabel       = 'ریدایرکت';
+
+    protected static ?string $navigationIcon = 'heroicon-o-arrow-uturn-right';
+
+    protected static ?string $navigationLabel = 'Redirect Manager';
+
+    protected static ?string $navigationGroup = 'سئو';
+
+    protected static ?int $navigationSort = 1;
+
+    protected static ?string $modelLabel = 'ریدایرکت';
+
     protected static ?string $pluralModelLabel = 'ریدایرکت‌ها';
 
     public static function form(Form $form): Form
@@ -35,22 +41,27 @@ class RedirectResource extends Resource
                     ->label('آدرس قدیمی (From)')
                     ->placeholder('/old-page')
                     ->required()
-                    ->maxLength(500)
-                    ->helperText('آدرس قدیمی که باید redirect بشه'),
+                    ->unique(ignoreRecord: true)
+                    ->maxLength(255)
+                    ->helperText(
+                        'فقط مسیر داخلی سایت مثل /old-page؛ بدون دامنه، Query یا #. مسیرهای سیستمی، حساب، پرداخت و Checkout قابل استفاده نیستند.'
+                    ),
 
                 TextInput::make('to_url')
                     ->label('آدرس جدید (To)')
                     ->placeholder('/new-page')
                     ->required()
-                    ->maxLength(500)
-                    ->helperText('آدرس جدیدی که کاربر به اون هدایت میشه'),
+                    ->maxLength(255)
+                    ->helperText(
+                        'فقط مقصد داخلی همین سایت. Query و # در مقصد مجاز است؛ آدرس خارجی و حلقه ریدایرکت رد می‌شود.'
+                    ),
             ]),
 
             Grid::make(3)->schema([
                 Select::make('status_code')
                     ->label('نوع Redirect')
                     ->options([
-                        301 => '301 — Permanent (دائمی) — توصیه شده برای SEO',
+                        301 => '301 — Permanent (دائمی) — مناسب انتقال نهایی SEO',
                         302 => '302 — Temporary (موقت)',
                         307 => '307 — Temporary (با حفظ Method)',
                         308 => '308 — Permanent (با حفظ Method)',
@@ -64,12 +75,12 @@ class RedirectResource extends Resource
 
                 Placeholder::make('hit_count')
                     ->label('تعداد استفاده')
-                    ->content(fn ($record) => $record ? number_format($record->hit_count) . ' بار' : '—'),
+                    ->content(fn ($record) => $record ? number_format($record->hit_count).' بار' : '—'),
             ]),
 
             Textarea::make('note')
                 ->label('یادداشت')
-                ->placeholder('مثال: صفحه قدیمی محصول X به صفحه جدید منتقل شد')
+                ->placeholder('مثال: اسلاگ قدیمی محصول X به آدرس نهایی منتقل شد')
                 ->rows(2)
                 ->maxLength(500),
         ]);
@@ -94,9 +105,9 @@ class RedirectResource extends Resource
                 Tables\Columns\TextColumn::make('status_code')
                     ->label('نوع')
                     ->badge()
-                    ->color(fn ($state) => match((int)$state) {
-                        301 => 'success',
-                        302 => 'warning',
+                    ->color(fn ($state) => match ((int) $state) {
+                        301, 308 => 'success',
+                        302, 307 => 'warning',
                         default => 'info',
                     }),
 
@@ -107,7 +118,7 @@ class RedirectResource extends Resource
                 Tables\Columns\TextColumn::make('hit_count')
                     ->label('استفاده')
                     ->sortable()
-                    ->formatStateUsing(fn ($state) => number_format($state) . '×'),
+                    ->formatStateUsing(fn ($state) => number_format($state).'×'),
 
                 Tables\Columns\TextColumn::make('note')
                     ->label('یادداشت')
@@ -141,9 +152,9 @@ class RedirectResource extends Resource
     public static function getPages(): array
     {
         return [
-            'index'  => Pages\ListRedirects::route('/'),
+            'index' => Pages\ListRedirects::route('/'),
             'create' => Pages\CreateRedirect::route('/create'),
-            'edit'   => Pages\EditRedirect::route('/{record}/edit'),
+            'edit' => Pages\EditRedirect::route('/{record}/edit'),
         ];
     }
 }

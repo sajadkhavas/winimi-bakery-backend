@@ -3,6 +3,7 @@
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\NavigationItemResource\Pages;
+use App\Models\BakeryCategory;
 use App\Models\NavigationItem;
 use Filament\Forms;
 use Filament\Forms\Form;
@@ -14,14 +15,18 @@ class NavigationItemResource extends Resource
 {
     protected static ?string $model = NavigationItem::class;
     protected static ?string $navigationIcon = 'heroicon-o-bars-3';
-    protected static ?string $navigationLabel = 'منوی سایت';
+    protected static ?string $navigationLabel = 'منوی هدر و زیرمنوها';
+
+    protected static ?string $pluralModelLabel = 'منوی هدر و زیرمنوها';
     protected static ?string $navigationGroup = 'تنظیمات';
     protected static ?int $navigationSort = 1;
 
     public static function form(Form $form): Form
     {
         return $form->schema([
-            Forms\Components\Section::make()->schema([
+            Forms\Components\Section::make('لینک منو')
+                ->description('برای ساخت زیر‌دسته هدر، «زیرمنوی» را روی فروشگاه بگذارید؛ محل نمایش «همه‌جا» آن را هم در دسکتاپ و هم در منوی موبایل نشان می‌دهد.')
+                ->schema([
                 Forms\Components\TextInput::make('label')
                     ->label('عنوان منو')
                     ->required()
@@ -35,8 +40,24 @@ class NavigationItemResource extends Resource
                 Forms\Components\Select::make('parent_id')
                     ->label('زیرمنوی')
                     ->options(fn () => NavigationItem::whereNull('parent_id')->pluck('label', 'id'))
+                    ->searchable()
+                    ->preload()
                     ->nullable()
-                    ->placeholder('منوی اصلی (بدون والد)'),
+                    ->placeholder('منوی اصلی (بدون والد)')
+                    ->helperText('برای دسته‌های هدر، «فروشگاه» را انتخاب کنید.'),
+
+                Forms\Components\Select::make('linked_category_id')
+                    ->label('دسته محصول مرتبط')
+                    ->options(fn () => BakeryCategory::query()->orderBy('sort_order')->pluck('name', 'id'))
+                    ->searchable()
+                    ->nullable(),
+
+                Forms\Components\Select::make('placement')
+                    ->label('محل نمایش')
+                    ->options(['all' => 'همه‌جا', 'header' => 'فقط هدر', 'mobile' => 'فقط موبایل', 'footer' => 'فقط فوتر'])
+                    ->default('all')
+                    ->required()
+                    ->helperText('«همه‌جا» یعنی هدر دسکتاپ و منوی موبایل.'),
 
                 Forms\Components\TextInput::make('sort_order')
                     ->label('ترتیب نمایش')
@@ -50,6 +71,18 @@ class NavigationItemResource extends Resource
                 Forms\Components\Textarea::make('description')
                     ->label('توضیحات (اختیاری)')
                     ->rows(2),
+
+                Forms\Components\FileUpload::make('image_path')
+                    ->label('تصویر منو (اختیاری)')
+                    ->image()
+                    ->directory('navigation'),
+
+                Forms\Components\Toggle::make('open_in_new_tab')
+                    ->label('بازشدن در تب جدید'),
+
+                Forms\Components\Toggle::make('hide_when_empty')
+                    ->label('مخفی‌کردن دسته بدون محصول')
+                    ->helperText('فقط وقتی دسته محصول مرتبط انتخاب شده باشد.'),
 
                 Forms\Components\Toggle::make('is_active')
                     ->label('فعال')
@@ -74,6 +107,10 @@ class NavigationItemResource extends Resource
                 Tables\Columns\TextColumn::make('parent.label')
                     ->label('والد')
                     ->default('منوی اصلی'),
+
+                Tables\Columns\TextColumn::make('placement')
+                    ->label('محل نمایش')
+                    ->badge(),
 
                 Tables\Columns\TextColumn::make('sort_order')
                     ->label('ترتیب')

@@ -12,6 +12,11 @@ use Filament\Tables\Table;
 
 class BrandResource extends Resource
 {
+    public static function shouldRegisterNavigation(): bool
+    {
+        return false;
+    }
+
     protected static ?string $model = Brand::class;
     protected static ?string $navigationIcon  = 'heroicon-o-tag';
     protected static ?string $navigationLabel = 'برندها';

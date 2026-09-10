@@ -24,6 +24,11 @@ use pxlrbt\FilamentExcel\Exports\ExcelExport;
 
 class BlogPostResource extends Resource
 {
+    public static function shouldRegisterNavigation(): bool
+    {
+        return false;
+    }
+
     protected static ?string $model = BlogPost::class;
     protected static ?string $navigationIcon  = 'heroicon-o-newspaper';
     protected static ?string $navigationLabel = 'مقالات بلاگ';

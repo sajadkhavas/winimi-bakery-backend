@@ -12,6 +12,11 @@ use Filament\Tables\Table;
 
 class SliderResource extends Resource
 {
+    public static function shouldRegisterNavigation(): bool
+    {
+        return false;
+    }
+
     protected static ?string $model = Slider::class;
     protected static ?string $navigationIcon = 'heroicon-o-photo';
     protected static ?string $navigationLabel = 'اسلایدر صفحه اصلی';
