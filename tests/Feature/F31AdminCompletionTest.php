@@ -91,6 +91,28 @@ class F31AdminCompletionTest extends TestCase
         $this->assertTrue($preserved->is_public);
     }
 
+    public function test_bulk_discount_migration_preserves_existing_operator_values_and_rolls_back_non_destructively(): void
+    {
+        StoreSetting::query()
+            ->where('key', 'pricing.cookie_bulk_discount.percent')
+            ->update(['value' => '17']);
+
+        $migration = require database_path('migrations/2026_09_08_120000_seed_cookie_bulk_discount_settings.php');
+        $migration->up();
+
+        $this->assertSame(
+            '17',
+            StoreSetting::query()->where('key', 'pricing.cookie_bulk_discount.percent')->value('value'),
+        );
+
+        $migration->down();
+
+        $this->assertSame(
+            '17',
+            StoreSetting::query()->where('key', 'pricing.cookie_bulk_discount.percent')->value('value'),
+        );
+    }
+
     public function test_store_settings_use_specialized_safe_editors(): void
     {
         foreach ([
@@ -104,6 +126,8 @@ class F31AdminCompletionTest extends TestCase
             'pwa.offline_description' => 'long-text',
             'home.hero_primary_href' => 'internal-path',
             'home.hero_image_url' => 'media-url',
+            'pricing.cookie_bulk_discount.category_slugs' => 'slug-list',
+            'trust.enamad_badge_code' => 'enamad-badge',
         ] as $key => $expectedEditor) {
             $setting = StoreSetting::query()->where('key', $key)->firstOrFail();
             $this->assertSame($expectedEditor, StoreSettingResource::editorKind($setting));

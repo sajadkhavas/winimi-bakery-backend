@@ -86,6 +86,14 @@ class StoreSettingResource extends Resource
             return 'search-console';
         }
 
+        if ($record->key === 'pricing.cookie_bulk_discount.category_slugs') {
+            return 'slug-list';
+        }
+
+        if ($record->key === 'trust.enamad_badge_code') {
+            return 'enamad-badge';
+        }
+
         if ($record->type === 'boolean') {
             return 'boolean';
         }
@@ -171,6 +179,54 @@ class StoreSettingResource extends Resource
                 ->maxItems(4)
                 ->addActionLabel('افزودن میانبر')
                 ->reorderable(),
+            'slug-list' => Forms\Components\TagsInput::make('value')
+                ->label('دسته‌های مشمول تخفیف عمده')
+                ->helperText('فقط slug دسته‌های معتبر را وارد کنید؛ مانند kokyhay-khangy. هر مورد جداگانه ثبت می‌شود و JSON لازم نیست.')
+                ->formatStateUsing(function ($state): array {
+                    if (is_array($state)) {
+                        return array_values(array_filter($state, 'is_string'));
+                    }
+
+                    $decoded = json_decode((string) $state, true);
+
+                    return is_array($decoded)
+                        ? array_values(array_filter($decoded, 'is_string'))
+                        : [];
+                })
+                ->dehydrateStateUsing(function ($state): string {
+                    $values = array_values(array_unique(array_filter(
+                        array_map(
+                            fn ($value): string => strtolower(trim((string) $value)),
+                            is_array($state) ? $state : [],
+                        ),
+                        fn (string $slug): bool => preg_match('/^[a-z0-9]+(?:-[a-z0-9]+)*$/', $slug) === 1,
+                    )));
+
+                    return json_encode($values, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?: '[]';
+                })
+                ->rules([
+                    'array',
+                    function ($attribute, $value, $fail): void {
+                        if (! is_array($value)) {
+                            $fail('فهرست دسته‌ها معتبر نیست.');
+
+                            return;
+                        }
+
+                        foreach ($value as $slug) {
+                            if (! is_string($slug) || preg_match('/^[a-z0-9]+(?:-[a-z0-9]+)*$/', trim($slug)) !== 1) {
+                                $fail('هر دسته باید یک slug انگلیسی معتبر باشد.');
+
+                                return;
+                            }
+                        }
+                    },
+                ]),
+            'enamad-badge' => Forms\Components\Textarea::make('value')
+                ->label('کد رسمی نماد اعتماد الکترونیکی')
+                ->rows(8)
+                ->maxLength(20000)
+                ->helperText('کد رسمی دریافت‌شده از eNAMAD را بدون تغییر وارد کنید. Frontend فقط ساختار امن با دامنه trustseal.enamad.ir را نمایش می‌دهد و هر کد نامعتبر را fail-closed رد می‌کند.'),
             'color' => Forms\Components\ColorPicker::make('value')
                 ->label('رنگ')
                 ->required()

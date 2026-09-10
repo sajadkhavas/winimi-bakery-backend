@@ -1,12 +1,13 @@
 <?php
 
-use App\Models\StoreSetting;
 use Illuminate\Database\Migrations\Migration;
+use Illuminate\Support\Facades\DB;
 
 return new class extends Migration
 {
     public function up(): void
     {
+        $now = now();
         $settings = [
             [
                 'key' => 'pricing.cookie_bulk_discount.enabled',
@@ -38,28 +39,33 @@ return new class extends Migration
         ];
 
         foreach ($settings as $setting) {
-            StoreSetting::query()->updateOrCreate(
-                ['key' => $setting['key']],
-                [
-                    'group' => 'pricing',
-                    'type' => $setting['type'],
-                    'value' => $setting['value'],
-                    'label' => $setting['label'],
-                    'is_public' => true,
-                ],
-            );
+            $metadata = [
+                'group' => 'pricing',
+                'type' => $setting['type'],
+                'label' => $setting['label'],
+                'is_public' => true,
+                'updated_at' => $now,
+            ];
+
+            $existing = DB::table('store_settings')->where('key', $setting['key'])->first();
+
+            if ($existing) {
+                DB::table('store_settings')->where('key', $setting['key'])->update($metadata);
+
+                continue;
+            }
+
+            DB::table('store_settings')->insert($metadata + [
+                'key' => $setting['key'],
+                'value' => $setting['value'],
+                'created_at' => $now,
+            ]);
         }
     }
 
     public function down(): void
     {
-        StoreSetting::query()
-            ->whereIn('key', [
-                'pricing.cookie_bulk_discount.enabled',
-                'pricing.cookie_bulk_discount.min_quantity',
-                'pricing.cookie_bulk_discount.percent',
-                'pricing.cookie_bulk_discount.category_slugs',
-            ])
-            ->delete();
+        // Pricing settings become operator-owned once created. Rollback must preserve
+        // current commercial values rather than deleting or resetting them.
     }
 };
