@@ -41,8 +41,13 @@ class ProductReviewResource extends Resource
                 ->options(collect(ReviewStatus::cases())->mapWithKeys(
                     fn (ReviewStatus $status): array => [$status->value => $status->label()],
                 ))
-                ->required(),
-            Forms\Components\DateTimePicker::make('published_at')->label('زمان انتشار'),
+                ->disabled()
+                ->dehydrated(false)
+                ->helperText('تغییر وضعیت فقط از دکمه‌های «تأیید» یا «رد» انجام می‌شود تا زمان انتشار و یادداشت بررسی هماهنگ بمانند.'),
+            Forms\Components\DateTimePicker::make('published_at')
+                ->label('زمان انتشار')
+                ->disabled()
+                ->dehydrated(false),
             Forms\Components\Textarea::make('moderation_note')->label('یادداشت بررسی')->rows(3)->columnSpanFull(),
         ])->columns(2);
     }
