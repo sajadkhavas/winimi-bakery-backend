@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Filament\Resources\BlogPostResource;
 use App\Filament\Resources\ProductResource;
+use App\Filament\Resources\StoreSettingResource;
 use App\Filament\Resources\WebPushSubscriptionResource;
 use App\Models\NavigationItem;
 use App\Models\StoreSetting;
@@ -53,6 +54,22 @@ class F31AdminCompletionTest extends TestCase
             'consent.analytics_enabled',
         ] as $key) {
             $this->assertTrue(StoreSetting::query()->where('key', $key)->where('is_public', true)->exists());
+        }
+    }
+
+    public function test_store_settings_use_specialized_safe_editors(): void
+    {
+        foreach ([
+            'pwa.shortcuts' => 'shortcuts',
+            'pwa.theme_color' => 'color',
+            'pwa.background_color' => 'color',
+            'integrations.google_tag_mode' => 'tag-mode',
+            'integrations.google_tag_id' => 'tag-id',
+            'consent.analytics_enabled' => 'boolean',
+            'pwa.offline_description' => 'long-text',
+        ] as $key => $expectedEditor) {
+            $setting = StoreSetting::query()->where('key', $key)->firstOrFail();
+            $this->assertSame($expectedEditor, StoreSettingResource::editorKind($setting));
         }
     }
 
