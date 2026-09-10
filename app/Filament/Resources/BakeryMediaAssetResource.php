@@ -26,9 +26,9 @@ class BakeryMediaAssetResource extends Resource
 
     protected static ?string $pluralModelLabel = 'کتابخانه رسانه';
 
-    protected static ?string $navigationGroup = 'فروشگاه وینیمی';
+    protected static ?string $navigationGroup = 'محتوا';
 
-    protected static ?int $navigationSort = 3;
+    protected static ?int $navigationSort = 1;
 
     public static function form(Form $form): Form
     {
@@ -48,15 +48,16 @@ class BakeryMediaAssetResource extends Resource
                     ->rules([
                         'dimensions:max_width=6000,max_height=6000',
                     ])
-                    ->helperText('فایل اصلی حفظ می‌شود. نسخه‌های WebP در صف پردازش رسانه ساخته می‌شوند و وضعیت واقعی آن‌ها در جدول نمایش داده می‌شود.')
+                    ->helperText('فایل اصلی حفظ می‌شود. Preview و Thumbnail به WebP تبدیل و بهینه می‌شوند. نسخه مصرفی سایت فقط وقتی قابل استفاده است که آماده و حداکثر ۱MB باشد.')
                     ->columnSpanFull(),
                 Forms\Components\TextInput::make('title')
                     ->label('عنوان داخلی')
                     ->required()
                     ->maxLength(220),
                 Forms\Components\TextInput::make('alt_text')
-                    ->label('Alt پیشنهادی')
-                    ->maxLength(500),
+                    ->label('متن جایگزین (Alt)')
+                    ->maxLength(500)
+                    ->helperText('برای دسترس‌پذیری و SEO، تصویر را کوتاه و دقیق توصیف کنید.'),
                 Forms\Components\Select::make('product_id')
                     ->label('محصول مرتبط')
                     ->relationship('product', 'name')
@@ -83,6 +84,7 @@ class BakeryMediaAssetResource extends Resource
                         BakeryMediaAsset::STATUS_ASSIGNED => 'تخصیص داده شده',
                         BakeryMediaAsset::STATUS_REJECTED => 'رد شده',
                     ])
+                    ->helperText('انتخاب «آماده تخصیص» فقط وقتی ذخیره می‌شود که Conversionها کامل و Preview بهینه حداکثر ۱MB باشد.')
                     ->default(BakeryMediaAsset::STATUS_PENDING)
                     ->required(),
                 Forms\Components\Textarea::make('notes')
@@ -105,10 +107,54 @@ class BakeryMediaAssetResource extends Resource
                     ->label('عنوان')
                     ->searchable()
                     ->wrap(),
+                Tables\Columns\TextColumn::make('conversion_state')
+                    ->label('نسخه مصرفی')
+                    ->state(fn (BakeryMediaAsset $record): string => $record->conversionState())
+                    ->formatStateUsing(fn (string $state): string => match ($state) {
+                        'ready' => 'WebP آماده ≤ 1MB',
+                        'oversized' => 'بیشتر از 1MB',
+                        'missing' => 'فایل اصلی ندارد',
+                        default => 'در انتظار پردازش',
+                    })
+                    ->color(fn (string $state): string => match ($state) {
+                        'ready' => 'success',
+                        'oversized', 'missing' => 'danger',
+                        default => 'warning',
+                    })
+                    ->badge(),
+                Tables\Columns\TextColumn::make('original_size')
+                    ->label('حجم Original')
+                    ->state(fn (BakeryMediaAsset $record): string => $record->originalSizeLabel()),
+                Tables\Columns\TextColumn::make('optimized_size')
+                    ->label('حجم Optimized')
+                    ->state(fn (BakeryMediaAsset $record): string => $record->optimizedSizeLabel()),
+                Tables\Columns\TextColumn::make('dimensions')
+                    ->label('ابعاد Original')
+                    ->state(fn (BakeryMediaAsset $record): string => $record->dimensionsLabel())
+                    ->toggleable(),
+                Tables\Columns\TextColumn::make('format')
+                    ->label('فرمت Original')
+                    ->state(fn (BakeryMediaAsset $record): string => $record->formatLabel())
+                    ->toggleable(),
+                Tables\Columns\TextColumn::make('original_url')
+                    ->label('URL اصلی')
+                    ->state(fn (BakeryMediaAsset $record): ?string => $record->originalUrl())
+                    ->copyable()
+                    ->copyMessage('URL اصلی کپی شد')
+                    ->limit(18)
+                    ->placeholder('—'),
+                Tables\Columns\TextColumn::make('optimized_url')
+                    ->label('URL بهینه')
+                    ->state(fn (BakeryMediaAsset $record): ?string => $record->optimizedUrl())
+                    ->copyable()
+                    ->copyMessage('URL بهینه کپی شد')
+                    ->limit(18)
+                    ->placeholder('در انتظار پردازش'),
                 Tables\Columns\TextColumn::make('product.name')
                     ->label('محصول')
                     ->placeholder('—')
-                    ->searchable(),
+                    ->searchable()
+                    ->toggleable(isToggledHiddenByDefault: true),
                 Tables\Columns\TextColumn::make('usage')
                     ->label('کاربرد')
                     ->formatStateUsing(fn (string $state): string => match ($state) {
@@ -119,7 +165,8 @@ class BakeryMediaAssetResource extends Resource
                         BakeryMediaAsset::USAGE_CATEGORY => 'دسته‌بندی',
                         default => 'تخصیص‌نیافته',
                     })
-                    ->badge(),
+                    ->badge()
+                    ->toggleable(),
                 Tables\Columns\TextColumn::make('status')
                     ->label('وضعیت')
                     ->formatStateUsing(fn (string $state): string => match ($state) {
@@ -129,24 +176,11 @@ class BakeryMediaAssetResource extends Resource
                         default => 'نیازمند بررسی',
                     })
                     ->badge(),
-                Tables\Columns\TextColumn::make('conversion_state')
-                    ->label('WebP')
-                    ->state(fn (BakeryMediaAsset $record): string => $record->conversionState())
-                    ->formatStateUsing(fn (string $state): string => match ($state) {
-                        'ready' => 'آماده',
-                        'missing' => 'فایل اصلی ندارد',
-                        default => 'در انتظار پردازش',
-                    })
-                    ->color(fn (string $state): string => match ($state) {
-                        'ready' => 'success',
-                        'missing' => 'danger',
-                        default => 'warning',
-                    })
-                    ->badge(),
                 Tables\Columns\TextColumn::make('updated_at')
                     ->label('آخرین تغییر')
                     ->dateTime('Y/m/d H:i')
-                    ->sortable(),
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
                 Tables\Filters\SelectFilter::make('status')
@@ -170,12 +204,12 @@ class BakeryMediaAssetResource extends Resource
             ])
             ->actions([
                 Tables\Actions\Action::make('regeneratePreviews')
-                    ->label('بازسازی WebP')
+                    ->label('بازسازی نسخه بهینه')
                     ->icon('heroicon-o-arrow-path')
                     ->color('warning')
-                    ->visible(fn (BakeryMediaAsset $record): bool => $record->sourceMedia() !== null && ! $record->conversionsReady())
+                    ->visible(fn (BakeryMediaAsset $record): bool => $record->sourceMedia() !== null && ! $record->publicPreviewWithinBudget())
                     ->requiresConfirmation()
-                    ->modalDescription('فقط نسخه‌های مشتق‌شده thumb و preview بازسازی می‌شوند؛ فایل اصلی حذف یا جایگزین نمی‌شود.')
+                    ->modalDescription('فقط نسخه‌های مشتق‌شده thumb و preview دوباره ساخته می‌شوند؛ فایل Original حذف یا جایگزین نمی‌شود.')
                     ->action(function (BakeryMediaAsset $record): void {
                         $media = $record->sourceMedia();
                         if ($media === null) {
@@ -188,24 +222,33 @@ class BakeryMediaAssetResource extends Resource
                             Artisan::call('media-library:regenerate', [
                                 '--ids' => [(string) $media->getKey()],
                                 '--only' => ['thumb', 'preview'],
-                                '--only-missing' => true,
                             ]);
 
                             $record->unsetRelation('media');
                             $record->load('media');
-                            Notification::make()
-                                ->success()
-                                ->title($record->conversionsReady() ? 'نسخه‌های WebP آماده شدند.' : 'بازسازی ثبت شد؛ پردازش صف را بررسی کنید.')
-                                ->send();
+
+                            if ($record->publicPreviewWithinBudget()) {
+                                Notification::make()
+                                    ->success()
+                                    ->title('نسخه WebP آماده و داخل بودجه ۱MB است.')
+                                    ->body('حجم Optimized: '.$record->optimizedSizeLabel())
+                                    ->send();
+                            } else {
+                                Notification::make()
+                                    ->warning()
+                                    ->title('پردازش انجام شد اما نسخه مصرفی هنوز آماده استفاده نیست.')
+                                    ->body('وضعیت: '.$record->optimizedSizeLabel().' — تا رفع مشکل رسانه را Ready نکنید.')
+                                    ->send();
+                            }
                         } catch (\Throwable $exception) {
                             report($exception);
-                            Notification::make()->danger()->title('بازسازی WebP ناموفق بود.')->send();
+                            Notification::make()->danger()->title('بازسازی نسخه بهینه ناموفق بود.')->send();
                         }
                     }),
                 Tables\Actions\Action::make('assignToProduct')
                     ->label('اتصال به محصول')
                     ->icon('heroicon-o-link')
-                    ->visible(fn (BakeryMediaAsset $record): bool => $record->status === BakeryMediaAsset::STATUS_READY && $record->sourceMedia() !== null)
+                    ->visible(fn (BakeryMediaAsset $record): bool => $record->status === BakeryMediaAsset::STATUS_READY && $record->publicPreviewWithinBudget())
                     ->form([
                         Forms\Components\Select::make('product_id')
                             ->label('محصول مقصد')
@@ -249,7 +292,7 @@ class BakeryMediaAssetResource extends Resource
 
                         Notification::make()->success()->title('رسانه به محصول متصل شد.')->send();
                     }),
-                Tables\Actions\EditAction::make(),
+                Tables\Actions\EditAction::make()->label('ویرایش'),
             ])
             ->bulkActions([
                 Tables\Actions\BulkAction::make('assignGallery')
@@ -264,14 +307,14 @@ class BakeryMediaAssetResource extends Resource
                     ])
                     ->requiresConfirmation()
                     ->modalHeading('اتصال گروهی به گالری')
-                    ->modalDescription('فقط رسانه‌های آماده تخصیص پردازش می‌شوند. Source اصلی هر تصویر در کتابخانه باقی می‌ماند.')
+                    ->modalDescription('فقط رسانه‌های Ready با نسخه WebP حداکثر ۱MB پردازش می‌شوند. Original هر تصویر در کتابخانه باقی می‌ماند.')
                     ->action(function ($records, array $data): void {
                         $product = BakeryProduct::query()->findOrFail((int) $data['product_id']);
                         $assigned = 0;
                         $failed = 0;
 
                         foreach ($records as $record) {
-                            if (! $record instanceof BakeryMediaAsset) {
+                            if (! $record instanceof BakeryMediaAsset || ! $record->publicPreviewWithinBudget()) {
                                 $failed++;
                                 continue;
                             }
