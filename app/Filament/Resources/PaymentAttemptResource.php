@@ -17,11 +17,11 @@ class PaymentAttemptResource extends Resource
 
     protected static ?string $navigationIcon = 'heroicon-o-credit-card';
 
-    protected static ?string $navigationLabel = 'تلاش‌های پرداخت';
+    protected static ?string $navigationLabel = 'پیگیری پرداخت‌ها';
 
-    protected static ?string $modelLabel = 'تلاش پرداخت';
+    protected static ?string $modelLabel = 'پرداخت';
 
-    protected static ?string $pluralModelLabel = 'تلاش‌های پرداخت';
+    protected static ?string $pluralModelLabel = 'پیگیری پرداخت‌ها';
 
     protected static ?string $navigationGroup = 'فروشگاه وینیمی';
 
@@ -30,48 +30,65 @@ class PaymentAttemptResource extends Resource
     public static function form(Form $form): Form
     {
         return $form->schema([
-            Forms\Components\Section::make('پرداخت')
+            Forms\Components\Section::make('خلاصه پرداخت')
+                ->description('اطلاعات موردنیاز برای پیگیری روزمره سفارش و پرداخت.')
                 ->schema([
-                    Forms\Components\TextInput::make('public_id')->label('شناسه')->disabled(),
                     Forms\Components\TextInput::make('order.order_number')->label('شماره سفارش')->disabled(),
-                    Forms\Components\TextInput::make('provider')->label('درگاه')->disabled(),
-                    Forms\Components\TextInput::make('attempt_number')->label('شماره تلاش')->disabled(),
                     Forms\Components\Select::make('status')
-                        ->label('وضعیت')
+                        ->label('وضعیت پرداخت')
                         ->options(collect(PaymentAttemptStatus::cases())->mapWithKeys(
                             fn (PaymentAttemptStatus $status): array => [$status->value => $status->label()],
                         ))
                         ->disabled(),
-                    Forms\Components\TextInput::make('amount_toman')->label('مبلغ تومان')->disabled(),
-                    Forms\Components\TextInput::make('authority')->label('Authority')->disabled(),
+                    Forms\Components\TextInput::make('amount_toman')->label('مبلغ')->suffix(' تومان')->disabled(),
+                    Forms\Components\TextInput::make('provider')
+                        ->label('درگاه پرداخت')
+                        ->formatStateUsing(fn (?string $state): string => self::providerLabel($state))
+                        ->disabled(),
                     Forms\Components\TextInput::make('reference_id')->label('شماره مرجع')->disabled(),
-                    Forms\Components\TextInput::make('gateway_code')->label('کد درگاه')->disabled(),
-                    Forms\Components\TextInput::make('failure_code')->label('کد خطا')->disabled(),
+                    Forms\Components\TextInput::make('verified_at')->label('زمان تأیید')->disabled(),
+                    Forms\Components\TextInput::make('created_at')->label('زمان ایجاد')->disabled(),
                     Forms\Components\Textarea::make('failure_message')
                         ->label('پیام خطا')
                         ->disabled()
+                        ->rows(3)
+                        ->visible(fn (?PaymentAttempt $record): bool => filled($record?->failure_message))
                         ->columnSpanFull(),
-                    Forms\Components\TextInput::make('expires_at')->label('انقضا')->disabled(),
-                    Forms\Components\TextInput::make('verified_at')->label('زمان تأیید')->disabled(),
-                    Forms\Components\TextInput::make('created_at')->label('زمان ایجاد')->disabled(),
                 ])
                 ->columns(3),
-            Forms\Components\Section::make('داده‌های پاک‌سازی‌شده درگاه')
+            Forms\Components\Section::make('جزئیات فنی')
+                ->description('این بخش برای عیب‌یابی و پشتیبانی است و در استفاده روزمره نیازی به باز کردن آن نیست.')
+                ->schema([
+                    Forms\Components\TextInput::make('public_id')->label('شناسه داخلی پرداخت')->disabled(),
+                    Forms\Components\TextInput::make('attempt_number')->label('شماره تلاش')->disabled(),
+                    Forms\Components\TextInput::make('authority')->label('شناسه Authority درگاه')->disabled(),
+                    Forms\Components\TextInput::make('gateway_code')->label('کد پاسخ درگاه')->disabled(),
+                    Forms\Components\TextInput::make('failure_code')->label('کد خطا')->disabled(),
+                    Forms\Components\TextInput::make('expires_at')->label('زمان انقضا')->disabled(),
+                ])
+                ->columns(3)
+                ->collapsible()
+                ->collapsed(),
+            Forms\Components\Section::make('داده‌های فنی پاک‌سازی‌شده درگاه')
+                ->description('فقط برای Super Admin و پشتیبانی فنی. اطلاعات این بخش Read-only است.')
                 ->schema([
                     Forms\Components\Textarea::make('request_payload')
-                        ->label('درخواست')
+                        ->label('درخواست به درگاه')
                         ->formatStateUsing(fn (?array $state): string => self::json($state))
                         ->disabled(),
                     Forms\Components\Textarea::make('response_payload')
-                        ->label('پاسخ ایجاد')
+                        ->label('پاسخ ایجاد پرداخت')
                         ->formatStateUsing(fn (?array $state): string => self::json($state))
                         ->disabled(),
                     Forms\Components\Textarea::make('verification_payload')
-                        ->label('پاسخ تأیید')
+                        ->label('پاسخ تأیید پرداخت')
                         ->formatStateUsing(fn (?array $state): string => self::json($state))
                         ->disabled(),
                 ])
-                ->columns(3),
+                ->columns(3)
+                ->collapsible()
+                ->collapsed()
+                ->visible(fn (): bool => auth()->user()?->hasRole('super_admin') ?? false),
         ]);
     }
 
@@ -83,12 +100,6 @@ class PaymentAttemptResource extends Resource
                     ->label('سفارش')
                     ->searchable()
                     ->copyable(),
-                Tables\Columns\TextColumn::make('provider')
-                    ->label('درگاه')
-                    ->badge(),
-                Tables\Columns\TextColumn::make('attempt_number')
-                    ->label('تلاش')
-                    ->numeric(),
                 Tables\Columns\TextColumn::make('status')
                     ->label('وضعیت')
                     ->badge()
@@ -98,9 +109,18 @@ class PaymentAttemptResource extends Resource
                     ->numeric()
                     ->suffix(' تومان')
                     ->sortable(),
+                Tables\Columns\TextColumn::make('provider')
+                    ->label('درگاه')
+                    ->badge()
+                    ->formatStateUsing(fn (?string $state): string => self::providerLabel($state)),
                 Tables\Columns\TextColumn::make('reference_id')
-                    ->label('مرجع')
-                    ->copyable(),
+                    ->label('شماره مرجع')
+                    ->copyable()
+                    ->placeholder('—'),
+                Tables\Columns\TextColumn::make('attempt_number')
+                    ->label('تلاش')
+                    ->numeric()
+                    ->toggleable(isToggledHiddenByDefault: true),
                 Tables\Columns\TextColumn::make('created_at')
                     ->label('زمان')
                     ->dateTime('Y/m/d H:i')
@@ -112,6 +132,7 @@ class PaymentAttemptResource extends Resource
                     ->options([
                         'testing' => 'آزمایشی',
                         'zarinpal' => 'زرین‌پال',
+                        'disabled' => 'غیرفعال',
                     ]),
                 Tables\Filters\SelectFilter::make('status')
                     ->label('وضعیت')
@@ -120,7 +141,7 @@ class PaymentAttemptResource extends Resource
                     )),
             ])
             ->actions([
-                Tables\Actions\ViewAction::make(),
+                Tables\Actions\ViewAction::make()->label('مشاهده'),
             ])
             ->bulkActions([])
             ->defaultSort('created_at', 'desc');
@@ -137,6 +158,16 @@ class PaymentAttemptResource extends Resource
             'index' => Pages\ListPaymentAttempts::route('/'),
             'view' => Pages\ViewPaymentAttempt::route('/{record}'),
         ];
+    }
+
+    public static function providerLabel(?string $provider): string
+    {
+        return match ($provider) {
+            'zarinpal' => 'زرین‌پال',
+            'testing' => 'آزمایشی',
+            'disabled', null, '' => 'غیرفعال',
+            default => 'درگاه دیگر',
+        };
     }
 
     private static function json(?array $state): string
