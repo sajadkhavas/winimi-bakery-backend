@@ -80,6 +80,9 @@ class PostHandoffOperatorUxTest extends TestCase
         $this->assertIsString($resource);
         $this->assertStringContainsString("TextInput::make('weight_min_grams')", $resource);
         $this->assertStringContainsString("TextInput::make('weight_max_grams')", $resource);
+        $this->assertStringContainsString("TiptapEditor::make('description')", $resource);
+        $this->assertStringNotContainsString("RichEditor::make('description')", $resource);
+        $this->assertStringContainsString('->output(TiptapOutput::Html)', $resource);
         $this->assertMatchesRegularExpression(
             "/TextInput::make\('preparation_time_days'\).*?->disabled\(\).*?->dehydrated\(false\)/s",
             $resource,
