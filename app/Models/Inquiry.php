@@ -32,6 +32,12 @@ class Inquiry extends Model
         static::creating(function (self $inquiry): void {
             $inquiry->public_id ??= (string) Str::ulid();
         });
+
+        static::saving(function (self $inquiry): void {
+            if ($inquiry->exists && $inquiry->isDirty(['status', 'assigned_user_id', 'internal_note'])) {
+                $inquiry->last_action_at = now();
+            }
+        });
     }
 
     protected function casts(): array
