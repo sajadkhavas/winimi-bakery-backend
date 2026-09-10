@@ -2,11 +2,16 @@
 
 namespace App\Providers;
 
+use App\Models\BakeryCityPage;
+use App\Models\BakeryContentPage;
+use App\Models\BakeryFaq;
+use App\Models\BakeryPost;
 use App\Models\BakeryProduct;
 use App\Models\Product;
 use App\Observers\ProductObserver;
 use App\Policies\AuthenticationLogPolicy;
 use App\Support\IranianMobile;
+use App\Support\ManagedHtmlSanitizer;
 use Filament\Forms\Components\SpatieMediaLibraryFileUpload;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
@@ -36,6 +41,29 @@ class AppServiceProvider extends ServiceProvider
                     ->dehydrated(false);
             }
         });
+
+        $richHtmlFields = [
+            BakeryPost::class => ['content'],
+            BakeryContentPage::class => ['content'],
+            BakeryFaq::class => ['answer'],
+            BakeryCityPage::class => ['content'],
+            BakeryProduct::class => ['description'],
+        ];
+
+        foreach ($richHtmlFields as $modelClass => $fields) {
+            $modelClass::saving(static function ($model) use ($fields): void {
+                foreach ($fields as $field) {
+                    if (! $model->isDirty($field)) {
+                        continue;
+                    }
+
+                    $model->setAttribute(
+                        $field,
+                        ManagedHtmlSanitizer::sanitize((string) $model->getAttribute($field)) ?? '',
+                    );
+                }
+            });
+        }
 
         $phase18 = config('phase18', []);
         if (is_array($phase18) && filled($phase18['roadmap_version'] ?? null)) {
