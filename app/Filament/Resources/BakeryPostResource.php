@@ -10,6 +10,8 @@ use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
+use FilamentTiptapEditor\Enums\TiptapOutput;
+use FilamentTiptapEditor\TiptapEditor;
 
 class BakeryPostResource extends Resource
 {
@@ -27,37 +29,43 @@ class BakeryPostResource extends Resource
 
     protected static ?int $navigationSort = 5;
 
-    private const EDITOR_TOOLBAR = [
+    private const EDITOR_TOOLS = [
+        'heading',
+        'hr',
+        'bullet-list',
+        'ordered-list',
+        'checked-list',
         'blockquote',
         'bold',
-        'bulletList',
-        'h2',
-        'h3',
         'italic',
-        'link',
-        'orderedList',
-        'redo',
         'strike',
         'underline',
-        'undo',
+        'lead',
+        'small',
+        'link',
+        'table',
+        'details',
     ];
 
     public static function form(Form $form): Form
     {
         return $form->schema([
             Forms\Components\Section::make('مقاله')
-                ->description('محتوا با قالب‌های کنترل‌شده ذخیره می‌شود؛ عنوان‌های H2/H3 برای ساختار مقاله و فهرست مطالب Frontend استفاده می‌شوند.')
+                ->description('ویرایشگر حرفه‌ای با خروجی HTML سازگار با Frontend فعال است. ابزارهای اجرای کد، HTML خام، iframe، Embed و آپلود رسانه داخل متن عمداً غیرفعال‌اند؛ تصویر شاخص از کتابخانه رسانه انتخاب می‌شود.')
                 ->schema([
                     Forms\Components\TextInput::make('title')->label('عنوان')->required()->maxLength(260)->columnSpanFull(),
                     Forms\Components\TextInput::make('slug')->label('Slug')->required()->unique(ignoreRecord: true)->maxLength(180),
                     Forms\Components\TextInput::make('category')->label('دسته')->maxLength(120),
                     Forms\Components\TagsInput::make('tags')->label('برچسب‌ها')->columnSpanFull(),
                     Forms\Components\Textarea::make('excerpt')->label('خلاصه')->rows(3)->maxLength(500)->columnSpanFull(),
-                    Forms\Components\RichEditor::make('content')
+                    TiptapEditor::make('content')
                         ->label('محتوا')
                         ->required()
-                        ->toolbarButtons(self::EDITOR_TOOLBAR)
-                        ->helperText('برای تیترهای داخلی از H2 و H3 استفاده کنید. کد، iframe و HTML دلخواه در محتوای عمومی پشتیبانی نمی‌شود.')
+                        ->tools(self::EDITOR_TOOLS)
+                        ->output(TiptapOutput::Html)
+                        ->maxContentWidth('full')
+                        ->extraInputAttributes(['style' => 'min-height: 20rem;'])
+                        ->helperText('برای ساختار خوانا از Heading، فهرست، نقل‌قول، جدول، جزئیات و لینک استفاده کنید. محتوای ذخیره‌شده HTML باقی می‌ماند تا قرارداد فعلی Frontend تغییر نکند.')
                         ->columnSpanFull(),
                     Forms\Components\Select::make('cover_url')
                         ->label('تصویر شاخص از کتابخانه رسانه')
