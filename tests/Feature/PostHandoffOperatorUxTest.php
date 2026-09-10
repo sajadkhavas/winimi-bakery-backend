@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Filament\Resources\BakeryFaqResource;
 use App\Filament\Resources\CustomerResource;
 use App\Models\BakeryFaq;
+use App\Models\BakeryProductVariant;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -62,5 +63,32 @@ class PostHandoffOperatorUxTest extends TestCase
         $this->assertStringContainsString("->rules(['gte:preparation_min_days'])", $source);
         $this->assertStringContainsString('->bulkActions([])', $source);
         $this->assertStringContainsString('DeleteAction::make()', $source);
+    }
+
+    public function test_product_variant_weight_range_has_a_public_label_and_safe_admin_contract(): void
+    {
+        $range = new BakeryProductVariant([
+            'weight_min_grams' => 175,
+            'weight_max_grams' => 200,
+        ]);
+        $exact = new BakeryProductVariant(['weight_grams' => 180]);
+
+        $this->assertSame('175 تا 200 گرم', $range->weightLabel());
+        $this->assertSame('180 گرم', $exact->weightLabel());
+
+        $resource = file_get_contents(app_path('Filament/Resources/BakeryProductResource.php'));
+        $this->assertIsString($resource);
+        $this->assertStringContainsString("TextInput::make('weight_min_grams')", $resource);
+        $this->assertStringContainsString("TextInput::make('weight_max_grams')", $resource);
+        $this->assertMatchesRegularExpression(
+            "/TextInput::make\('preparation_time_days'\).*?->disabled\(\).*?->dehydrated\(false\)/s",
+            $resource,
+        );
+
+        $apiResource = file_get_contents(app_path('Http/Resources/BakeryVariantResource.php'));
+        $this->assertIsString($apiResource);
+        $this->assertStringContainsString("'weightMinGrams' => \$this->weight_min_grams", $apiResource);
+        $this->assertStringContainsString("'weightMaxGrams' => \$this->weight_max_grams", $apiResource);
+        $this->assertStringContainsString("'weight' => \$this->weightLabel()", $apiResource);
     }
 }
