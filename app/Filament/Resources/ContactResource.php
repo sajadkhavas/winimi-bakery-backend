@@ -21,7 +21,7 @@ class ContactResource extends Resource
     protected static ?string $navigationLabel = 'پیام‌های تماس';
     protected static ?string $modelLabel = 'پیام';
     protected static ?string $pluralModelLabel = 'پیام‌ها';
-    protected static ?string $navigationGroup = 'فروش';
+    protected static ?string $navigationGroup = 'ارتباطات';
     protected static ?int $navigationSort = 2;
 
     public static function getNavigationBadge(): ?string

@@ -4,6 +4,7 @@ namespace App\Filament\Resources;
 
 use App\Filament\Resources\BakeryCategoryResource\Pages;
 use App\Models\BakeryCategory;
+use App\Support\AdminMediaLibrary;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
@@ -22,7 +23,7 @@ class BakeryCategoryResource extends Resource
 
     protected static ?string $pluralModelLabel = 'دسته‌های بیکری';
 
-    protected static ?string $navigationGroup = 'فروشگاه وینیمی';
+    protected static ?string $navigationGroup = 'فروشگاه';
 
     protected static ?int $navigationSort = 1;
 
@@ -30,6 +31,7 @@ class BakeryCategoryResource extends Resource
     {
         return $form->schema([
             Forms\Components\Section::make('اطلاعات دسته')
+                ->description('تصویر دسته از کتابخانه رسانه مرکزی WINIMI انتخاب می‌شود؛ همان تصویر در API کاتالوگ و کارت دسته صفحه اصلی مرجع است.')
                 ->schema([
                     Forms\Components\TextInput::make('name')
                         ->label('نام دسته')
@@ -44,11 +46,13 @@ class BakeryCategoryResource extends Resource
                         ->label('توضیح دسته')
                         ->rows(4)
                         ->columnSpanFull(),
-                    Forms\Components\FileUpload::make('image_path')
-                        ->label('تصویر دسته')
-                        ->image()
-                        ->imageEditor()
-                        ->directory('bakery/categories')
+                    Forms\Components\Select::make('image_path')
+                        ->label('تصویر دسته از کتابخانه رسانه')
+                        ->options(fn (?BakeryCategory $record): array => AdminMediaLibrary::imagePathOptions($record?->image_path))
+                        ->searchable()
+                        ->preload()
+                        ->nullable()
+                        ->helperText('فقط نسخه‌های WebP آماده و حداکثر ۱MB قابل انتخاب‌اند. تصویر قدیمی فعلی برای جلوگیری از حذف ناخواسته حفظ می‌شود.')
                         ->columnSpanFull(),
                     Forms\Components\TextInput::make('image_alt')
                         ->label('متن جایگزین تصویر (Alt)')
@@ -57,9 +61,7 @@ class BakeryCategoryResource extends Resource
                         ->columnSpanFull(),
                     Forms\Components\Toggle::make('is_active')
                         ->label('فعال در فروشگاه')
-                        ->helperText(
-                            'فعال بودن دسته شرط لازم انتشار محصولات آن است، اما به‌تنهایی هیچ محصولی را منتشر نمی‌کند.'
-                        )
+                        ->helperText('فعال بودن دسته شرط لازم انتشار محصولات آن است، اما به‌تنهایی هیچ محصولی را منتشر نمی‌کند.')
                         ->default(true),
                     Forms\Components\TextInput::make('sort_order')
                         ->label('ترتیب نمایش')
@@ -89,6 +91,7 @@ class BakeryCategoryResource extends Resource
             ->columns([
                 Tables\Columns\ImageColumn::make('image_path')
                     ->label('تصویر')
+                    ->disk('public')
                     ->square(),
                 Tables\Columns\TextColumn::make('name')
                     ->label('نام')
@@ -121,14 +124,12 @@ class BakeryCategoryResource extends Resource
                 Tables\Filters\TernaryFilter::make('is_active')->label('فعال'),
             ])
             ->actions([
-                Tables\Actions\EditAction::make(),
-                Tables\Actions\DeleteAction::make(),
+                Tables\Actions\EditAction::make()->label('ویرایش'),
+                Tables\Actions\DeleteAction::make()
+                    ->label('حذف')
+                    ->requiresConfirmation(),
             ])
-            ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
-                ]),
-            ])
+            ->bulkActions([])
             ->defaultSort('sort_order');
     }
 

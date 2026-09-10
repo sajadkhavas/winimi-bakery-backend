@@ -1,7 +1,7 @@
 <?php
 
 return [
-    'direction' => 'ltr',
+    'direction' => 'rtl',
     'max_content_width' => '5xl',
     'disable_stylesheet' => false,
     'disable_link_as_button' => false,
@@ -12,17 +12,17 @@ return [
     |--------------------------------------------------------------------------
     |
     | Profiles determine which tools are available for the toolbar.
-    | 'default' is all available tools, but you can create your own subsets.
-    | The order of the tools doesn't matter.
+    | Raw source/code/embed tools are intentionally excluded from the Winimi
+    | default profile. Individual resources may further reduce this list.
     |
     */
     'profiles' => [
         'default' => [
-            'heading', 'bullet-list', 'ordered-list', 'checked-list', 'blockquote', 'hr', '|',
+            'heading', 'bullet-list', 'ordered-list', 'checked-list', 'blockquote', 'hr', 'hurdle', '|',
             'bold', 'italic', 'strike', 'underline', 'superscript', 'subscript', 'lead', 'small', 'color', 'highlight', 'align-left', 'align-center', 'align-right', '|',
-            'link', 'media', 'oembed', 'table', 'grid-builder', 'details', '|', 'code', 'code-block', 'source', 'blocks',
+            'link', 'media', 'table', 'details',
         ],
-        'simple' => ['heading', 'hr', 'bullet-list', 'ordered-list', 'checked-list', '|', 'bold', 'italic', 'lead', 'small', '|', 'link', 'media'],
+        'simple' => ['heading', 'hr', 'bullet-list', 'ordered-list', 'checked-list', '|', 'bold', 'italic', 'lead', 'small', 'color', 'highlight', 'align-left', 'align-center', 'align-right', '|', 'link', 'media'],
         'minimal' => ['bold', 'italic', 'link', 'bullet-list', 'ordered-list'],
         'none' => [],
     ],
@@ -32,11 +32,13 @@ return [
     | Actions
     |--------------------------------------------------------------------------
     |
+    | Link/media insertion and media editing are routed through Winimi's
+    | managed pickers so the Bakery Media Library remains the source of truth.
+    |
     */
-    'media_action' => FilamentTiptapEditor\Actions\MediaAction::class,
-    //    'media_action' => Awcodes\Curator\Actions\MediaAction::class,
-    'edit_media_action' => FilamentTiptapEditor\Actions\EditMediaAction::class,
-    'link_action' => FilamentTiptapEditor\Actions\LinkAction::class,
+    'media_action' => App\Filament\Actions\BakeryTiptapMediaAction::class,
+    'edit_media_action' => App\Filament\Actions\BakeryTiptapEditMediaAction::class,
+    'link_action' => App\Filament\Actions\BakeryTiptapLinkAction::class,
     'grid_builder_action' => FilamentTiptapEditor\Actions\GridBuilderAction::class,
     'oembed_action' => FilamentTiptapEditor\Actions\OEmbedAction::class,
 
@@ -44,10 +46,6 @@ return [
     |--------------------------------------------------------------------------
     | Output format
     |--------------------------------------------------------------------------
-    |
-    | Which output format should be stored in the Database.
-    |
-    | See: https://tiptap.dev/guide/output
     */
     'output' => FilamentTiptapEditor\Enums\TiptapOutput::Html,
 
@@ -56,14 +54,12 @@ return [
     | Media Uploader
     |--------------------------------------------------------------------------
     |
-    | These options will be passed to the native file uploader modal when
-    | inserting media. They follow the same conventions as the
-    | Filament Forms FileUpload field.
-    |
-    | See https://filamentphp.com/docs/3.x/panels/installation#file-upload
+    | Kept for package compatibility. Winimi's active media actions above do
+    | not expose this direct uploader; new images must enter through the
+    | Bakery Media Library and its optimized conversion pipeline.
     |
     */
-    'accepted_file_types' => ['image/jpeg', 'image/png', 'image/webp', 'image/svg+xml', 'application/pdf'],
+    'accepted_file_types' => ['image/jpeg', 'image/png', 'image/webp'],
     'disk' => 'public',
     'directory' => 'images',
     'visibility' => 'public',
@@ -74,26 +70,24 @@ return [
     'image_crop_aspect_ratio' => null,
     'image_resize_target_width' => null,
     'image_resize_target_height' => null,
-    'use_relative_paths' => true,
+    'use_relative_paths' => false,
 
     /*
     |--------------------------------------------------------------------------
     | Menus
     |--------------------------------------------------------------------------
-    |
     */
     'disable_floating_menus' => false,
     'disable_bubble_menus' => false,
     'disable_toolbar_menus' => false,
 
     'bubble_menu_tools' => ['bold', 'italic', 'strike', 'underline', 'superscript', 'subscript', 'lead', 'small', 'link'],
-    'floating_menu_tools' => ['media', 'grid-builder', 'details', 'table', 'oembed', 'code-block', 'blocks'],
+    'floating_menu_tools' => ['media', 'details', 'table'],
 
     /*
     |--------------------------------------------------------------------------
     | Extensions
     |--------------------------------------------------------------------------
-    |
     */
     'extensions_script' => null,
     'extensions_styles' => null,
@@ -101,27 +95,19 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | PresetColors
+    | Preset Colors
     |--------------------------------------------------------------------------
-    |
-    | Possibility to define presets colors in ColorPicker.
-    | Only hexadecimal value
-    'preset_colors' => [
-        'primary' => '#f59e0b',
-        //..
-    ]
-    |
     */
-    'preset_colors' => [],
+    'preset_colors' => [
+        'winimi-green' => '#27390c',
+        'winimi-cream' => '#f5f0e6',
+        'winimi-ink' => '#1f2418',
+    ],
 
     /*
     |--------------------------------------------------------------------------
     | Protocols
     |--------------------------------------------------------------------------
-    |
-    | With newer versions of Tiptap, you need to define additional protocols
-    | for the link extension. i.e. 'ftp', 'mailto', etc.
-    |
     */
-    'link_protocols' => [],
+    'link_protocols' => ['mailto', 'tel'],
 ];

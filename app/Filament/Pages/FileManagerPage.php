@@ -12,7 +12,7 @@ class FileManagerPage extends Page
 
     protected static ?string $navigationLabel = 'ویرایش فایل‌ها';
 
-    protected static ?string $navigationGroup = 'سیستم';
+    protected static ?string $navigationGroup = 'سیستم و امنیت';
 
     protected static ?int $navigationSort = 10;
 
@@ -58,7 +58,7 @@ class FileManagerPage extends Page
 
     public function mount(): void
     {
-        abort_unless(static::canAccess(), 403);
+        $this->authorizeSensitiveAction();
         $this->refreshGitStatus();
     }
 
@@ -86,9 +86,14 @@ class FileManagerPage extends Page
             }
             $real = $dir.DIRECTORY_SEPARATOR.basename($path);
         }
+
         foreach ($this->getAllowedBasePaths() as $base) {
             $realBase = realpath($base);
-            if ($realBase && str_starts_with($real, $realBase)) {
+            if (! $realBase) {
+                continue;
+            }
+
+            if ($real === $realBase || str_starts_with($real, $realBase.DIRECTORY_SEPARATOR)) {
                 return true;
             }
         }
@@ -98,9 +103,12 @@ class FileManagerPage extends Page
 
     public function getFiles(string $path): array
     {
-        if (! is_dir($path)) {
+        $this->authorizeSensitiveAction();
+
+        if (! $this->isPathAllowed($path) || ! is_dir($path)) {
             return [];
         }
+
         $files = [];
         foreach (scandir($path) as $file) {
             if ($file === '.' || $file === '..') {
@@ -123,6 +131,8 @@ class FileManagerPage extends Page
 
     public function openFile(string $path): void
     {
+        $this->authorizeSensitiveAction();
+
         if (! $this->isPathAllowed($path) || ! is_file($path)) {
             Notification::make()->title('دسترسی مجاز نیست')->danger()->send();
 
@@ -143,11 +153,14 @@ class FileManagerPage extends Page
 
     public function editorContentChanged(string $content): void
     {
+        $this->authorizeSensitiveAction();
         $this->fileContent = $content;
     }
 
     public function saveFile(): void
     {
+        $this->authorizeSensitiveAction();
+
         if (empty($this->selectedFile) || ! $this->isPathAllowed($this->selectedFile)) {
             Notification::make()->title('خطا: فایلی انتخاب نشده')->danger()->send();
 
@@ -160,12 +173,14 @@ class FileManagerPage extends Page
 
     public function saveAndBuild(): void
     {
+        $this->authorizeSensitiveAction();
         $this->saveFile();
         $this->runBuild();
     }
 
     public function runBuild(): void
     {
+        $this->authorizeSensitiveAction();
         $root = base_path();
         $cmd = PHP_OS_FAMILY === 'Windows'
             ? "cd /d \"{$root}\" && npm run build 2>&1"
@@ -177,14 +192,16 @@ class FileManagerPage extends Page
         $this->buildOutput = implode("\n", $output);
 
         if ($exitCode === 0) {
-            Notification::make()->title('✅ Build موفق!')->success()->send();
+            Notification::make()->title('✅ ساخت پروژه موفق بود')->success()->send();
         } else {
-            Notification::make()->title('❌ Build ناموفق')->body('لاگ را بررسی کنید')->danger()->send();
+            Notification::make()->title('❌ ساخت پروژه ناموفق بود')->body('گزارش اجرا را بررسی کنید')->danger()->send();
         }
     }
 
     public function downloadFile(): StreamedResponse|null
     {
+        $this->authorizeSensitiveAction();
+
         if (empty($this->selectedFile) || ! $this->isPathAllowed($this->selectedFile)) {
             return null;
         }
@@ -197,6 +214,8 @@ class FileManagerPage extends Page
 
     public function createFile(): void
     {
+        $this->authorizeSensitiveAction();
+
         if (empty($this->newFileName) || empty($this->newFileFolder)) {
             Notification::make()->title('نام فایل و پوشه را وارد کنید')->warning()->send();
 
@@ -241,6 +260,8 @@ class FileManagerPage extends Page
 
     public function deleteFile(): void
     {
+        $this->authorizeSensitiveAction();
+
         if (empty($this->selectedFile) || ! $this->isPathAllowed($this->selectedFile)) {
             Notification::make()->title('دسترسی مجاز نیست')->danger()->send();
 
@@ -258,6 +279,7 @@ class FileManagerPage extends Page
 
     public function refreshGitStatus(): void
     {
+        $this->authorizeSensitiveAction();
         $root = base_path();
         $cmd = PHP_OS_FAMILY === 'Windows'
             ? "cd /d \"{$root}\" && git status --short 2>&1"
@@ -269,8 +291,10 @@ class FileManagerPage extends Page
 
     public function gitCommit(): void
     {
+        $this->authorizeSensitiveAction();
+
         if (empty($this->commitMessage)) {
-            Notification::make()->title('پیام commit را وارد کنید')->warning()->send();
+            Notification::make()->title('پیام ثبت تغییر را وارد کنید')->warning()->send();
 
             return;
         }
@@ -286,19 +310,27 @@ class FileManagerPage extends Page
         $this->commitMessage = '';
         $this->refreshGitStatus();
         if ($exitCode === 0) {
-            Notification::make()->title('✅ Commit موفق!')->body(implode("\n", $output))->success()->send();
+            Notification::make()->title('✅ ثبت تغییر موفق بود')->body(implode("\n", $output))->success()->send();
         } else {
-            Notification::make()->title('❌ Commit ناموفق')->body(implode("\n", $output))->danger()->send();
+            Notification::make()->title('❌ ثبت تغییر ناموفق بود')->body(implode("\n", $output))->danger()->send();
         }
     }
 
     public function clearBuildOutput(): void
     {
+        $this->authorizeSensitiveAction();
         $this->buildOutput = '';
     }
 
     public function getViewData(): array
     {
+        $this->authorizeSensitiveAction();
+
         return ['basePaths' => $this->getAllowedBasePaths()];
+    }
+
+    private function authorizeSensitiveAction(): void
+    {
+        abort_unless(static::canAccess(), 403);
     }
 }

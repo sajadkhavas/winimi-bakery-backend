@@ -17,7 +17,7 @@ class RobotsEditorPage extends Page implements HasForms
 
     protected static ?string $navigationLabel = 'Robots.txt';
 
-    protected static ?string $navigationGroup = 'سیستم';
+    protected static ?string $navigationGroup = 'سیستم و امنیت';
 
     protected static ?int $navigationSort = 6;
 

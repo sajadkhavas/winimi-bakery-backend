@@ -25,7 +25,7 @@ class SitePageResource extends Resource
     protected static ?string $model = SitePage::class;
     protected static ?string $navigationIcon  = 'heroicon-o-document-text';
     protected static ?string $navigationLabel = 'صفحات سایت';
-    protected static ?string $navigationGroup = 'تنظیمات';
+    protected static ?string $navigationGroup = 'تنظیمات فروشگاه';
     protected static ?int $navigationSort     = 2;
 
     public static function form(Form $form): Form

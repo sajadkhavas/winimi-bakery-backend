@@ -23,7 +23,7 @@ class NavigationItemResource extends Resource
 
     protected static ?string $pluralModelLabel = 'منوهای هدر و فوتر';
 
-    protected static ?string $navigationGroup = 'تنظیمات';
+    protected static ?string $navigationGroup = 'تنظیمات فروشگاه';
 
     protected static ?int $navigationSort = 1;
 

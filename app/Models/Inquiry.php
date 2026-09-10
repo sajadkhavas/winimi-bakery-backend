@@ -20,6 +20,9 @@ class Inquiry extends Model
         'message',
         'metadata',
         'status',
+        'assigned_user_id',
+        'internal_note',
+        'last_action_at',
         'ip_hash',
         'user_agent_hash',
     ];
@@ -29,6 +32,12 @@ class Inquiry extends Model
         static::creating(function (self $inquiry): void {
             $inquiry->public_id ??= (string) Str::ulid();
         });
+
+        static::saving(function (self $inquiry): void {
+            if ($inquiry->exists && $inquiry->isDirty(['status', 'assigned_user_id', 'internal_note'])) {
+                $inquiry->last_action_at = now();
+            }
+        });
     }
 
     protected function casts(): array
@@ -37,11 +46,17 @@ class Inquiry extends Model
             'type' => InquiryType::class,
             'status' => InquiryStatus::class,
             'metadata' => 'array',
+            'last_action_at' => 'datetime',
         ];
     }
 
     public function customer(): BelongsTo
     {
         return $this->belongsTo(Customer::class);
+    }
+
+    public function assignedUser(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'assigned_user_id');
     }
 }

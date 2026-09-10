@@ -19,7 +19,7 @@ class ReviewResource extends Resource
 
     protected static ?string $model = Review::class;
     protected static ?string $navigationIcon = 'heroicon-o-star';
-    protected static ?string $navigationGroup = 'بازاریابی';
+    protected static ?string $navigationGroup = 'بازاریابی و سئو';
     protected static ?string $label = 'نظر';
     protected static ?string $pluralLabel = 'نظرات';
     protected static ?int $navigationSort = 4;

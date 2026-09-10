@@ -22,7 +22,7 @@ class SeoMetaResource extends Resource
     protected static ?string $model = SeoMeta::class;
     protected static ?string $navigationIcon   = 'heroicon-o-magnifying-glass-circle';
     protected static ?string $navigationLabel  = 'SEO Manager';
-    protected static ?string $navigationGroup  = 'سئو';
+    protected static ?string $navigationGroup  = 'بازاریابی و سئو';
     protected static ?int    $navigationSort   = 2;
     protected static ?string $modelLabel       = 'تنظیمات SEO';
     protected static ?string $pluralModelLabel = 'تنظیمات SEO';

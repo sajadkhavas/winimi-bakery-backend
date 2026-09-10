@@ -29,29 +29,11 @@ class BakeryContentPageResource extends Resource
 
     protected static ?int $navigationSort = 1;
 
-    private const EDITOR_TOOLS = [
-        'heading',
-        'hr',
-        'bullet-list',
-        'ordered-list',
-        'checked-list',
-        'blockquote',
-        'bold',
-        'italic',
-        'strike',
-        'underline',
-        'lead',
-        'small',
-        'link',
-        'table',
-        'details',
-    ];
-
     public static function form(Form $form): Form
     {
         return $form->schema([
             Forms\Components\Section::make('محتوا')
-                ->description('صفحات عمومی فروشگاه از همین بخش مدیریت می‌شوند. ویرایشگر خروجی HTML سازگار با Frontend دارد و ابزارهای کد خام، iframe، Embed و آپلود رسانه داخل متن عمداً غیرفعال‌اند.')
+                ->description('صفحات عمومی با Editor مدیریت‌شده WINIMI و Media/Link Picker مرکزی ویرایش می‌شوند. HTML خام، کد اجرایی و Embed عمومی عمداً در دسترس نیستند.')
                 ->schema([
                     Forms\Components\Select::make('type')
                         ->label('نوع')
@@ -84,16 +66,16 @@ class BakeryContentPageResource extends Resource
                         ->searchable()
                         ->preload()
                         ->nullable()
-                        ->helperText('اختیاری؛ تصویر را از کتابخانه رسانه وینیمی انتخاب کنید. مقدار قبلی در صورت وجود حفظ می‌شود.')
+                        ->helperText('اختیاری؛ از کتابخانه رسانه مرکزی انتخاب کنید. مقدار قدیمی فعلی فقط برای جلوگیری از حذف ناخواسته حفظ می‌شود.')
                         ->columnSpanFull(),
                     TiptapEditor::make('content')
                         ->label('متن')
                         ->required()
-                        ->tools(self::EDITOR_TOOLS)
+                        ->profile('default')
                         ->output(TiptapOutput::Html)
                         ->maxContentWidth('full')
                         ->extraInputAttributes(['style' => 'min-height: 20rem;'])
-                        ->helperText('برای ساختار صفحه از Heading، فهرست، نقل‌قول، جدول، جزئیات و لینک استفاده کنید. خروجی HTML است تا قرارداد فعلی Frontend تغییر نکند.')
+                        ->helperText('Heading، فهرست، نقل‌قول، رنگ/Highlight، Alignment، جدول، لینک داخلی و تصویر از Media Library در دسترس است.')
                         ->columnSpanFull(),
                 ])->columns(2),
             Forms\Components\Section::make('انتشار و سئو')

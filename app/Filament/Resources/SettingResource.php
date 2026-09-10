@@ -21,7 +21,7 @@ class SettingResource extends Resource
     protected static ?string $model = \App\Models\Setting::class;
     protected static ?string $navigationIcon = 'heroicon-o-cog-6-tooth';
     protected static ?string $navigationLabel = 'تنظیمات سایت';
-    protected static ?string $navigationGroup = 'تنظیمات';
+    protected static ?string $navigationGroup = 'تنظیمات فروشگاه';
     protected static ?int $navigationSort = 1;
 
     public static function form(Form $form): Form

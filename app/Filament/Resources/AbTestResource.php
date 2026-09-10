@@ -16,7 +16,7 @@ class AbTestResource extends Resource
 {
     protected static ?string $model = AbTest::class;
     protected static ?string $navigationIcon = 'heroicon-o-beaker';
-    protected static ?string $navigationGroup = 'بازاریابی';
+    protected static ?string $navigationGroup = 'بازاریابی و سئو';
     protected static ?string $label = 'تست A/B';
     protected static ?string $pluralLabel = 'تست‌های A/B';
     protected static ?int $navigationSort = 2;

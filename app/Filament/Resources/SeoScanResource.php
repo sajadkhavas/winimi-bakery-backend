@@ -15,7 +15,7 @@ class SeoScanResource extends Resource
 {
     protected static ?string $model = SeoScan::class;
     protected static ?string $navigationIcon = 'heroicon-o-magnifying-glass-circle';
-    protected static ?string $navigationGroup = 'سئو';
+    protected static ?string $navigationGroup = 'بازاریابی و سئو';
     protected static ?string $label = 'اسکن SEO';
     protected static ?string $pluralLabel = 'اسکن‌های SEO';
     protected static ?int $navigationSort = 5;

@@ -5,7 +5,7 @@ namespace App\Filament\Resources;
 use App\Filament\Resources\BakeryCategoryLandingResource\Pages;
 use App\Models\BakeryCategory;
 use App\Models\BakeryCategoryLanding;
-use App\Models\BakeryPost;
+use App\Support\AdminInternalLinks;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
@@ -24,7 +24,7 @@ class BakeryCategoryLandingResource extends Resource
 
     protected static ?string $pluralModelLabel = 'لندینگ‌های سئو دسته‌ها';
 
-    protected static ?string $navigationGroup = 'محتوا و سئو';
+    protected static ?string $navigationGroup = 'بازاریابی و سئو';
 
     protected static ?int $navigationSort = 4;
 
@@ -44,6 +44,7 @@ class BakeryCategoryLandingResource extends Resource
                         ->label('دسته کاتالوگ')
                         ->options(fn (): array => BakeryCategory::query()->orderBy('name')->pluck('name', 'slug')->all())
                         ->searchable()
+                        ->preload()
                         ->required(),
                     Forms\Components\TextInput::make('catalog_search')
                         ->label('فیلتر جست‌وجوی کاتالوگ')
@@ -63,8 +64,8 @@ class BakeryCategoryLandingResource extends Resource
                     Forms\Components\TextInput::make('name')->label('نام نمایشی')->required()->maxLength(180),
                     Forms\Components\TextInput::make('eyebrow')->label('برچسب کوتاه')->maxLength(120),
                     Forms\Components\Textarea::make('card_description')->label('توضیح کارت')->rows(3)->columnSpanFull(),
-                    Forms\Components\TextInput::make('meta_title')->label('SEO Title')->required()->maxLength(70),
-                    Forms\Components\Textarea::make('meta_description')->label('Meta Description')->required()->maxLength(180)->rows(3)->columnSpanFull(),
+                    Forms\Components\TextInput::make('meta_title')->label('عنوان سئو')->required()->maxLength(70),
+                    Forms\Components\Textarea::make('meta_description')->label('توضیح سئو')->required()->maxLength(180)->rows(3)->columnSpanFull(),
                     Forms\Components\TextInput::make('heading')->label('H1')->required()->maxLength(220)->columnSpanFull(),
                     Forms\Components\Textarea::make('intro')->label('مقدمه')->required()->rows(5)->columnSpanFull(),
                 ])->columns(2),
@@ -88,43 +89,32 @@ class BakeryCategoryLandingResource extends Resource
                         ->reorderable()
                         ->columnSpanFull(),
                     Forms\Components\Repeater::make('guides')
-                        ->label('راهنماهای مرتبط (Internal Linking)')
-                        ->helperText('برای مقاله‌های منتشرشده، مقاله را از فهرست انتخاب کنید تا مسیر، عنوان و توضیح خودکار تکمیل شود. ورودی‌های قدیمی دستی بدون حذف باقی می‌مانند.')
+                        ->label('لینک‌های داخلی مرتبط')
+                        ->helperText('مقاله، محصول، دسته یا صفحه منتشرشده را انتخاب کنید. مسیر دقیق به‌صورت مدیریت‌شده ذخیره می‌شود؛ لینک‌های قدیمی موجود بدون حذف اجباری حفظ می‌شوند.')
                         ->schema([
-                            Forms\Components\Select::make('post_slug')
-                                ->label('انتخاب مقاله منتشرشده')
-                                ->options(fn (): array => BakeryPost::query()
-                                    ->published()
-                                    ->orderByDesc('published_at')
-                                    ->pluck('title', 'slug')
-                                    ->all())
+                            Forms\Components\Select::make('href')
+                                ->label('مقصد داخلی')
+                                ->options(fn (Forms\Get $get): array => AdminInternalLinks::options((string) $get('href')))
                                 ->searchable()
                                 ->preload()
+                                ->required()
                                 ->live()
                                 ->afterStateUpdated(function (?string $state, callable $set): void {
                                     if (blank($state)) {
                                         return;
                                     }
 
-                                    $post = BakeryPost::query()
-                                        ->published()
-                                        ->where('slug', $state)
-                                        ->first();
-
-                                    if ($post === null) {
-                                        return;
-                                    }
-
-                                    $set('href', '/blog/'.$post->slug);
-                                    $set('title', $post->title);
-                                    $set('description', filled($post->excerpt) ? $post->excerpt : $post->title);
+                                    $set('title', AdminInternalLinks::titleFor($state));
                                 })
                                 ->columnSpanFull(),
-                            Forms\Components\TextInput::make('href')
-                                ->label('مسیر داخلی')
-                                ->required()
-                                ->startsWith('/')
-                                ->maxLength(255),
+                            Forms\Components\Hidden::make('post_slug')
+                                ->dehydrateStateUsing(function ($state, Forms\Get $get): ?string {
+                                    $href = trim((string) $get('href'));
+
+                                    return str_starts_with($href, '/blog/')
+                                        ? substr($href, strlen('/blog/'))
+                                        : null;
+                                }),
                             Forms\Components\TextInput::make('title')
                                 ->label('عنوان لینک')
                                 ->required()
@@ -153,7 +143,7 @@ class BakeryCategoryLandingResource extends Resource
                 Tables\Columns\IconColumn::make('is_active')->label('فعال')->boolean(),
                 Tables\Columns\TextColumn::make('updated_at')->label('آخرین تغییر')->dateTime('Y/m/d H:i')->sortable(),
             ])
-            ->actions([Tables\Actions\EditAction::make()])
+            ->actions([Tables\Actions\EditAction::make()->label('ویرایش')])
             ->bulkActions([])
             ->defaultSort('sort_order');
     }

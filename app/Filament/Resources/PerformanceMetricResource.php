@@ -15,7 +15,7 @@ class PerformanceMetricResource extends Resource
 {
     protected static ?string $model = PerformanceMetric::class;
     protected static ?string $navigationIcon = 'heroicon-o-chart-bar';
-    protected static ?string $navigationGroup = 'سئو';
+    protected static ?string $navigationGroup = 'بازاریابی و سئو';
     protected static ?string $label = 'متریک عملکرد';
     protected static ?string $pluralLabel = 'متریک‌های عملکرد';
     protected static ?int $navigationSort = 5;

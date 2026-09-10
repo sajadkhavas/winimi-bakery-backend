@@ -11,13 +11,13 @@ class QueueMonitorPage extends Page
 {
     protected static ?string $navigationIcon = 'heroicon-o-queue-list';
 
-    protected static ?string $navigationLabel = 'مانیتور صف';
+    protected static ?string $navigationLabel = 'پایش صف';
 
-    protected static ?string $navigationGroup = 'سیستم';
+    protected static ?string $navigationGroup = 'سیستم و امنیت';
 
     protected static ?int $navigationSort = 5;
 
-    protected static ?string $title = 'مانیتور صف';
+    protected static ?string $title = 'پایش صف';
 
     protected static string $view = 'filament.pages.queue-monitor';
 
@@ -33,6 +33,7 @@ class QueueMonitorPage extends Page
 
     public function getStats(): array
     {
+        $this->authorizeSensitiveAction();
         $failed = 0;
         $pending = 0;
 
@@ -55,6 +56,8 @@ class QueueMonitorPage extends Page
 
     public function getFailedJobs(): array
     {
+        $this->authorizeSensitiveAction();
+
         try {
             return DB::table('failed_jobs')
                 ->orderByDesc('failed_at')
@@ -64,7 +67,7 @@ class QueueMonitorPage extends Page
                     'id' => $job->id,
                     'connection' => $job->connection,
                     'queue' => $job->queue,
-                    'payload' => json_decode($job->payload, true)['displayName'] ?? 'Unknown',
+                    'payload' => json_decode($job->payload, true)['displayName'] ?? 'نامشخص',
                     'exception' => substr($job->exception, 0, 100).'...',
                     'failed_at' => $job->failed_at,
                 ])
@@ -76,21 +79,30 @@ class QueueMonitorPage extends Page
 
     public function retryAll(): void
     {
+        $this->authorizeSensitiveAction();
         Artisan::call('queue:retry all');
-        Notification::make()->title('همه job های failed مجدداً اجرا شدند')->success()->send();
+        Notification::make()->title('همه وظیفه‌های ناموفق دوباره اجرا شدند')->success()->send();
     }
 
     public function flushFailed(): void
     {
+        $this->authorizeSensitiveAction();
         Artisan::call('queue:flush');
-        Notification::make()->title('همه failed jobs پاک شدند')->success()->send();
+        Notification::make()->title('همه وظیفه‌های ناموفق پاک شدند')->success()->send();
     }
 
     public function getViewData(): array
     {
+        $this->authorizeSensitiveAction();
+
         return [
             'stats' => $this->getStats(),
             'failedJobs' => $this->getFailedJobs(),
         ];
+    }
+
+    private function authorizeSensitiveAction(): void
+    {
+        abort_unless(static::canAccess(), 403);
     }
 }

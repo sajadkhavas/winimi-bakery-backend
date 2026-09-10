@@ -20,7 +20,7 @@ class FeatureFlagResource extends Resource
     protected static ?string $navigationLabel = 'Feature Flags';
     protected static ?string $modelLabel      = 'Feature Flag';
     protected static ?string $pluralModelLabel = 'Feature Flags';
-    protected static ?string $navigationGroup = 'پیشرفته';
+    protected static ?string $navigationGroup = 'سیستم و امنیت';
     protected static ?int    $navigationSort  = 4;
 
     public static function form(Form $form): Form

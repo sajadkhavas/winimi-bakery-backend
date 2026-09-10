@@ -21,7 +21,7 @@ class EmailTemplateResource extends Resource
     protected static ?string $navigationLabel = 'Email Templates';
     protected static ?string $modelLabel      = 'قالب ایمیل';
     protected static ?string $pluralModelLabel = 'قالب‌های ایمیل';
-    protected static ?string $navigationGroup = 'پیشرفته';
+    protected static ?string $navigationGroup = 'سیستم و امنیت';
     protected static ?int    $navigationSort  = 1;
 
     public static function form(Form $form): Form

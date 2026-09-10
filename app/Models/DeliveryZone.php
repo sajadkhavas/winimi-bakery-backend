@@ -34,6 +34,11 @@ class DeliveryZone extends Model
         static::creating(function (self $zone): void {
             $zone->public_id ??= (string) Str::ulid();
         });
+
+        static::saving(function (self $zone): void {
+            $zone->province = self::normalizeLocation($zone->province);
+            $zone->city = self::normalizeLocation($zone->city);
+        });
     }
 
     protected function casts(): array
@@ -74,5 +79,23 @@ class DeliveryZone extends Model
         }
 
         return (int) $this->getAttribute("{$method->value}_fee_toman");
+    }
+
+    public static function normalizeLocation(?string $value): ?string
+    {
+        $value = trim((string) $value);
+        if ($value === '') {
+            return null;
+        }
+
+        $value = str_replace(
+            ['ي', 'ى', 'ك', "\u{200C}"],
+            ['ی', 'ی', 'ک', ' '],
+            $value,
+        );
+
+        $value = preg_replace('/\s+/u', ' ', $value) ?? $value;
+
+        return trim($value);
     }
 }

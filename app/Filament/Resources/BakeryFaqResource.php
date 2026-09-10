@@ -44,7 +44,7 @@ class BakeryFaqResource extends Resource
                 ->minValue(0)
                 ->default(0)
                 ->required()
-                ->helperText('در جدول نیز می‌توانید ترتیب سؤال‌ها را با حالت مرتب‌سازی جابه‌جا کنید.'),
+                ->helperText('در جدول نیز می‌توانید ترتیب سؤال‌ها را با Drag & Drop تغییر دهید.'),
             Forms\Components\Toggle::make('is_active')
                 ->label('فعال')
                 ->default(true),
@@ -56,20 +56,11 @@ class BakeryFaqResource extends Resource
             TiptapEditor::make('answer')
                 ->label('پاسخ')
                 ->required()
-                ->tools([
-                    'bullet-list',
-                    'ordered-list',
-                    'blockquote',
-                    'bold',
-                    'italic',
-                    'strike',
-                    'underline',
-                    'link',
-                ])
+                ->profile('default')
                 ->output(TiptapOutput::Html)
                 ->maxContentWidth('full')
                 ->extraInputAttributes(['style' => 'min-height: 10rem;'])
-                ->helperText('پاسخ را کوتاه و قابل اسکن نگه دارید. خروجی HTML سازگار با Frontend است و ابزارهای کد، Embed و آپلود رسانه در این فیلد فعال نیستند.')
+                ->helperText('پاسخ را خوانا و کوتاه نگه دارید. لینک داخلی و تصویر فقط از Pickerهای مدیریت‌شده WINIMI می‌آیند؛ HTML خام، کد و Embed عمومی غیرفعال‌اند.')
                 ->columnSpanFull(),
         ])->columns(3);
     }
@@ -94,7 +85,7 @@ class BakeryFaqResource extends Resource
                 Tables\Filters\TernaryFilter::make('is_active')->label('فعال'),
             ])
             ->actions([
-                Tables\Actions\EditAction::make(),
+                Tables\Actions\EditAction::make()->label('ویرایش'),
                 Tables\Actions\DeleteAction::make()
                     ->label('حذف')
                     ->requiresConfirmation(),

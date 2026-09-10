@@ -86,6 +86,11 @@ class Customer extends Authenticatable
         return $this->hasMany(WebPushSubscription::class)->latest('id');
     }
 
+    public function adminActions(): HasMany
+    {
+        return $this->hasMany(CustomerAdminAction::class)->latest('created_at');
+    }
+
     public function scopeActive(Builder $query): Builder
     {
         return $query->where('is_active', true);

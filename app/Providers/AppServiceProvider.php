@@ -2,16 +2,27 @@
 
 namespace App\Providers;
 
+use App\Filament\Actions\BakeryTiptapPreviewAction;
+use App\Models\BakeryCityPage;
+use App\Models\BakeryContentPage;
+use App\Models\BakeryFaq;
+use App\Models\BakeryPost;
 use App\Models\BakeryProduct;
 use App\Models\Product;
 use App\Observers\ProductObserver;
+use App\Policies\AuthenticationLogPolicy;
 use App\Support\IranianMobile;
+use App\Support\ManagedHtmlSanitizer;
+use Filament\Forms\Components\SpatieMediaLibraryFileUpload;
+use FilamentTiptapEditor\TiptapEditor;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\ServiceProvider;
+use Rappasoft\LaravelAuthenticationLog\Models\AuthenticationLog;
 use Spatie\MediaLibrary\MediaCollections\Events\MediaHasBeenAddedEvent;
 use Spatie\MediaLibrary\MediaCollections\Models\Media;
 use Throwable;
@@ -22,6 +33,44 @@ class AppServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
+        Gate::policy(AuthenticationLog::class, AuthenticationLogPolicy::class);
+
+        SpatieMediaLibraryFileUpload::configureUsing(function (SpatieMediaLibraryFileUpload $upload): void {
+            if (in_array($upload->getName(), ['main_image', 'gallery_images'], true)) {
+                $upload
+                    ->hidden()
+                    ->disabled()
+                    ->dehydrated(false);
+            }
+        });
+
+        TiptapEditor::configureUsing(static function (TiptapEditor $editor): void {
+            $editor->hintAction(BakeryTiptapPreviewAction::make());
+        });
+
+        $richHtmlFields = [
+            BakeryPost::class => ['content'],
+            BakeryContentPage::class => ['content'],
+            BakeryFaq::class => ['answer'],
+            BakeryCityPage::class => ['content'],
+            BakeryProduct::class => ['description'],
+        ];
+
+        foreach ($richHtmlFields as $modelClass => $fields) {
+            $modelClass::saving(static function ($model) use ($fields): void {
+                foreach ($fields as $field) {
+                    if (! $model->isDirty($field)) {
+                        continue;
+                    }
+
+                    $model->setAttribute(
+                        $field,
+                        ManagedHtmlSanitizer::sanitize((string) $model->getAttribute($field)) ?? '',
+                    );
+                }
+            });
+        }
+
         $phase18 = config('phase18', []);
         if (is_array($phase18) && filled($phase18['roadmap_version'] ?? null)) {
             config([
@@ -48,73 +97,40 @@ class AppServiceProvider extends ServiceProvider
                     return;
                 }
 
-                $dimensions = @getimagesize(
-                    $media->getPath()
-                );
+                $dimensions = @getimagesize($media->getPath());
 
                 if (is_array($dimensions)) {
-                    $media->setCustomProperty(
-                        'width',
-                        (int) $dimensions[0],
-                    );
+                    $media->setCustomProperty('width', (int) $dimensions[0]);
+                    $media->setCustomProperty('height', (int) $dimensions[1]);
 
-                    $media->setCustomProperty(
-                        'height',
-                        (int) $dimensions[1],
-                    );
-
-                    if (
-                        isset($dimensions['mime'])
-                        && is_string($dimensions['mime'])
-                    ) {
-                        $media->setCustomProperty(
-                            'detected_mime',
-                            $dimensions['mime'],
-                        );
+                    if (isset($dimensions['mime']) && is_string($dimensions['mime'])) {
+                        $media->setCustomProperty('detected_mime', $dimensions['mime']);
                     }
 
                     $media->save();
                 }
 
                 if ($model->media_verified) {
-                    $model
-                        ->forceFill([
-                            'media_verified' => false,
-                        ])
-                        ->save();
+                    $model->forceFill(['media_verified' => false])->save();
                 }
             },
         );
 
         Media::deleting(
             static function (Media $media): void {
-                $bakeryProductMorphClass = (
-                    new BakeryProduct
-                )->getMorphClass();
+                $bakeryProductMorphClass = (new BakeryProduct)->getMorphClass();
 
-                if (
-                    (string) $media->model_type
-                    !== $bakeryProductMorphClass
-                ) {
+                if ((string) $media->model_type !== $bakeryProductMorphClass) {
                     return;
                 }
 
-                $model = BakeryProduct::query()->find(
-                    $media->model_id
-                );
+                $model = BakeryProduct::query()->find($media->model_id);
 
-                if (
-                    ! $model instanceof BakeryProduct
-                    || ! $model->media_verified
-                ) {
+                if (! $model instanceof BakeryProduct || ! $model->media_verified) {
                     return;
                 }
 
-                $model
-                    ->forceFill([
-                        'media_verified' => false,
-                    ])
-                    ->save();
+                $model->forceFill(['media_verified' => false])->save();
             },
         );
 

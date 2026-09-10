@@ -21,7 +21,7 @@ class SchemaMarkupResource extends Resource
     protected static ?string $navigationLabel = 'Schema Manager';
     protected static ?string $modelLabel      = 'Schema';
     protected static ?string $pluralModelLabel = 'Schema ها';
-    protected static ?string $navigationGroup = 'سئو';
+    protected static ?string $navigationGroup = 'بازاریابی و سئو';
     protected static ?int    $navigationSort  = 2;
 
     public static function form(Form $form): Form

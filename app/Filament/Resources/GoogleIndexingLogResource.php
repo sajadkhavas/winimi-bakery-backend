@@ -14,7 +14,7 @@ class GoogleIndexingLogResource extends Resource
 {
     protected static ?string $model = GoogleIndexingLog::class;
     protected static ?string $navigationIcon = 'heroicon-o-arrow-up-tray';
-    protected static ?string $navigationGroup = 'سئو';
+    protected static ?string $navigationGroup = 'بازاریابی و سئو';
     protected static ?string $label = 'Google Indexing';
     protected static ?string $pluralLabel = 'Google Indexing';
     protected static ?int $navigationSort = 6;

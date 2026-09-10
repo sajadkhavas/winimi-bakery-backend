@@ -25,7 +25,7 @@ class RedirectResource extends Resource
 
     protected static ?string $navigationLabel = 'Redirect Manager';
 
-    protected static ?string $navigationGroup = 'سئو';
+    protected static ?string $navigationGroup = 'بازاریابی و سئو';
 
     protected static ?int $navigationSort = 1;
 
