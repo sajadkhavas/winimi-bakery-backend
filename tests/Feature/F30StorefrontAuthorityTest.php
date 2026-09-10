@@ -10,7 +10,9 @@ use App\Models\BakeryCategoryLanding;
 use App\Models\NavigationItem;
 use App\Models\StoreSetting;
 use App\Models\User;
+use App\Policies\NavigationItemPolicy;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 class F30StorefrontAuthorityTest extends TestCase
@@ -196,11 +198,15 @@ class F30StorefrontAuthorityTest extends TestCase
 
     public function test_panel_operator_can_manage_navigation_without_stale_shield_permissions(): void
     {
-        $role = \Spatie\Permission\Models\Role::create([
+        $role = Role::create([
             'name' => 'panel_user',
             'guard_name' => 'web',
         ]);
-        $operator = User::factory()->create();
+        $operator = User::query()->create([
+            'name' => 'Panel Operator',
+            'email' => 'panel-operator@example.test',
+            'password' => bcrypt('password'),
+        ]);
         $operator->assignRole($role);
         $item = NavigationItem::query()->create([
             'label' => 'فروشگاه',
@@ -209,7 +215,7 @@ class F30StorefrontAuthorityTest extends TestCase
             'sort_order' => 10,
             'is_active' => true,
         ]);
-        $policy = app(\App\Policies\NavigationItemPolicy::class);
+        $policy = app(NavigationItemPolicy::class);
 
         $this->assertTrue($policy->viewAny($operator));
         $this->assertTrue($policy->view($operator, $item));
