@@ -47,6 +47,12 @@ jobs:
           coverage: none
           tools: composer:v2
 
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
       - name: Validate Composer metadata
         run: composer validate --no-check-publish --no-check-lock
 
@@ -64,6 +70,15 @@ jobs:
           path: composer-install.log
           if-no-files-found: error
           retention-days: 3
+
+      - name: Install admin asset dependencies
+        run: npm ci
+
+      - name: Build Winimi Filament admin theme
+        run: |
+          npm run build:admin
+          test -s public/build-admin/manifest.json
+          grep -q 'resources/css/filament/admin/theme.css' public/build-admin/manifest.json
 
       - name: Prepare Laravel environment
         run: |
