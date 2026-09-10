@@ -15,10 +15,19 @@ class AdminAudit32CompletionTest extends TestCase
 {
     use RefreshDatabase;
 
+    private function makeUser(string $email): User
+    {
+        return User::query()->create([
+            'name' => 'Audit Operator',
+            'email' => $email,
+            'password' => 'audit-test-password',
+        ]);
+    }
+
     private function operator(): User
     {
         Role::findOrCreate('panel_user', 'web');
-        $user = User::factory()->create();
+        $user = $this->makeUser('audit-operator@example.test');
         $user->assignRole('panel_user');
 
         return $user;
@@ -59,7 +68,7 @@ class AdminAudit32CompletionTest extends TestCase
 
     public function test_grouped_settings_require_an_operator_role(): void
     {
-        $this->actingAs(User::factory()->create());
+        $this->actingAs($this->makeUser('audit-no-role@example.test'));
         Livewire::test(EditStorefrontSettings::class)->assertForbidden();
     }
 
