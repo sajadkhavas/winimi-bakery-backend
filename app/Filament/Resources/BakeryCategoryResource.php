@@ -30,7 +30,6 @@ class BakeryCategoryResource extends Resource
     {
         return $form->schema([
             Forms\Components\Section::make('اطلاعات دسته')
-                ->description('نام، توضیح و تصویر اینجا منبع اصلی نمایش دسته در کاتالوگ و بخش‌های انتخاب‌شده سایت هستند.')
                 ->schema([
                     Forms\Components\TextInput::make('name')
                         ->label('نام دسته')
@@ -40,59 +39,35 @@ class BakeryCategoryResource extends Resource
                     Forms\Components\TextInput::make('slug')
                         ->label('Slug')
                         ->maxLength(140)
-                        ->helperText('در صورت خالی‌بودن از نام ساخته می‌شود. تغییر Slug بعد از انتشار، URL و سئو را تغییر می‌دهد.'),
+                        ->helperText('در صورت خالی‌بودن از نام ساخته می‌شود.'),
                     Forms\Components\Textarea::make('description')
                         ->label('توضیح دسته')
                         ->rows(4)
                         ->columnSpanFull(),
                     Forms\Components\FileUpload::make('image_path')
-                        ->label('تصویر اصلی دسته')
+                        ->label('تصویر دسته')
                         ->image()
                         ->imageEditor()
                         ->directory('bakery/categories')
-                        ->helperText('همین تصویر در کارت‌های دسته استفاده می‌شود و بر تصویر fallback فرانت اولویت دارد.')
                         ->columnSpanFull(),
                     Forms\Components\TextInput::make('image_alt')
                         ->label('متن جایگزین تصویر (Alt)')
                         ->maxLength(255)
-                        ->helperText('تصویر را کوتاه، دقیق و طبیعی توصیف کنید؛ اگر خالی بماند نام دسته استفاده می‌شود.')
+                        ->helperText('تصویر را کوتاه، دقیق و طبیعی توصیف کنید؛ از تکرار مصنوعی کلمات کلیدی پرهیز شود. اگر خالی بماند نام دسته به‌عنوان fallback استفاده می‌شود.')
                         ->columnSpanFull(),
-                ])
-                ->columns(2),
-
-            Forms\Components\Section::make('نمایش و ترتیب در سایت')
-                ->description('فعال‌بودن، حضور در صفحه اصلی و حضور در فوتر مستقل هستند. منوی هدر و زیرمنوها از بخش «منوهای هدر و فوتر» مدیریت می‌شود.')
-                ->schema([
                     Forms\Components\Toggle::make('is_active')
                         ->label('فعال در فروشگاه')
-                        ->helperText('اگر خاموش شود، دسته و محصولات وابسته از کاتالوگ عمومی خارج می‌شوند.')
+                        ->helperText(
+                            'فعال بودن دسته شرط لازم انتشار محصولات آن است، اما به‌تنهایی هیچ محصولی را منتشر نمی‌کند.'
+                        )
                         ->default(true),
                     Forms\Components\TextInput::make('sort_order')
-                        ->label('ترتیب اصلی کاتالوگ')
+                        ->label('ترتیب نمایش')
                         ->numeric()
                         ->minValue(0)
                         ->default(0),
-                    Forms\Components\Toggle::make('show_on_home')
-                        ->label('نمایش در دسته‌های صفحه اصلی')
-                        ->default(true),
-                    Forms\Components\TextInput::make('home_sort_order')
-                        ->label('ترتیب در صفحه اصلی')
-                        ->numeric()
-                        ->minValue(0)
-                        ->placeholder('همان ترتیب اصلی')
-                        ->helperText('اگر خالی باشد «ترتیب اصلی کاتالوگ» استفاده می‌شود.'),
-                    Forms\Components\Toggle::make('show_in_footer')
-                        ->label('نمایش در فوتر')
-                        ->default(true),
-                    Forms\Components\TextInput::make('footer_sort_order')
-                        ->label('ترتیب در فوتر')
-                        ->numeric()
-                        ->minValue(0)
-                        ->placeholder('همان ترتیب اصلی')
-                        ->helperText('اگر خالی باشد «ترتیب اصلی کاتالوگ» استفاده می‌شود.'),
                 ])
                 ->columns(2),
-
             Forms\Components\Section::make('سئو')
                 ->schema([
                     Forms\Components\TextInput::make('meta_title')
@@ -123,35 +98,27 @@ class BakeryCategoryResource extends Resource
                     ->label('Slug')
                     ->searchable()
                     ->toggleable(),
+                Tables\Columns\TextColumn::make('image_alt')
+                    ->label('Alt تصویر')
+                    ->limit(40)
+                    ->toggleable(isToggledHiddenByDefault: true),
                 Tables\Columns\TextColumn::make('products_count')
                     ->label('محصولات')
                     ->counts('products')
                     ->sortable(),
                 Tables\Columns\IconColumn::make('is_active')
-                    ->label('فروشگاه')
-                    ->boolean(),
-                Tables\Columns\IconColumn::make('show_on_home')
-                    ->label('خانه')
-                    ->boolean(),
-                Tables\Columns\IconColumn::make('show_in_footer')
-                    ->label('فوتر')
+                    ->label('فعال')
                     ->boolean(),
                 Tables\Columns\TextColumn::make('sort_order')
-                    ->label('ترتیب اصلی')
+                    ->label('ترتیب')
                     ->sortable(),
-                Tables\Columns\TextColumn::make('image_alt')
-                    ->label('Alt تصویر')
-                    ->limit(40)
-                    ->toggleable(isToggledHiddenByDefault: true),
                 Tables\Columns\TextColumn::make('updated_at')
                     ->label('آخرین تغییر')
                     ->since()
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
-                Tables\Filters\TernaryFilter::make('is_active')->label('فعال در فروشگاه'),
-                Tables\Filters\TernaryFilter::make('show_on_home')->label('نمایش صفحه اصلی'),
-                Tables\Filters\TernaryFilter::make('show_in_footer')->label('نمایش فوتر'),
+                Tables\Filters\TernaryFilter::make('is_active')->label('فعال'),
             ])
             ->actions([
                 Tables\Actions\EditAction::make(),
