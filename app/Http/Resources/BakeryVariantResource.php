@@ -14,12 +14,12 @@ class BakeryVariantResource extends JsonResource
             'name' => $this->name,
             'productCode' => $this->sku,
             'weightGrams' => $this->weight_grams,
+            'weightMinGrams' => $this->weight_min_grams,
+            'weightMaxGrams' => $this->weight_max_grams,
             'packageQuantity' => $this->package_quantity,
             'minOrderQuantity' => $this->min_order_quantity,
             'maxOrderQuantity' => $this->max_order_quantity,
-            'weight' => $this->weight_grams
-                ? number_format($this->weight_grams).' گرم'
-                : null,
+            'weight' => $this->weightLabel(),
             'priceToman' => $this->current_price_toman,
             'regularPriceToman' => $this->regular_price_toman,
             'salePriceToman' => $this->hasValidSalePrice()
