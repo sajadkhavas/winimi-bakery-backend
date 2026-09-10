@@ -82,6 +82,10 @@ class StoreSettingResource extends Resource
             return 'tag-id';
         }
 
+        if ($record->key === 'integrations.search_console_verification') {
+            return 'search-console';
+        }
+
         if ($record->type === 'boolean') {
             return 'boolean';
         }
@@ -96,6 +100,14 @@ class StoreSettingResource extends Resource
 
         if (str_contains($record->key, 'email')) {
             return 'email';
+        }
+
+        if (str_ends_with($record->key, '_href')) {
+            return 'internal-path';
+        }
+
+        if (str_ends_with($record->key, '_image_url')) {
+            return 'media-url';
         }
 
         if (str_contains($record->key, '_url')) {
@@ -153,7 +165,7 @@ class StoreSettingResource extends Resource
                         ->label('مسیر داخلی')
                         ->required()
                         ->helperText('مسیر با / شروع شود و آدرس خارجی وارد نشود.')
-                        ->rules(['string', 'max:255', 'regex:/^\/(?!\/).+/']),
+                        ->rules(['string', 'max:255', 'regex:/^\/(?!\/).*$/']),
                 ])
                 ->columns(2)
                 ->maxItems(4)
@@ -177,6 +189,11 @@ class StoreSettingResource extends Resource
                 ->placeholder('G-XXXXXXXX یا GTM-XXXXXXX')
                 ->helperText('فقط شناسه عمومی GA4/GTM؛ هیچ Secret یا Credential اینجا وارد نشود.')
                 ->rules(['nullable', 'regex:/^(G-[A-Z0-9]+|GTM-[A-Z0-9]+)$/i']),
+            'search-console' => Forms\Components\TextInput::make('value')
+                ->label('کد تأیید Google Search Console')
+                ->helperText('فقط token عمومی meta verification را وارد کنید؛ فایل، HTML یا Secret وارد نشود.')
+                ->maxLength(255)
+                ->rules(['nullable', 'regex:/^[A-Za-z0-9_-]+$/']),
             'boolean' => Forms\Components\Toggle::make('value')
                 ->label('فعال')
                 ->formatStateUsing(fn ($state): bool => filter_var($state, FILTER_VALIDATE_BOOL))
@@ -194,6 +211,16 @@ class StoreSettingResource extends Resource
                 ->label('ایمیل')
                 ->email()
                 ->maxLength(255),
+            'internal-path' => Forms\Components\TextInput::make('value')
+                ->label('مسیر داخلی سایت')
+                ->helperText('مثل /products یا /blog؛ آدرس خارجی مجاز نیست.')
+                ->maxLength(255)
+                ->rules(['nullable', 'regex:/^\/(?!\/).*$/']),
+            'media-url' => Forms\Components\TextInput::make('value')
+                ->label('آدرس تصویر')
+                ->helperText('مسیر داخلی /... یا URL کامل http/https مجاز است.')
+                ->maxLength(2048)
+                ->rules(['nullable', 'regex:/^(\/(?!\/).+|https?:\/\/\S+)$/i']),
             'url' => Forms\Components\TextInput::make('value')
                 ->label('نشانی اینترنتی')
                 ->url()
