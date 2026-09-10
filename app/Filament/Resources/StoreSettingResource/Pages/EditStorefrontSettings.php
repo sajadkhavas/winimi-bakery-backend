@@ -54,17 +54,23 @@ class EditStorefrontSettings extends Page
 
     public function form(Form $form): Form
     {
-        return $form->schema($this->settings()->map(fn (StoreSetting $setting) =>
-            Forms\Components\Group::make([
-                StoreSettingResource::makeValueField($setting)->label($setting->label ?: 'تنظیم فروشگاه'),
-            ])->statePath('setting_'.$setting->getKey())
-        )->all())->statePath('data')->columns(2);
+        return $form
+            ->schema(
+                $this->settings()->map(
+                    fn (StoreSetting $setting) => Forms\Components\Group::make([
+                        StoreSettingResource::makeValueField($setting)->label($setting->label ?: 'تنظیم فروشگاه'),
+                    ])->statePath('setting_'.$setting->getKey())
+                )->all()
+            )
+            ->statePath('data')
+            ->columns(2);
     }
 
     public function save(): void
     {
         $this->authorizeOperator();
         $values = $this->form->getState();
+
         DB::transaction(function () use ($values): void {
             // Only existing, server-selected settings may change. Never hydrate
             // key/type/group/is_public from browser state or seed missing rows.
@@ -73,19 +79,23 @@ class EditStorefrontSettings extends Page
                 if (! array_key_exists($name, $values) || ! array_key_exists($name, $this->originalValues)) {
                     continue;
                 }
+
                 $value = $values[$name]['value'] ?? null;
                 if ((string) $value === (string) $this->originalValues[$name]) {
                     continue;
                 }
+
                 if ((string) $setting->value !== (string) $this->originalValues[$name]) {
                     throw ValidationException::withMessages([
                         "data.{$name}.value" => 'این مقدار توسط مدیر دیگری تغییر کرده است؛ بخش را دوباره باز کنید.',
                     ]);
                 }
+
                 abort_unless(StoreSettingResource::canEdit($setting), 403);
                 $setting->update(['value' => $value]);
             }
         });
+
         $this->fillSection();
         Notification::make()->title('تنظیمات این بخش ذخیره شد')->success()->send();
     }
@@ -94,11 +104,13 @@ class EditStorefrontSettings extends Page
     {
         $values = [];
         $this->originalValues = [];
+
         foreach ($this->settings() as $setting) {
             $name = 'setting_'.$setting->getKey();
             $values[$name] = ['value' => $setting->value];
             $this->originalValues[$name] = $setting->value;
         }
+
         $this->form->fill($values);
     }
 
@@ -107,7 +119,8 @@ class EditStorefrontSettings extends Page
         return StoreSetting::query()
             ->whereIn('group', self::SECTIONS[$this->section]['groups'] ?? [])
             ->where('key', '!=', 'social.instagram')
-            ->orderBy('group')->orderBy('id')
+            ->orderBy('group')
+            ->orderBy('id')
             ->when($lock, fn ($query) => $query->lockForUpdate())
             ->get();
     }
