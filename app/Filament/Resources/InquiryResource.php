@@ -48,8 +48,7 @@ class InquiryResource extends Resource
                     Forms\Components\KeyValue::make('metadata')
                         ->label('جزئیات ثبت‌شده')
                         ->disabled()
-                        ->columnSpanFull()
-                        ->collapsible(),
+                        ->columnSpanFull(),
                 ])
                 ->columns(2),
             Forms\Components\Section::make('پیگیری داخلی')
