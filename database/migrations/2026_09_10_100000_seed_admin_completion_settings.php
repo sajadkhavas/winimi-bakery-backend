@@ -31,18 +31,30 @@ return new class extends Migration
             ['consent', 'consent.reject_label', 'string', 'فعلاً نه', 'متن رد'],
         ];
 
-        foreach ($settings as [$group, $key, $type, $value, $label]) {
-            $exists = DB::table('store_settings')->where('key', $key)->exists();
-            $payload = compact('group', 'type', 'value', 'label') + [
+        foreach ($settings as [$group, $key, $type, $defaultValue, $label]) {
+            $metadata = [
+                'group' => $group,
+                'type' => $type,
+                'label' => $label,
                 'is_public' => true,
                 'updated_at' => $now,
             ];
 
-            if (! $exists) {
-                $payload['created_at'] = $now;
+            $existing = DB::table('store_settings')->where('key', $key)->first();
+
+            if ($existing) {
+                // Once an operator-managed setting exists, migrations may repair its
+                // contract metadata but must never replace the operator's current value.
+                DB::table('store_settings')->where('key', $key)->update($metadata);
+
+                continue;
             }
 
-            DB::table('store_settings')->updateOrInsert(['key' => $key], $payload);
+            DB::table('store_settings')->insert($metadata + [
+                'key' => $key,
+                'value' => $defaultValue,
+                'created_at' => $now,
+            ]);
         }
     }
 
