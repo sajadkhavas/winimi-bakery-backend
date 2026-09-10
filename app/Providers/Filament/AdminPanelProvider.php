@@ -41,7 +41,9 @@ class AdminPanelProvider extends PanelProvider
             ->path('admin')
             ->login()
             ->brandName(config('winimi.brand.name', 'وینیمی بیکری'))
-            ->favicon(asset('brand/shinethree-mark.svg'))
+            ->brandLogo(asset('brand/winimi-logo.svg'))
+            ->brandLogoHeight('3rem')
+            ->favicon(asset('brand/winimi-logo.svg'))
             ->colors(['primary' => Color::Emerald])
             ->font('Vazirmatn')
             ->discoverResources(in: app_path('Filament/Resources'), for: 'App\\Filament\\Resources')
@@ -72,12 +74,14 @@ class AdminPanelProvider extends PanelProvider
                     ->navigationIcon('heroicon-o-photo')
                     ->navigationGroup('محتوا')
                     ->navigationSort(5)
+                    ->registerNavigation(false)
                     ->resource(MediaResource::class),
             ])
             ->authMiddleware([Authenticate::class])
             ->navigationGroups([
                 'فروشگاه وینیمی',
                 'محتوا',
+                'محتوا و سئو',
                 'فروش',
                 'تنظیمات',
                 'سیستم',
