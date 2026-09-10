@@ -7,6 +7,7 @@ use App\Models\Product;
 use App\Observers\ProductObserver;
 use App\Policies\AuthenticationLogPolicy;
 use App\Support\IranianMobile;
+use Filament\Forms\Components\SpatieMediaLibraryFileUpload;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Event;
@@ -26,6 +27,15 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         Gate::policy(AuthenticationLog::class, AuthenticationLogPolicy::class);
+
+        SpatieMediaLibraryFileUpload::configureUsing(function (SpatieMediaLibraryFileUpload $upload): void {
+            if (in_array($upload->getName(), ['main_image', 'gallery_images'], true)) {
+                $upload
+                    ->hidden()
+                    ->disabled()
+                    ->dehydrated(false);
+            }
+        });
 
         $phase18 = config('phase18', []);
         if (is_array($phase18) && filled($phase18['roadmap_version'] ?? null)) {
