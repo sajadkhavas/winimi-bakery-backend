@@ -54,6 +54,19 @@ class BakeryFaqResource extends Resource
             Forms\Components\RichEditor::make('answer')
                 ->label('پاسخ')
                 ->required()
+                ->toolbarButtons([
+                    'blockquote',
+                    'bold',
+                    'bulletList',
+                    'italic',
+                    'link',
+                    'orderedList',
+                    'redo',
+                    'strike',
+                    'underline',
+                    'undo',
+                ])
+                ->helperText('پاسخ را کوتاه و قابل اسکن نگه دارید؛ لینک و فهرست در صورت نیاز مجاز است.')
                 ->columnSpanFull(),
         ])->columns(3);
     }
