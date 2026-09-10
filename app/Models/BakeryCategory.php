@@ -23,19 +23,11 @@ class BakeryCategory extends Model
         'meta_title',
         'meta_description',
         'is_active',
-        'show_on_home',
-        'show_in_footer',
-        'home_sort_order',
-        'footer_sort_order',
         'sort_order',
     ];
 
     protected $casts = [
         'is_active' => 'boolean',
-        'show_on_home' => 'boolean',
-        'show_in_footer' => 'boolean',
-        'home_sort_order' => 'integer',
-        'footer_sort_order' => 'integer',
         'sort_order' => 'integer',
     ];
 
