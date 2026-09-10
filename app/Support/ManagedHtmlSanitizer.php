@@ -22,6 +22,12 @@ final class ManagedHtmlSanitizer
         'svg', 'math', 'video', 'audio', 'canvas', 'noscript',
     ];
 
+    private const HURDLE_CLASS = 'filament-tiptap-hurdle';
+
+    private const HURDLE_COLORS = [
+        'gray_light', 'gray', 'gray_dark', 'primary', 'secondary', 'tertiary', 'accent',
+    ];
+
     public static function sanitize(?string $html): ?string
     {
         $html = trim((string) $html);
@@ -99,7 +105,8 @@ final class ManagedHtmlSanitizer
             'a' => ['href', 'target', 'rel', 'title', 'hreflang'],
             'img' => ['src', 'alt', 'title', 'width', 'height', 'loading'],
             'th', 'td' => ['colspan', 'rowspan', 'style'],
-            'p', 'div', 'span', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'blockquote' => ['style'],
+            'div' => ['style', 'class', 'data-color'],
+            'p', 'span', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'blockquote' => ['style'],
             default => [],
         };
 
@@ -154,6 +161,26 @@ final class ManagedHtmlSanitizer
                     $element->setAttribute('style', $style);
                 }
             }
+        }
+
+        if ($tag === 'div') {
+            self::sanitizeHurdleAttributes($element);
+        }
+    }
+
+    private static function sanitizeHurdleAttributes(DOMElement $element): void
+    {
+        $class = trim($element->getAttribute('class'));
+        if ($class !== self::HURDLE_CLASS) {
+            $element->removeAttribute('class');
+            $element->removeAttribute('data-color');
+
+            return;
+        }
+
+        $color = trim($element->getAttribute('data-color'));
+        if ($color !== '' && ! in_array($color, self::HURDLE_COLORS, true)) {
+            $element->removeAttribute('data-color');
         }
     }
 
