@@ -64,6 +64,27 @@ class F31AdminCompletionTest extends TestCase
         }
     }
 
+    public function test_admin_completion_migration_preserves_existing_operator_values(): void
+    {
+        StoreSetting::query()
+            ->where('key', 'pwa.name')
+            ->update([
+                'value' => 'نام ثبت‌شده مدیر',
+                'label' => 'عنوان قدیمی',
+                'is_public' => false,
+            ]);
+
+        $migration = require database_path('migrations/2026_09_10_100000_seed_admin_completion_settings.php');
+        $migration->up();
+
+        $setting = StoreSetting::query()->where('key', 'pwa.name')->firstOrFail();
+
+        $this->assertSame('نام ثبت‌شده مدیر', $setting->value);
+        $this->assertSame('نام کامل اپ', $setting->label);
+        $this->assertSame('string', $setting->type);
+        $this->assertTrue($setting->is_public);
+    }
+
     public function test_store_settings_use_specialized_safe_editors(): void
     {
         foreach ([
