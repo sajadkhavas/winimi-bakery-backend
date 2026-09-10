@@ -72,8 +72,11 @@ class F31AdminCompletionTest extends TestCase
             'pwa.background_color' => 'color',
             'integrations.google_tag_mode' => 'tag-mode',
             'integrations.google_tag_id' => 'tag-id',
+            'integrations.search_console_verification' => 'search-console',
             'consent.analytics_enabled' => 'boolean',
             'pwa.offline_description' => 'long-text',
+            'home.hero_primary_href' => 'internal-path',
+            'home.hero_image_url' => 'media-url',
         ] as $key => $expectedEditor) {
             $setting = StoreSetting::query()->where('key', $key)->firstOrFail();
             $this->assertSame($expectedEditor, StoreSettingResource::editorKind($setting));
