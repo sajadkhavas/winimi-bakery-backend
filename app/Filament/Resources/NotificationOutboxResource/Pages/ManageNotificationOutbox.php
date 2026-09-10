@@ -9,6 +9,7 @@ use App\Models\NotificationOutbox;
 use App\Models\WebPushSubscription;
 use Filament\Actions;
 use Filament\Forms;
+use Filament\Forms\Get;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ManageRecords;
 use Illuminate\Support\Facades\DB;
@@ -24,26 +25,42 @@ class ManageNotificationOutbox extends ManageRecords
                 ->label('ارسال اعلان عمومی')
                 ->icon('heroicon-o-megaphone')
                 ->color('success')
+                ->modalHeading('پیش‌نمایش و تأیید اعلان عمومی')
                 ->modalDescription(fn (): string => sprintf(
-                    'این پیام فقط برای %s دستگاه فعال که رضایت اعلان‌های بازاریابی را داده‌اند در صف قرار می‌گیرد. اعلان‌های تراکنشی سفارش مسیر جداگانه دارند.',
+                    'گیرندگان فعلی: %s دستگاه فعال با رضایت صریح اعلان بازاریابی. اعلان‌های تراکنشی سفارش مستقل هستند.',
                     number_format(WebPushSubscription::query()->marketingRecipients()->count()),
                 ))
+                ->modalSubmitActionLabel('تأیید نهایی و قرار دادن در صف')
                 ->form([
                     Forms\Components\TextInput::make('title')
                         ->label('عنوان اعلان')
                         ->required()
-                        ->maxLength(80),
+                        ->maxLength(80)
+                        ->live(onBlur: true),
                     Forms\Components\Textarea::make('body')
                         ->label('متن اعلان')
                         ->required()
                         ->rows(4)
-                        ->maxLength(240),
+                        ->maxLength(240)
+                        ->live(onBlur: true),
                     Forms\Components\TextInput::make('url')
                         ->label('مسیر بعد از لمس اعلان')
                         ->default('/products')
                         ->required()
                         ->rules(['regex:/^\/(?!\/)[^\s]*$/'])
-                        ->helperText('فقط مسیر داخلی امن؛ مانند /products'),
+                        ->helperText('فقط مسیر داخلی امن؛ مانند /products')
+                        ->live(onBlur: true),
+                    Forms\Components\Placeholder::make('broadcast_preview')
+                        ->label('پیش‌نمایش نهایی')
+                        ->content(function (Get $get): string {
+                            $title = trim((string) $get('title')) ?: '—';
+                            $body = trim((string) $get('body')) ?: '—';
+                            $url = trim((string) $get('url')) ?: '—';
+                            $eligible = number_format(WebPushSubscription::query()->marketingRecipients()->count());
+
+                            return "نوع: اعلان عمومی بازاریابی\nگیرنده مجاز: {$eligible} دستگاه\nعنوان: {$title}\nمتن: {$body}\nمقصد کلیک: {$url}\nرضایت: فقط marketing_enabled فعال";
+                        })
+                        ->columnSpanFull(),
                 ])
                 ->requiresConfirmation()
                 ->action(function (array $data): void {
