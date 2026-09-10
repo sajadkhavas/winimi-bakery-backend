@@ -5,6 +5,7 @@ namespace App\Filament\Resources;
 use App\Filament\Resources\BakeryCategoryLandingResource\Pages;
 use App\Models\BakeryCategory;
 use App\Models\BakeryCategoryLanding;
+use App\Models\BakeryPost;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
@@ -88,7 +89,37 @@ class BakeryCategoryLandingResource extends Resource
                         ->columnSpanFull(),
                     Forms\Components\Repeater::make('guides')
                         ->label('راهنماهای مرتبط (Internal Linking)')
+                        ->helperText('برای مقاله‌های منتشرشده، مقاله را از فهرست انتخاب کنید تا مسیر، عنوان و توضیح خودکار تکمیل شود. ورودی‌های قدیمی دستی بدون حذف باقی می‌مانند.')
                         ->schema([
+                            Forms\Components\Select::make('post_slug')
+                                ->label('انتخاب مقاله منتشرشده')
+                                ->options(fn (): array => BakeryPost::query()
+                                    ->published()
+                                    ->orderByDesc('published_at')
+                                    ->pluck('title', 'slug')
+                                    ->all())
+                                ->searchable()
+                                ->preload()
+                                ->live()
+                                ->afterStateUpdated(function (?string $state, callable $set): void {
+                                    if (blank($state)) {
+                                        return;
+                                    }
+
+                                    $post = BakeryPost::query()
+                                        ->published()
+                                        ->where('slug', $state)
+                                        ->first();
+
+                                    if ($post === null) {
+                                        return;
+                                    }
+
+                                    $set('href', '/blog/'.$post->slug);
+                                    $set('title', $post->title);
+                                    $set('description', filled($post->excerpt) ? $post->excerpt : $post->title);
+                                })
+                                ->columnSpanFull(),
                             Forms\Components\TextInput::make('href')
                                 ->label('مسیر داخلی')
                                 ->required()
@@ -101,8 +132,10 @@ class BakeryCategoryLandingResource extends Resource
                             Forms\Components\Textarea::make('description')
                                 ->label('توضیح')
                                 ->required()
-                                ->rows(3),
+                                ->rows(3)
+                                ->columnSpanFull(),
                         ])
+                        ->columns(2)
                         ->reorderable()
                         ->columnSpanFull(),
                 ]),
