@@ -12,7 +12,7 @@ class FileManagerPage extends Page
 
     protected static ?string $navigationLabel = 'ویرایش فایل‌ها';
 
-    protected static ?string $navigationGroup = 'سیستم';
+    protected static ?string $navigationGroup = 'سیستم و امنیت';
 
     protected static ?int $navigationSort = 10;
 

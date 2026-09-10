@@ -23,7 +23,7 @@ class PaymentAttemptResource extends Resource
 
     protected static ?string $pluralModelLabel = 'پیگیری پرداخت‌ها';
 
-    protected static ?string $navigationGroup = 'فروشگاه وینیمی';
+    protected static ?string $navigationGroup = 'فروشگاه';
 
     protected static ?int $navigationSort = 5;
 

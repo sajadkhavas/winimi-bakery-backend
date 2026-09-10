@@ -26,7 +26,7 @@ class BakeryProductResource extends Resource
 
     protected static ?string $pluralModelLabel = 'محصولات بیکری';
 
-    protected static ?string $navigationGroup = 'فروشگاه وینیمی';
+    protected static ?string $navigationGroup = 'فروشگاه';
 
     protected static ?int $navigationSort = 2;
 

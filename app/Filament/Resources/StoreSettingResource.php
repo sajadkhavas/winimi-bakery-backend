@@ -24,7 +24,7 @@ class StoreSettingResource extends Resource
 
     protected static ?string $pluralModelLabel = 'محتوای سایت و صفحه اصلی';
 
-    protected static ?string $navigationGroup = 'تنظیمات';
+    protected static ?string $navigationGroup = 'تنظیمات فروشگاه';
 
     protected static ?int $navigationSort = 2;
 
@@ -135,7 +135,7 @@ class StoreSettingResource extends Resource
         return 'text';
     }
 
-    private static function makeValueField(?StoreSetting $record): Forms\Components\Field
+    public static function makeValueField(?StoreSetting $record): Forms\Components\Field
     {
         $kind = self::editorKind($record);
 
@@ -355,7 +355,8 @@ class StoreSettingResource extends Resource
     public static function getPages(): array
     {
         return [
-            'index' => Pages\ManageStoreSettings::route('/'),
+            'index' => Pages\EditStorefrontSettings::route('/'),
+            'records' => Pages\ManageStoreSettings::route('/records'),
         ];
     }
 }

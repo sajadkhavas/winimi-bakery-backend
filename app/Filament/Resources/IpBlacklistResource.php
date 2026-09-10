@@ -14,7 +14,7 @@ class IpBlacklistResource extends Resource
 {
     protected static ?string $model = IpBlacklist::class;
     protected static ?string $navigationIcon = 'heroicon-o-shield-exclamation';
-    protected static ?string $navigationGroup = 'امنیت';
+    protected static ?string $navigationGroup = 'سیستم و امنیت';
     protected static ?string $label = 'IP مسدود';
     protected static ?string $pluralLabel = 'IP های مسدود';
     protected static ?int $navigationSort = 1;

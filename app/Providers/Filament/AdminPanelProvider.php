@@ -80,12 +80,12 @@ class AdminPanelProvider extends PanelProvider
             ])
             ->authMiddleware([Authenticate::class])
             ->navigationGroups([
-                'فروشگاه وینیمی',
+                'فروشگاه',
                 'محتوا',
-                'محتوا و سئو',
-                'فروش',
-                'تنظیمات',
-                'سیستم',
+                'بازاریابی و سئو',
+                'ارتباطات',
+                'تنظیمات فروشگاه',
+                'سیستم و امنیت',
             ])
             ->globalSearchKeyBindings(['command+k', 'ctrl+k'])
             ->sidebarCollapsibleOnDesktop();

@@ -1041,7 +1041,7 @@ class ImportLaunchMedia extends Command
                                     ? BakeryMediaAsset::USAGE_BRAND
                                     : BakeryMediaAsset::USAGE_UNASSIGNED,
 
-                            'status' => BakeryMediaAsset::STATUS_READY,
+                            'status' => BakeryMediaAsset::STATUS_PENDING,
 
                             'notes' => $notes,
                         ]);
@@ -1090,6 +1090,17 @@ class ImportLaunchMedia extends Command
                         .$binding['source_filename']
                     );
                 }
+
+                // Imports assign immediately; finish derivatives before the
+                // readiness transition rather than depending on a queued job.
+                app(\Spatie\MediaLibrary\Conversions\FileManipulator::class)->performConversions(
+                    \Spatie\MediaLibrary\Conversions\ConversionCollection::createForMedia($source)
+                        ->filter(fn ($conversion): bool => in_array($conversion->getName(), ['thumb', 'preview'], true)),
+                    $source,
+                    true,
+                );
+                $asset->refresh();
+                $asset->update(['status' => BakeryMediaAsset::STATUS_READY]);
 
                 if (
                     $product

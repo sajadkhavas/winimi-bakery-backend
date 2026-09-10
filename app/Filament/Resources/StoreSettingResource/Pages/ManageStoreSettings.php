@@ -11,6 +11,11 @@ class ManageStoreSettings extends ManageRecords
 {
     protected static string $resource = StoreSettingResource::class;
 
+    public static function canAccess(array $parameters = []): bool
+    {
+        return auth()->user()?->hasRole('super_admin') ?? false;
+    }
+
     protected function getHeaderActions(): array
     {
         return [];

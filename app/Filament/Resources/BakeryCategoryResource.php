@@ -23,7 +23,7 @@ class BakeryCategoryResource extends Resource
 
     protected static ?string $pluralModelLabel = 'دسته‌های بیکری';
 
-    protected static ?string $navigationGroup = 'فروشگاه وینیمی';
+    protected static ?string $navigationGroup = 'فروشگاه';
 
     protected static ?int $navigationSort = 1;
 

@@ -21,7 +21,7 @@ class WebhookResource extends Resource
     protected static ?string $navigationLabel = 'Webhook Manager';
     protected static ?string $modelLabel      = 'Webhook';
     protected static ?string $pluralModelLabel = 'Webhooks';
-    protected static ?string $navigationGroup = 'پیشرفته';
+    protected static ?string $navigationGroup = 'سیستم و امنیت';
     protected static ?int    $navigationSort  = 2;
 
     public static function form(Form $form): Form

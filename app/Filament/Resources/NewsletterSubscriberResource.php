@@ -15,7 +15,7 @@ class NewsletterSubscriberResource extends Resource
 {
     protected static ?string $model = NewsletterSubscriber::class;
     protected static ?string $navigationIcon = 'heroicon-o-envelope';
-    protected static ?string $navigationGroup = 'بازاریابی';
+    protected static ?string $navigationGroup = 'بازاریابی و سئو';
     protected static ?string $label = 'اشتراک خبرنامه';
     protected static ?string $pluralLabel = 'مشترکین خبرنامه';
     protected static ?int $navigationSort = 1;

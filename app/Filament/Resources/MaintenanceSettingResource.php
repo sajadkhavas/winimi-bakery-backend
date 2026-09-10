@@ -15,7 +15,7 @@ class MaintenanceSettingResource extends Resource
 {
     protected static ?string $model = MaintenanceSetting::class;
     protected static ?string $navigationIcon = 'heroicon-o-wrench-screwdriver';
-    protected static ?string $navigationGroup = 'امنیت';
+    protected static ?string $navigationGroup = 'سیستم و امنیت';
     protected static ?string $label = 'حالت تعمیر';
     protected static ?string $pluralLabel = 'حالت تعمیر';
     protected static ?int $navigationSort = 2;

@@ -15,7 +15,7 @@ class ShortUrlResource extends Resource
 {
     protected static ?string $model = ShortUrl::class;
     protected static ?string $navigationIcon = 'heroicon-o-link';
-    protected static ?string $navigationGroup = 'بازاریابی';
+    protected static ?string $navigationGroup = 'بازاریابی و سئو';
     protected static ?string $label = 'لینک کوتاه';
     protected static ?string $pluralLabel = 'لینک‌های کوتاه';
     protected static ?int $navigationSort = 5;

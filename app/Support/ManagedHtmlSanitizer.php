@@ -30,7 +30,7 @@ final class ManagedHtmlSanitizer
         }
 
         if (! class_exists(DOMDocument::class)) {
-            return strip_tags($html, '<p><div><span><h1><h2><h3><h4><h5><h6><a><ul><ol><li><strong><b><em><i><u><s><del><mark><small><sup><sub><blockquote><br><hr><code><pre><figure><figcaption><img><table><thead><tbody><tr><th><td><details><summary><section><article>');
+            throw new \RuntimeException('The DOM extension is required to sanitize managed HTML.');
         }
 
         $document = new DOMDocument('1.0', 'UTF-8');
@@ -83,6 +83,7 @@ final class ManagedHtmlSanitizer
             }
 
             if (! in_array($tag, self::ALLOWED_TAGS, true)) {
+                self::sanitizeChildren($node);
                 self::unwrap($node);
                 continue;
             }

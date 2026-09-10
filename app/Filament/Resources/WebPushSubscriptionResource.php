@@ -19,7 +19,7 @@ class WebPushSubscriptionResource extends Resource
 
     protected static ?string $pluralModelLabel = 'اعضای اعلان وب';
 
-    protected static ?string $navigationGroup = 'فروشگاه وینیمی';
+    protected static ?string $navigationGroup = 'ارتباطات';
 
     protected static ?int $navigationSort = 10;
 

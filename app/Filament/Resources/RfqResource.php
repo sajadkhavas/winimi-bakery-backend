@@ -21,7 +21,7 @@ class RfqResource extends Resource
     protected static ?string $navigationLabel = 'استعلام‌های قیمت';
     protected static ?string $modelLabel = 'استعلام';
     protected static ?string $pluralModelLabel = 'استعلام‌ها';
-    protected static ?string $navigationGroup = 'فروش';
+    protected static ?string $navigationGroup = 'ارتباطات';
     protected static ?int $navigationSort = 1;
 
     public static function getNavigationBadge(): ?string

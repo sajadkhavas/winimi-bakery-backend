@@ -765,7 +765,7 @@ class ReplaceLaunchPlaceholdersTest extends TestCase
                     'source_sha256' => $sha,
                     'manifest_version' => 1,
                     'usage' => BakeryMediaAsset::USAGE_UNASSIGNED,
-                    'status' => BakeryMediaAsset::STATUS_READY,
+                    'status' => BakeryMediaAsset::STATUS_PENDING,
                 ]);
 
         $exit = Artisan::call(

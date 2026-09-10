@@ -22,7 +22,7 @@ class DeliveryZoneResource extends Resource
 
     protected static ?string $pluralModelLabel = 'مناطق ارسال';
 
-    protected static ?string $navigationGroup = 'فروشگاه وینیمی';
+    protected static ?string $navigationGroup = 'فروشگاه';
 
     protected static ?int $navigationSort = 6;
 

@@ -27,7 +27,7 @@ class ManageNotificationOutbox extends ManageRecords
                 ->color('success')
                 ->modalHeading('پیش‌نمایش و تأیید اعلان عمومی')
                 ->modalDescription(fn (): string => sprintf(
-                    'گیرندگان فعلی: %s دستگاه فعال با رضایت صریح اعلان بازاریابی. اعلان‌های تراکنشی سفارش مستقل هستند.',
+                    'گیرندگان فعلی: %s دستگاه فعال با رضایت اعلان‌های بازاریابی. اعلان‌های تراکنشی سفارش مستقل هستند.',
                     number_format(WebPushSubscription::query()->marketingRecipients()->count()),
                 ))
                 ->modalSubmitActionLabel('تأیید نهایی و قرار دادن در صف')

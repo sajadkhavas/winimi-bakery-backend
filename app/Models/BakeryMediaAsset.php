@@ -98,15 +98,13 @@ class BakeryMediaAsset extends Model implements HasMedia
             ->performOnCollections('source')
             ->fit(Fit::Crop, 240, 240)
             ->format('webp')
-            ->quality(78)
-            ->queued();
+            ->quality(78);
 
         $this->addMediaConversion('preview')
             ->performOnCollections('source')
             ->fit(Fit::Max, 1200, 1200)
             ->format('webp')
-            ->quality(80)
-            ->queued();
+            ->quality(80);
     }
 
     public function product(): BelongsTo

@@ -24,7 +24,7 @@ class BakeryCityPageResource extends Resource
 
     protected static ?string $pluralModelLabel = 'صفحات شهری';
 
-    protected static ?string $navigationGroup = 'محتوا و سئو';
+    protected static ?string $navigationGroup = 'بازاریابی و سئو';
 
     protected static ?int $navigationSort = 4;
 

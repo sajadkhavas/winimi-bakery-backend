@@ -13,7 +13,7 @@ class QueueMonitorPage extends Page
 
     protected static ?string $navigationLabel = 'مانیتور صف';
 
-    protected static ?string $navigationGroup = 'سیستم';
+    protected static ?string $navigationGroup = 'سیستم و امنیت';
 
     protected static ?int $navigationSort = 5;
 

@@ -149,7 +149,7 @@ class BakeryMediaLibraryTest extends TestCase
 
                 'usage' => BakeryMediaAsset::USAGE_UNASSIGNED,
 
-                'status' => BakeryMediaAsset::STATUS_READY,
+                'status' => BakeryMediaAsset::STATUS_PENDING,
             ]);
 
         $asset
@@ -163,6 +163,9 @@ class BakeryMediaLibraryTest extends TestCase
             ->toMediaCollection(
                 'source'
             );
+
+        $asset = $asset->fresh();
+        $asset->update(['status' => BakeryMediaAsset::STATUS_READY]);
 
         return $asset->fresh();
     }

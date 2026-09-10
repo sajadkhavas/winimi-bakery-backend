@@ -12,7 +12,7 @@ class CacheManagerPage extends Page
 
     protected static ?string $navigationLabel = 'مدیریت کش';
 
-    protected static ?string $navigationGroup = 'سیستم';
+    protected static ?string $navigationGroup = 'سیستم و امنیت';
 
     protected static ?int $navigationSort = 4;
 

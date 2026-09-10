@@ -22,7 +22,7 @@ class SliderResource extends Resource
     protected static ?string $navigationLabel = 'اسلایدر صفحه اصلی';
     protected static ?string $modelLabel = 'اسلاید';
     protected static ?string $pluralModelLabel = 'اسلایدها';
-    protected static ?string $navigationGroup = 'تنظیمات';
+    protected static ?string $navigationGroup = 'تنظیمات فروشگاه';
     protected static ?int $navigationSort = 1;
 
     public static function form(Form $form): Form

@@ -14,7 +14,7 @@ class CouponResource extends Resource
 {
     protected static ?string $model = Coupon::class;
     protected static ?string $navigationIcon = 'heroicon-o-ticket';
-    protected static ?string $navigationGroup = 'بازاریابی';
+    protected static ?string $navigationGroup = 'بازاریابی و سئو';
     protected static ?string $label = 'کوپن تخفیف';
     protected static ?string $pluralLabel = 'کوپن‌های تخفیف';
     protected static ?int $navigationSort = 3;

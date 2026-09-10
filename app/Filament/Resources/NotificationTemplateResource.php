@@ -23,7 +23,7 @@ class NotificationTemplateResource extends Resource
 
     protected static ?string $pluralModelLabel = 'قالب‌های اعلان';
 
-    protected static ?string $navigationGroup = 'تنظیمات';
+    protected static ?string $navigationGroup = 'تنظیمات فروشگاه';
 
     protected static ?int $navigationSort = 2;
 
