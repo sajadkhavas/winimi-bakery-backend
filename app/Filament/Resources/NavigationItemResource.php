@@ -14,80 +14,103 @@ use Filament\Tables\Table;
 class NavigationItemResource extends Resource
 {
     protected static ?string $model = NavigationItem::class;
-    protected static ?string $navigationIcon = 'heroicon-o-bars-3';
-    protected static ?string $navigationLabel = 'منوی هدر و زیرمنوها';
 
-    protected static ?string $pluralModelLabel = 'منوی هدر و زیرمنوها';
+    protected static ?string $navigationIcon = 'heroicon-o-bars-3';
+
+    protected static ?string $navigationLabel = 'منوهای هدر و فوتر';
+
+    protected static ?string $modelLabel = 'آیتم منو';
+
+    protected static ?string $pluralModelLabel = 'منوهای هدر و فوتر';
+
     protected static ?string $navigationGroup = 'تنظیمات';
+
     protected static ?int $navigationSort = 1;
 
     public static function form(Form $form): Form
     {
         return $form->schema([
-            Forms\Components\Section::make('لینک منو')
-                ->description('برای ساخت زیر‌دسته هدر، «زیرمنوی» را روی فروشگاه بگذارید؛ محل نمایش «همه‌جا» آن را هم در دسکتاپ و هم در منوی موبایل نشان می‌دهد.')
+            Forms\Components\Section::make('لینک و جایگاه منو')
+                ->description('برای هدر و فوتر می‌توانید گروه اصلی و زیرلینک بسازید. در فوتر، آیتم اصلیِ دارای زیرمجموعه عنوان ستون می‌شود و زیرمجموعه‌ها لینک‌های همان ستون هستند.')
                 ->schema([
-                Forms\Components\TextInput::make('label')
-                    ->label('عنوان منو')
-                    ->required()
-                    ->maxLength(255),
+                    Forms\Components\TextInput::make('label')
+                        ->label('عنوان')
+                        ->required()
+                        ->maxLength(255),
 
-                Forms\Components\TextInput::make('href')
-                    ->label('لینک')
-                    ->required()
-                    ->maxLength(255),
+                    Forms\Components\TextInput::make('href')
+                        ->label('مسیر / لینک')
+                        ->required()
+                        ->maxLength(255)
+                        ->helperText('برای لینک داخلی با / شروع کنید؛ مثل /products یا /about.'),
 
-                Forms\Components\Select::make('parent_id')
-                    ->label('زیرمنوی')
-                    ->options(fn () => NavigationItem::whereNull('parent_id')->pluck('label', 'id'))
-                    ->searchable()
-                    ->preload()
-                    ->nullable()
-                    ->placeholder('منوی اصلی (بدون والد)')
-                    ->helperText('برای دسته‌های هدر، «فروشگاه» را انتخاب کنید.'),
+                    Forms\Components\Select::make('parent_id')
+                        ->label('زیرمجموعه‌ی')
+                        ->options(fn (): array => NavigationItem::query()
+                            ->whereNull('parent_id')
+                            ->orderBy('sort_order')
+                            ->pluck('label', 'id')
+                            ->all())
+                        ->searchable()
+                        ->preload()
+                        ->nullable()
+                        ->placeholder('گروه / منوی اصلی')
+                        ->helperText('برای ساخت ستون فوتر، عنوان ستون را بدون والد بسازید و لینک‌های آن را زیرمجموعه قرار دهید.'),
 
-                Forms\Components\Select::make('linked_category_id')
-                    ->label('دسته محصول مرتبط')
-                    ->options(fn () => BakeryCategory::query()->orderBy('sort_order')->pluck('name', 'id'))
-                    ->searchable()
-                    ->nullable(),
+                    Forms\Components\Select::make('linked_category_id')
+                        ->label('دسته محصول مرتبط')
+                        ->options(fn (): array => BakeryCategory::query()
+                            ->orderBy('sort_order')
+                            ->pluck('name', 'id')
+                            ->all())
+                        ->searchable()
+                        ->preload()
+                        ->nullable()
+                        ->helperText('اختیاری؛ برای اتصال معنایی منو به یک دسته و امکان مخفی‌سازی در صورت خالی بودن.'),
 
-                Forms\Components\Select::make('placement')
-                    ->label('محل نمایش')
-                    ->options(['all' => 'همه‌جا', 'header' => 'فقط هدر', 'mobile' => 'فقط موبایل', 'footer' => 'فقط فوتر'])
-                    ->default('all')
-                    ->required()
-                    ->helperText('«همه‌جا» یعنی هدر دسکتاپ و منوی موبایل.'),
+                    Forms\Components\Select::make('placement')
+                        ->label('محل نمایش')
+                        ->options([
+                            'all' => 'هدر دسکتاپ + موبایل',
+                            'header' => 'فقط هدر دسکتاپ',
+                            'mobile' => 'فقط منوی موبایل',
+                            'footer' => 'فقط فوتر',
+                        ])
+                        ->default('all')
+                        ->required()
+                        ->helperText('برای ستون‌ها و لینک‌های فوتر، «فقط فوتر» را انتخاب کنید.'),
 
-                Forms\Components\TextInput::make('sort_order')
-                    ->label('ترتیب نمایش')
-                    ->numeric()
-                    ->default(0),
+                    Forms\Components\TextInput::make('sort_order')
+                        ->label('ترتیب نمایش')
+                        ->numeric()
+                        ->minValue(0)
+                        ->default(0),
 
-                Forms\Components\TextInput::make('icon')
-                    ->label('آیکون (اختیاری)')
-                    ->maxLength(100),
+                    Forms\Components\TextInput::make('icon')
+                        ->label('آیکون (اختیاری)')
+                        ->maxLength(100),
 
-                Forms\Components\Textarea::make('description')
-                    ->label('توضیحات (اختیاری)')
-                    ->rows(2),
+                    Forms\Components\Textarea::make('description')
+                        ->label('توضیح کوتاه (اختیاری)')
+                        ->rows(2),
 
-                Forms\Components\FileUpload::make('image_path')
-                    ->label('تصویر منو (اختیاری)')
-                    ->image()
-                    ->directory('navigation'),
+                    Forms\Components\FileUpload::make('image_path')
+                        ->label('تصویر منو (اختیاری)')
+                        ->image()
+                        ->directory('navigation'),
 
-                Forms\Components\Toggle::make('open_in_new_tab')
-                    ->label('بازشدن در تب جدید'),
+                    Forms\Components\Toggle::make('open_in_new_tab')
+                        ->label('بازشدن در تب جدید'),
 
-                Forms\Components\Toggle::make('hide_when_empty')
-                    ->label('مخفی‌کردن دسته بدون محصول')
-                    ->helperText('فقط وقتی دسته محصول مرتبط انتخاب شده باشد.'),
+                    Forms\Components\Toggle::make('hide_when_empty')
+                        ->label('مخفی‌کردن دسته بدون محصول')
+                        ->helperText('فقط وقتی دسته محصول مرتبط انتخاب شده باشد.'),
 
-                Forms\Components\Toggle::make('is_active')
-                    ->label('فعال')
-                    ->default(true),
-            ])->columns(2),
+                    Forms\Components\Toggle::make('is_active')
+                        ->label('فعال')
+                        ->default(true),
+                ])
+                ->columns(2),
         ]);
     }
 
@@ -101,16 +124,23 @@ class NavigationItemResource extends Resource
                     ->sortable(),
 
                 Tables\Columns\TextColumn::make('href')
-                    ->label('لینک')
-                    ->searchable(),
+                    ->label('مسیر')
+                    ->searchable()
+                    ->copyable(),
 
                 Tables\Columns\TextColumn::make('parent.label')
-                    ->label('والد')
-                    ->default('منوی اصلی'),
+                    ->label('والد / ستون')
+                    ->default('اصلی'),
 
                 Tables\Columns\TextColumn::make('placement')
                     ->label('محل نمایش')
-                    ->badge(),
+                    ->badge()
+                    ->formatStateUsing(fn (string $state): string => match ($state) {
+                        'header' => 'هدر دسکتاپ',
+                        'mobile' => 'موبایل',
+                        'footer' => 'فوتر',
+                        default => 'هدر + موبایل',
+                    }),
 
                 Tables\Columns\TextColumn::make('sort_order')
                     ->label('ترتیب')
@@ -122,7 +152,18 @@ class NavigationItemResource extends Resource
             ])
             ->defaultSort('sort_order')
             ->reorderable('sort_order')
-            ->filters([])
+            ->filters([
+                Tables\Filters\SelectFilter::make('placement')
+                    ->label('محل نمایش')
+                    ->options([
+                        'all' => 'هدر + موبایل',
+                        'header' => 'هدر دسکتاپ',
+                        'mobile' => 'موبایل',
+                        'footer' => 'فوتر',
+                    ]),
+                Tables\Filters\TernaryFilter::make('is_active')
+                    ->label('فعال'),
+            ])
             ->actions([
                 Tables\Actions\EditAction::make(),
                 Tables\Actions\DeleteAction::make(),
@@ -137,9 +178,9 @@ class NavigationItemResource extends Resource
     public static function getPages(): array
     {
         return [
-            'index'  => Pages\ListNavigationItems::route('/'),
+            'index' => Pages\ListNavigationItems::route('/'),
             'create' => Pages\CreateNavigationItem::route('/create'),
-            'edit'   => Pages\EditNavigationItem::route('/{record}/edit'),
+            'edit' => Pages\EditNavigationItem::route('/{record}/edit'),
         ];
     }
 }
