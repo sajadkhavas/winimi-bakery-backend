@@ -11,6 +11,7 @@ use App\Models\User;
 use App\Support\ManagedHtmlSanitizer;
 use FilamentTiptapEditor\TiptapEditor;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\File;
 use Livewire\Livewire;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
@@ -131,5 +132,36 @@ class AdminAudit32CompletionTest extends TestCase
         $this->assertTrue(QueueMonitorPage::canAccess());
         $this->assertTrue(CacheManagerPage::canAccess());
         $this->assertTrue(FileManagerPage::canAccess());
+    }
+
+    public function test_local_admin_navigation_uses_only_the_six_audit_groups(): void
+    {
+        $allowed = [
+            'فروشگاه',
+            'محتوا',
+            'بازاریابی و سئو',
+            'ارتباطات',
+            'تنظیمات فروشگاه',
+            'سیستم و امنیت',
+        ];
+
+        $paths = array_map(
+            static fn ($file): string => $file->getPathname(),
+            File::allFiles(app_path('Filament')),
+        );
+        $paths[] = app_path('Providers/Filament/AdminPanelProvider.php');
+
+        foreach ($paths as $path) {
+            $source = File::get($path);
+            preg_match_all(
+                "/(?:\\$navigationGroup\\s*=\\s*|->navigationGroup\\()'([^']+)'/",
+                $source,
+                $matches,
+            );
+
+            foreach ($matches[1] ?? [] as $group) {
+                $this->assertContains($group, $allowed, "Unexpected navigation group [{$group}] in {$path}");
+            }
+        }
     }
 }
