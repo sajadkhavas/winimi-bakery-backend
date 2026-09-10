@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Filament\Actions\BakeryTiptapPreviewAction;
 use App\Models\BakeryCityPage;
 use App\Models\BakeryContentPage;
 use App\Models\BakeryFaq;
@@ -13,6 +14,7 @@ use App\Policies\AuthenticationLogPolicy;
 use App\Support\IranianMobile;
 use App\Support\ManagedHtmlSanitizer;
 use Filament\Forms\Components\SpatieMediaLibraryFileUpload;
+use FilamentTiptapEditor\TiptapEditor;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Event;
@@ -40,6 +42,10 @@ class AppServiceProvider extends ServiceProvider
                     ->disabled()
                     ->dehydrated(false);
             }
+        });
+
+        TiptapEditor::configureUsing(static function (TiptapEditor $editor): void {
+            $editor->hintAction(BakeryTiptapPreviewAction::make());
         });
 
         $richHtmlFields = [
