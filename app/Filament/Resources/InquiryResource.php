@@ -18,39 +18,68 @@ class InquiryResource extends Resource
 
     protected static ?string $navigationIcon = 'heroicon-o-inbox-arrow-down';
 
-    protected static ?string $navigationLabel = 'درخواست‌ها';
+    protected static ?string $navigationLabel = 'درخواست‌های مشتریان';
 
     protected static ?string $modelLabel = 'درخواست';
 
     protected static ?string $pluralModelLabel = 'درخواست‌های مشتریان';
 
-    protected static ?string $navigationGroup = 'فروشگاه وینیمی';
+    protected static ?string $navigationGroup = 'ارتباطات';
 
-    protected static ?int $navigationSort = 8;
+    protected static ?int $navigationSort = 2;
 
     public static function form(Form $form): Form
     {
         return $form->schema([
-            Forms\Components\TextInput::make('public_id')->label('شناسه')->disabled(),
-            Forms\Components\Select::make('type')
-                ->label('نوع')
-                ->options(collect(InquiryType::cases())->mapWithKeys(
-                    fn (InquiryType $type): array => [$type->value => $type->label()],
-                ))
-                ->disabled(),
-            Forms\Components\TextInput::make('full_name')->label('نام')->disabled(),
-            Forms\Components\TextInput::make('mobile')->label('موبایل')->disabled(),
-            Forms\Components\TextInput::make('email')->label('ایمیل')->disabled(),
-            Forms\Components\TextInput::make('subject')->label('موضوع')->disabled()->columnSpanFull(),
-            Forms\Components\Textarea::make('message')->label('پیام')->disabled()->rows(7)->columnSpanFull(),
-            Forms\Components\KeyValue::make('metadata')->label('جزئیات')->disabled()->columnSpanFull(),
-            Forms\Components\Select::make('status')
-                ->label('وضعیت پیگیری')
-                ->options(collect(InquiryStatus::cases())->mapWithKeys(
-                    fn (InquiryStatus $status): array => [$status->value => $status->label()],
-                ))
-                ->required(),
-        ])->columns(2);
+            Forms\Components\Section::make('پیام مشتری')
+                ->schema([
+                    Forms\Components\TextInput::make('public_id')->label('شناسه')->disabled(),
+                    Forms\Components\Select::make('type')
+                        ->label('نوع')
+                        ->options(collect(InquiryType::cases())->mapWithKeys(
+                            fn (InquiryType $type): array => [$type->value => $type->label()],
+                        ))
+                        ->disabled(),
+                    Forms\Components\TextInput::make('full_name')->label('نام')->disabled(),
+                    Forms\Components\TextInput::make('mobile')->label('موبایل')->disabled(),
+                    Forms\Components\TextInput::make('email')->label('ایمیل')->disabled(),
+                    Forms\Components\TextInput::make('subject')->label('موضوع')->disabled()->columnSpanFull(),
+                    Forms\Components\Textarea::make('message')->label('پیام')->disabled()->rows(7)->columnSpanFull(),
+                    Forms\Components\KeyValue::make('metadata')
+                        ->label('جزئیات ثبت‌شده')
+                        ->disabled()
+                        ->columnSpanFull()
+                        ->collapsible(),
+                ])
+                ->columns(2),
+            Forms\Components\Section::make('پیگیری داخلی')
+                ->description('این اطلاعات داخلی است و به مشتری نمایش داده نمی‌شود.')
+                ->schema([
+                    Forms\Components\Select::make('status')
+                        ->label('وضعیت پیگیری')
+                        ->options(collect(InquiryStatus::cases())->mapWithKeys(
+                            fn (InquiryStatus $status): array => [$status->value => $status->label()],
+                        ))
+                        ->required(),
+                    Forms\Components\Select::make('assigned_user_id')
+                        ->label('مسئول پیگیری')
+                        ->relationship('assignedUser', 'name', modifyQueryUsing: fn ($query) => $query->role(['super_admin', 'panel_user']))
+                        ->searchable(['name', 'email'])
+                        ->preload()
+                        ->nullable(),
+                    Forms\Components\Textarea::make('internal_note')
+                        ->label('یادداشت داخلی')
+                        ->rows(4)
+                        ->maxLength(5000)
+                        ->columnSpanFull(),
+                    Forms\Components\DateTimePicker::make('last_action_at')
+                        ->label('آخرین اقدام')
+                        ->disabled()
+                        ->dehydrated(false)
+                        ->seconds(false),
+                ])
+                ->columns(2),
+        ]);
     }
 
     public static function table(Table $table): Table
@@ -69,6 +98,15 @@ class InquiryResource extends Resource
                     ->label('وضعیت')
                     ->badge()
                     ->formatStateUsing(fn (InquiryStatus $state): string => $state->label()),
+                Tables\Columns\TextColumn::make('assignedUser.name')
+                    ->label('مسئول')
+                    ->placeholder('تخصیص‌نیافته')
+                    ->toggleable(),
+                Tables\Columns\TextColumn::make('last_action_at')
+                    ->label('آخرین اقدام')
+                    ->dateTime('Y/m/d H:i')
+                    ->placeholder('هنوز اقدامی نشده')
+                    ->sortable(),
                 Tables\Columns\TextColumn::make('created_at')->label('ثبت')->dateTime('Y/m/d H:i')->sortable(),
             ])
             ->filters([
@@ -82,6 +120,11 @@ class InquiryResource extends Resource
                     ->options(collect(InquiryStatus::cases())->mapWithKeys(
                         fn (InquiryStatus $status): array => [$status->value => $status->label()],
                     )),
+                Tables\Filters\SelectFilter::make('assigned_user_id')
+                    ->label('مسئول پیگیری')
+                    ->relationship('assignedUser', 'name')
+                    ->searchable()
+                    ->preload(),
             ])
             ->actions([Tables\Actions\EditAction::make()->label('بررسی')])
             ->bulkActions([])
