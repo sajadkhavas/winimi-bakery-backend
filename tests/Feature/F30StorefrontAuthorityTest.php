@@ -191,9 +191,11 @@ class F30StorefrontAuthorityTest extends TestCase
 
         $this->assertSame('منوهای هدر و فوتر', NavigationItemResource::getNavigationLabel());
         $this->assertStringContainsString("Select::make('parent_id')", $source);
-        $this->assertStringContainsString('«فروشگاه» را انتخاب کنید', $source);
+        $this->assertStringContainsString('زیرمجموعه‌ی', $source);
+        $this->assertStringContainsString('گروه / منوی اصلی', $source);
         $this->assertStringContainsString("Select::make('linked_category_id')", $source);
         $this->assertStringContainsString("Select::make('placement')", $source);
+        $this->assertStringContainsString("'footer' => 'فقط فوتر'", $source);
     }
 
     public function test_panel_operator_can_manage_navigation_without_stale_shield_permissions(): void
