@@ -19,12 +19,16 @@ class ManageStoreSettings extends ManageRecords
     public function getTabs(): array
     {
         return [
-            'all' => Tab::make('همه'),
+            'all' => Tab::make('همه')->modifyQueryUsing(
+                fn (Builder $query): Builder => $query->where('key', '!=', 'social.instagram'),
+            ),
             'home' => Tab::make('صفحه اصلی')->modifyQueryUsing(
                 fn (Builder $query): Builder => $query->where('group', 'home'),
             ),
             'brand-contact' => Tab::make('برند و تماس')->modifyQueryUsing(
-                fn (Builder $query): Builder => $query->whereIn('group', ['brand', 'contact', 'social']),
+                fn (Builder $query): Builder => $query
+                    ->whereIn('group', ['brand', 'contact', 'social'])
+                    ->where('key', '!=', 'social.instagram'),
             ),
             'header' => Tab::make('هدر')->modifyQueryUsing(
                 fn (Builder $query): Builder => $query->whereIn('group', ['navigation', 'header']),
