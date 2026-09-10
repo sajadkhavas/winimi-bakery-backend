@@ -21,13 +21,13 @@ class SitemapManager extends Page
 
     protected static ?string $navigationIcon = 'heroicon-o-map';
 
-    protected static ?string $navigationLabel = 'نقشه سایت';
+    protected static ?string $navigationLabel = 'بررسی نقشه سایت';
 
-    protected static ?string $title = 'مدیریت نقشه سایت';
+    protected static ?string $title = 'بررسی نقشه سایت';
 
-    protected static ?string $navigationGroup = 'سیستم';
+    protected static ?string $navigationGroup = 'سیستم و امنیت';
 
-    protected static ?int $navigationSort = 2;
+    protected static ?int $navigationSort = 11;
 
     protected static string $view = 'filament.pages.sitemap-manager';
 
@@ -48,8 +48,14 @@ class SitemapManager extends Page
         return auth()->user()?->hasRole('super_admin') ?? false;
     }
 
+    public static function shouldRegisterNavigation(): bool
+    {
+        return static::canAccess();
+    }
+
     public function mount(): void
     {
+        abort_unless(static::canAccess(), 403);
         $this->loadStatus();
     }
 
@@ -62,17 +68,15 @@ class SitemapManager extends Page
         $this->statusMessage = null;
 
         try {
-            $response = Http::accept('application/xml')
-                ->timeout(15)
-                ->get($this->sitemapUrl);
+            $response = Http::accept('application/xml')->timeout(15)->get($this->sitemapUrl);
         } catch (Throwable $exception) {
-            $this->statusMessage = 'خطا در دریافت Sitemap: '.$exception->getMessage();
+            $this->statusMessage = 'خطا در دریافت نقشه سایت: '.$exception->getMessage();
 
             return;
         }
 
         if (! $response->successful()) {
-            $this->statusMessage = 'پاسخ Sitemap با HTTP '.$response->status().' دریافت شد.';
+            $this->statusMessage = 'پاسخ نقشه سایت با HTTP '.$response->status().' دریافت شد.';
 
             return;
         }
@@ -83,37 +87,33 @@ class SitemapManager extends Page
         foreach (self::LEGACY_MARKERS as $marker) {
             if (str_contains($normalized, strtolower($marker))) {
                 $this->legacyDetected = true;
-                $this->statusMessage = 'اثر Sitemap قدیمی ToolMaster شناسایی شد: '.$marker;
+                $this->statusMessage = 'اثر نقشه سایت قدیمی ToolMaster شناسایی شد: '.$marker;
 
                 return;
             }
         }
 
         if (! str_contains($body, '<urlset') || ! str_contains($body, '<loc>')) {
-            $this->statusMessage = 'ساختار XML Sitemap معتبر نیست.';
+            $this->statusMessage = 'ساختار XML نقشه سایت معتبر نیست.';
 
             return;
         }
 
         preg_match_all('/<loc>(.*?)<\/loc>/is', $body, $matches);
         $locations = array_values(array_filter(array_map(
-            static fn (string $location): string => html_entity_decode(
-                trim($location),
-                ENT_QUOTES | ENT_XML1,
-                'UTF-8',
-            ),
+            static fn (string $location): string => html_entity_decode(trim($location), ENT_QUOTES | ENT_XML1, 'UTF-8'),
             $matches[1] ?? [],
         )));
 
         if ($locations === []) {
-            $this->statusMessage = 'Sitemap هیچ URL قابل بررسی ندارد.';
+            $this->statusMessage = 'نقشه سایت هیچ URL قابل بررسی ندارد.';
 
             return;
         }
 
         foreach ($locations as $location) {
             if (! str_starts_with($location, 'https://winimibakery.com/')) {
-                $this->statusMessage = 'URL خارج از دامنه اصلی وینیمی در Sitemap وجود دارد: '.$location;
+                $this->statusMessage = 'URL خارج از دامنه اصلی وینیمی در نقشه سایت وجود دارد: '.$location;
 
                 return;
             }
@@ -121,23 +121,19 @@ class SitemapManager extends Page
 
         $this->urlCount = count($locations);
         $this->reachable = true;
-        $this->statusMessage = 'Sitemap اصلی وینیمی سالم و بدون اثر ToolMaster است.';
+        $this->statusMessage = 'نقشه سایت اصلی وینیمی سالم و بدون اثر ToolMaster است.';
     }
 
     public function refreshSitemapStatus(): void
     {
+        abort_unless(static::canAccess(), 403);
         $this->loadStatus();
 
         $notification = Notification::make()
             ->title($this->reachable ? 'نقشه سایت وینیمی سالم است' : 'نقشه سایت نیاز به بررسی دارد')
             ->body($this->statusMessage);
 
-        if ($this->reachable) {
-            $notification->success();
-        } else {
-            $notification->danger();
-        }
-
+        $this->reachable ? $notification->success() : $notification->danger();
         $notification->send();
     }
 }
