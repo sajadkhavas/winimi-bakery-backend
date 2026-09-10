@@ -222,6 +222,7 @@ class BakeryMediaAssetResource extends Resource
                             Artisan::call('media-library:regenerate', [
                                 '--ids' => [(string) $media->getKey()],
                                 '--only' => ['thumb', 'preview'],
+                                '--force' => true,
                             ]);
 
                             $record->unsetRelation('media');
