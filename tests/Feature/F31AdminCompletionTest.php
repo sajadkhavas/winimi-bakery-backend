@@ -64,7 +64,7 @@ class F31AdminCompletionTest extends TestCase
         }
     }
 
-    public function test_admin_completion_migration_preserves_existing_operator_values(): void
+    public function test_admin_completion_migration_preserves_existing_operator_values_and_rolls_back_non_destructively(): void
     {
         StoreSetting::query()
             ->where('key', 'pwa.name')
@@ -83,6 +83,12 @@ class F31AdminCompletionTest extends TestCase
         $this->assertSame('نام کامل اپ', $setting->label);
         $this->assertSame('string', $setting->type);
         $this->assertTrue($setting->is_public);
+
+        $migration->down();
+
+        $preserved = StoreSetting::query()->where('key', 'pwa.name')->firstOrFail();
+        $this->assertSame('نام ثبت‌شده مدیر', $preserved->value);
+        $this->assertTrue($preserved->is_public);
     }
 
     public function test_store_settings_use_specialized_safe_editors(): void
