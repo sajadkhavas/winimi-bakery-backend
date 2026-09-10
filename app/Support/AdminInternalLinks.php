@@ -12,7 +12,7 @@ final class AdminInternalLinks
     /**
      * @return array<string, string>
      */
-    public static function options(): array
+    public static function options(?string $current = null): array
     {
         $options = [
             '/' => 'صفحه اصلی',
@@ -54,6 +54,19 @@ final class AdminInternalLinks
                 $options['/'.ltrim($page->slug, '/')] = 'صفحه — '.$page->title;
             });
 
+        $current = trim((string) $current);
+        if ($current !== '' && ! array_key_exists($current, $options)) {
+            $options = [$current => 'لینک داخلی فعلی (Legacy) — '.$current] + $options;
+        }
+
         return $options;
+    }
+
+    public static function titleFor(string $href): string
+    {
+        $label = self::options($href)[$href] ?? $href;
+        $parts = array_map('trim', explode('—', $label, 2));
+
+        return $parts[count($parts) - 1] ?: $href;
     }
 }
