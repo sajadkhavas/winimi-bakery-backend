@@ -29,16 +29,20 @@ class BakeryFaqResource extends Resource
     public static function form(Form $form): Form
     {
         return $form->schema([
-            Forms\Components\TextInput::make('category')
+            Forms\Components\Select::make('category')
                 ->label('دسته')
+                ->options(fn (): array => self::categoryOptions())
+                ->searchable()
+                ->preload()
                 ->required()
-                ->default('general')
-                ->maxLength(100),
+                ->default('general'),
             Forms\Components\TextInput::make('sort_order')
                 ->label('ترتیب')
                 ->numeric()
+                ->minValue(0)
                 ->default(0)
-                ->required(),
+                ->required()
+                ->helperText('در جدول نیز می‌توانید ترتیب سؤال‌ها را با حالت مرتب‌سازی جابه‌جا کنید.'),
             Forms\Components\Toggle::make('is_active')
                 ->label('فعال')
                 ->default(true),
@@ -59,19 +63,49 @@ class BakeryFaqResource extends Resource
         return $table
             ->columns([
                 Tables\Columns\TextColumn::make('question')->label('سؤال')->searchable()->limit(70),
-                Tables\Columns\TextColumn::make('category')->label('دسته')->badge()->sortable(),
+                Tables\Columns\TextColumn::make('category')
+                    ->label('دسته')
+                    ->badge()
+                    ->formatStateUsing(fn (string $state): string => self::categoryOptions()[$state] ?? $state)
+                    ->sortable(),
                 Tables\Columns\TextColumn::make('sort_order')->label('ترتیب')->sortable(),
                 Tables\Columns\IconColumn::make('is_active')->label('فعال')->boolean(),
             ])
             ->filters([
                 Tables\Filters\SelectFilter::make('category')
                     ->label('دسته')
-                    ->options(fn (): array => BakeryFaq::query()->distinct()->orderBy('category')->pluck('category', 'category')->all()),
+                    ->options(fn (): array => self::categoryOptions()),
                 Tables\Filters\TernaryFilter::make('is_active')->label('فعال'),
             ])
-            ->actions([Tables\Actions\EditAction::make()])
-            ->bulkActions([Tables\Actions\DeleteBulkAction::make()])
+            ->actions([
+                Tables\Actions\EditAction::make(),
+                Tables\Actions\DeleteAction::make()
+                    ->label('حذف')
+                    ->requiresConfirmation(),
+            ])
+            ->bulkActions([])
+            ->reorderable('sort_order')
             ->defaultSort('sort_order');
+    }
+
+    public static function categoryOptions(): array
+    {
+        $options = [
+            'general' => 'عمومی',
+            'home-decision' => 'راهنمای انتخاب در صفحه اصلی',
+            'products' => 'محصولات و نگهداری',
+            'orders' => 'سفارش و پرداخت',
+            'delivery' => 'ارسال و تحویل',
+        ];
+
+        foreach (BakeryFaq::query()->distinct()->orderBy('category')->pluck('category') as $category) {
+            $category = trim((string) $category);
+            if ($category !== '' && ! array_key_exists($category, $options)) {
+                $options[$category] = $category;
+            }
+        }
+
+        return $options;
     }
 
     public static function getPages(): array
