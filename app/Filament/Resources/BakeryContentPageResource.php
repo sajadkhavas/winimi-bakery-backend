@@ -57,6 +57,21 @@ class BakeryContentPageResource extends Resource
                         ->columnSpanFull(),
                     Forms\Components\RichEditor::make('content')
                         ->label('متن')
+                        ->toolbarButtons([
+                            'blockquote',
+                            'bold',
+                            'bulletList',
+                            'h2',
+                            'h3',
+                            'italic',
+                            'link',
+                            'orderedList',
+                            'redo',
+                            'strike',
+                            'underline',
+                            'undo',
+                        ])
+                        ->helperText('برای ساختار صفحه از H2/H3، فهرست و لینک استفاده کنید؛ HTML یا iframe دلخواه وارد نشود.')
                         ->columnSpanFull(),
                 ])->columns(2),
             Forms\Components\Section::make('انتشار و سئو')
@@ -96,8 +111,11 @@ class BakeryContentPageResource extends Resource
                         'homepage' => 'صفحه اصلی',
                     ]),
             ])
-            ->actions([Tables\Actions\EditAction::make()])
-            ->bulkActions([Tables\Actions\DeleteBulkAction::make()])
+            ->actions([
+                Tables\Actions\EditAction::make(),
+                Tables\Actions\DeleteAction::make()->requiresConfirmation(),
+            ])
+            ->bulkActions([])
             ->defaultSort('updated_at', 'desc');
     }
 
