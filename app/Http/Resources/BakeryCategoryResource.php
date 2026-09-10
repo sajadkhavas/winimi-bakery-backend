@@ -22,6 +22,15 @@ class BakeryCategoryResource extends JsonResource
                 ? (filled($this->image_alt) ? trim((string) $this->image_alt) : $this->name)
                 : null,
             'productCount' => $this->whenCounted('products'),
+            'showOnHome' => (bool) $this->show_on_home,
+            'showInFooter' => (bool) $this->show_in_footer,
+            'sortOrder' => (int) $this->sort_order,
+            'homeSortOrder' => $this->home_sort_order !== null
+                ? (int) $this->home_sort_order
+                : (int) $this->sort_order,
+            'footerSortOrder' => $this->footer_sort_order !== null
+                ? (int) $this->footer_sort_order
+                : (int) $this->sort_order,
             'seo' => [
                 'title' => $this->meta_title ?: $this->name,
                 'description' => $this->meta_description ?: $this->description,
