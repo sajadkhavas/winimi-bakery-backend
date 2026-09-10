@@ -12,11 +12,17 @@ use Spatie\Activitylog\Models\Activity;
 class ActivityLogResource extends Resource
 {
     protected static ?string $model = Activity::class;
+
     protected static ?string $navigationIcon = 'heroicon-o-clipboard-document-list';
-    protected static ?string $navigationLabel = 'لاگ فعالیت‌ها';
+
+    protected static ?string $navigationLabel = 'تاریخچه فعالیت‌ها';
+
     protected static ?string $modelLabel = 'فعالیت';
-    protected static ?string $pluralModelLabel = 'فعالیت‌ها';
-    protected static ?string $navigationGroup = 'سیستم';
+
+    protected static ?string $pluralModelLabel = 'تاریخچه فعالیت‌ها';
+
+    protected static ?string $navigationGroup = 'سیستم و امنیت';
+
     protected static ?int $navigationSort = 3;
 
     public static function form(Form $form): Form
@@ -28,49 +34,39 @@ class ActivityLogResource extends Resource
     {
         return $table
             ->columns([
-                Tables\Columns\TextColumn::make('id')
-                    ->label('#')
-                    ->sortable()
-                    ->width(60),
-
+                Tables\Columns\TextColumn::make('id')->label('#')->sortable()->width(60),
                 Tables\Columns\TextColumn::make('log_name')
                     ->label('نوع')
                     ->badge()
-                    ->color(fn ($state) => match($state) {
+                    ->color(fn ($state): string => match ($state) {
+                        'auth' => 'info',
                         'default' => 'gray',
-                        'auth'    => 'info',
-                        default   => 'primary',
+                        default => 'primary',
                     })
                     ->sortable(),
-
                 Tables\Columns\TextColumn::make('event')
                     ->label('رویداد')
                     ->badge()
-                    ->color(fn ($state) => match($state) {
+                    ->formatStateUsing(fn (?string $state): string => match ($state) {
+                        'created' => 'ایجاد',
+                        'updated' => 'ویرایش',
+                        'deleted' => 'حذف',
+                        default => (string) $state,
+                    })
+                    ->color(fn ($state): string => match ($state) {
                         'created' => 'success',
                         'updated' => 'warning',
                         'deleted' => 'danger',
-                        default   => 'gray',
+                        default => 'gray',
                     }),
-
-                Tables\Columns\TextColumn::make('description')
-                    ->label('توضیحات')
-                    ->limit(50),
-
+                Tables\Columns\TextColumn::make('description')->label('توضیحات')->limit(60),
                 Tables\Columns\TextColumn::make('subject_type')
                     ->label('موضوع')
-                    ->formatStateUsing(fn ($state) => $state ? class_basename($state) : '—')
+                    ->formatStateUsing(fn ($state): string => $state ? class_basename($state) : '—')
                     ->badge()
                     ->color('gray'),
-
-                Tables\Columns\TextColumn::make('causer.name')
-                    ->label('کاربر')
-                    ->default('—'),
-
-                Tables\Columns\TextColumn::make('created_at')
-                    ->label('زمان')
-                    ->dateTime('Y/m/d H:i')
-                    ->sortable(),
+                Tables\Columns\TextColumn::make('causer.name')->label('مدیر / عامل')->default('—'),
+                Tables\Columns\TextColumn::make('created_at')->label('زمان')->dateTime('Y/m/d H:i')->sortable(),
             ])
             ->defaultSort('id', 'desc')
             ->paginated([25, 50, 100])
@@ -82,42 +78,57 @@ class ActivityLogResource extends Resource
                         'updated' => 'ویرایش',
                         'deleted' => 'حذف',
                     ]),
-
                 Tables\Filters\SelectFilter::make('log_name')
-                    ->label('نوع لاگ')
+                    ->label('نوع تاریخچه')
                     ->options([
-                        'default' => 'پیش‌فرض',
-                        'auth'    => 'احراز هویت',
+                        'default' => 'عمومی',
+                        'auth' => 'احراز هویت',
                     ]),
             ])
-            ->actions([
-                Tables\Actions\ViewAction::make(),
-            ])
-            ->bulkActions([
-                // فقط super_admin می‌تونه حذف کنه
-                Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make()
-                        ->visible(fn () => auth()->user()?->hasRole('super_admin')),
-                ]),
-            ]);
+            ->actions([Tables\Actions\ViewAction::make()->label('مشاهده')])
+            ->bulkActions([]);
+    }
+
+    public static function shouldRegisterNavigation(): bool
+    {
+        return static::canViewAny();
+    }
+
+    public static function canViewAny(): bool
+    {
+        return auth()->user()?->hasRole('super_admin') ?? false;
+    }
+
+    public static function canView($record): bool
+    {
+        return static::canViewAny();
+    }
+
+    public static function canCreate(): bool
+    {
+        return false;
+    }
+
+    public static function canEdit($record): bool
+    {
+        return false;
+    }
+
+    public static function canDelete($record): bool
+    {
+        return false;
+    }
+
+    public static function canDeleteAny(): bool
+    {
+        return false;
     }
 
     public static function getPages(): array
     {
         return [
             'index' => Pages\ListActivityLog::route('/'),
-            'view'  => Pages\ViewActivityLog::route('/{record}'),
+            'view' => Pages\ViewActivityLog::route('/{record}'),
         ];
-    }
-
-    public static function canCreate(): bool { return false; }
-    public static function canEdit($record): bool { return false; }
-    public static function canDelete($record): bool
-    {
-        return auth()->user()?->hasRole('super_admin') ?? false;
-    }
-    public static function canDeleteAny(): bool
-    {
-        return auth()->user()?->hasRole('super_admin') ?? false;
     }
 }
