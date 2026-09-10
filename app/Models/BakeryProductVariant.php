@@ -16,6 +16,8 @@ class BakeryProductVariant extends Model
         'name',
         'sku',
         'weight_grams',
+        'weight_min_grams',
+        'weight_max_grams',
         'package_quantity',
         'regular_price_toman',
         'sale_price_toman',
@@ -32,6 +34,8 @@ class BakeryProductVariant extends Model
 
     protected $casts = [
         'weight_grams' => 'integer',
+        'weight_min_grams' => 'integer',
+        'weight_max_grams' => 'integer',
         'package_quantity' => 'integer',
         'regular_price_toman' => 'integer',
         'sale_price_toman' => 'integer',
@@ -54,12 +58,14 @@ class BakeryProductVariant extends Model
             self::validatePrices($variant);
             self::validatePackagingFee($variant);
             self::validateOperationalLimits($variant);
+            self::validateWeightRange($variant);
         });
 
         static::updating(function (self $variant): void {
             self::validatePrices($variant);
             self::validatePackagingFee($variant);
             self::validateOperationalLimits($variant);
+            self::validateWeightRange($variant);
         });
 
         static::saved(function (self $variant): void {
@@ -132,6 +138,29 @@ class BakeryProductVariant extends Model
             && $this->sale_price_toman < $this->regular_price_toman;
     }
 
+    public function weightLabel(): ?string
+    {
+        if ($this->weight_min_grams !== null && $this->weight_max_grams !== null) {
+            if ($this->weight_min_grams === $this->weight_max_grams) {
+                return number_format($this->weight_min_grams).' گرم';
+            }
+
+            return number_format($this->weight_min_grams).' تا '.number_format($this->weight_max_grams).' گرم';
+        }
+
+        if ($this->weight_min_grams !== null) {
+            return 'از '.number_format($this->weight_min_grams).' گرم';
+        }
+
+        if ($this->weight_max_grams !== null) {
+            return 'تا '.number_format($this->weight_max_grams).' گرم';
+        }
+
+        return $this->weight_grams !== null
+            ? number_format($this->weight_grams).' گرم'
+            : null;
+    }
+
     private static function validateOperationalLimits(self $variant): void
     {
         foreach ([
@@ -154,6 +183,23 @@ class BakeryProductVariant extends Model
             throw new InvalidArgumentException(
                 'حداقل تعداد سفارش Variant نمی‌تواند بیشتر از حداکثر تعداد باشد.'
             );
+        }
+    }
+
+    private static function validateWeightRange(self $variant): void
+    {
+        foreach (['weight_grams', 'weight_min_grams', 'weight_max_grams'] as $field) {
+            if ($variant->{$field} !== null && (int) $variant->{$field} < 1) {
+                throw new InvalidArgumentException("{$field} باید در صورت ثبت، بیشتر از صفر باشد.");
+            }
+        }
+
+        if (
+            $variant->weight_min_grams !== null
+            && $variant->weight_max_grams !== null
+            && $variant->weight_min_grams > $variant->weight_max_grams
+        ) {
+            throw new InvalidArgumentException('حداقل وزن Variant نمی‌تواند بیشتر از حداکثر وزن باشد.');
         }
     }
 
