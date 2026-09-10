@@ -4,6 +4,7 @@ namespace App\Filament\Resources;
 
 use App\Filament\Resources\BakeryPostResource\Pages;
 use App\Models\BakeryPost;
+use App\Support\AdminMediaLibrary;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
@@ -26,21 +27,50 @@ class BakeryPostResource extends Resource
 
     protected static ?int $navigationSort = 5;
 
+    private const EDITOR_TOOLBAR = [
+        'blockquote',
+        'bold',
+        'bulletList',
+        'h2',
+        'h3',
+        'italic',
+        'link',
+        'orderedList',
+        'redo',
+        'strike',
+        'underline',
+        'undo',
+    ];
+
     public static function form(Form $form): Form
     {
         return $form->schema([
             Forms\Components\Section::make('مقاله')
+                ->description('محتوا با قالب‌های کنترل‌شده ذخیره می‌شود؛ عنوان‌های H2/H3 برای ساختار مقاله و فهرست مطالب Frontend استفاده می‌شوند.')
                 ->schema([
                     Forms\Components\TextInput::make('title')->label('عنوان')->required()->maxLength(260)->columnSpanFull(),
                     Forms\Components\TextInput::make('slug')->label('Slug')->required()->unique(ignoreRecord: true)->maxLength(180),
                     Forms\Components\TextInput::make('category')->label('دسته')->maxLength(120),
                     Forms\Components\TagsInput::make('tags')->label('برچسب‌ها')->columnSpanFull(),
-                    Forms\Components\Textarea::make('excerpt')->label('خلاصه')->rows(3)->columnSpanFull(),
-                    Forms\Components\RichEditor::make('content')->label('محتوا')->required()->columnSpanFull(),
-                    Forms\Components\TextInput::make('cover_url')->label('آدرس تصویر شاخص')->url()->columnSpanFull(),
+                    Forms\Components\Textarea::make('excerpt')->label('خلاصه')->rows(3)->maxLength(500)->columnSpanFull(),
+                    Forms\Components\RichEditor::make('content')
+                        ->label('محتوا')
+                        ->required()
+                        ->toolbarButtons(self::EDITOR_TOOLBAR)
+                        ->helperText('برای تیترهای داخلی از H2 و H3 استفاده کنید. کد، iframe و HTML دلخواه در محتوای عمومی پشتیبانی نمی‌شود.')
+                        ->columnSpanFull(),
+                    Forms\Components\Select::make('cover_url')
+                        ->label('تصویر شاخص از کتابخانه رسانه')
+                        ->options(fn (?BakeryPost $record): array => AdminMediaLibrary::imageUrlOptions($record?->cover_url))
+                        ->searchable()
+                        ->preload()
+                        ->nullable()
+                        ->helperText('از «کتابخانه رسانه» انتخاب کنید. URL فعلی قدیمی نیز برای جلوگیری از حذف ناخواسته حفظ می‌شود.')
+                        ->columnSpanFull(),
                     Forms\Components\TextInput::make('author')->label('نویسنده')->maxLength(160),
                 ])->columns(2),
             Forms\Components\Section::make('انتشار')
+                ->description('با انتخاب «منتشرشده»، اگر زمان انتشار خالی باشد هنگام ذخیره به‌صورت خودکار زمان فعلی ثبت می‌شود؛ تاریخ آینده برای انتشار زمان‌بندی‌شده حفظ می‌شود.')
                 ->schema([
                     Forms\Components\Select::make('status')
                         ->label('وضعیت')
@@ -71,7 +101,7 @@ class BakeryPostResource extends Resource
                     ->options(fn (): array => BakeryPost::query()->whereNotNull('category')->distinct()->orderBy('category')->pluck('category', 'category')->all()),
             ])
             ->actions([Tables\Actions\EditAction::make()])
-            ->bulkActions([Tables\Actions\DeleteBulkAction::make()])
+            ->bulkActions([])
             ->defaultSort('published_at', 'desc');
     }
 
