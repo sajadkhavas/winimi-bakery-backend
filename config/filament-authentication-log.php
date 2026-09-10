@@ -16,7 +16,10 @@ return [
 
     'navigation' => [
         'authentication-log' => [
-            'register' => true,
+            // Logging remains enabled through the model trait, but the package's
+            // untranslated raw navigation entry is intentionally hidden. Security
+            // review remains a super-admin/system concern rather than employer UI.
+            'register' => false,
             'sort' => 1,
             'icon' => 'heroicon-o-shield-check',
         ],
