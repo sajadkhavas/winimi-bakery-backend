@@ -2,19 +2,34 @@
 
 namespace App\Filament\Pages;
 
-use Filament\Pages\Page;
 use Filament\Notifications\Notification;
+use Filament\Pages\Page;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 
 class QueueMonitorPage extends Page
 {
-    protected static ?string $navigationIcon  = 'heroicon-o-queue-list';
-    protected static ?string $navigationLabel = 'Queue Monitor';
+    protected static ?string $navigationIcon = 'heroicon-o-queue-list';
+
+    protected static ?string $navigationLabel = 'مانیتور صف';
+
     protected static ?string $navigationGroup = 'سیستم';
-    protected static ?int    $navigationSort  = 5;
-    protected static ?string $title           = 'مانیتور Queue';
-    protected static string  $view            = 'filament.pages.queue-monitor';
+
+    protected static ?int $navigationSort = 5;
+
+    protected static ?string $title = 'مانیتور صف';
+
+    protected static string $view = 'filament.pages.queue-monitor';
+
+    public static function canAccess(): bool
+    {
+        return auth()->user()?->hasRole('super_admin') ?? false;
+    }
+
+    public static function shouldRegisterNavigation(): bool
+    {
+        return static::canAccess();
+    }
 
     public function getStats(): array
     {
@@ -23,16 +38,18 @@ class QueueMonitorPage extends Page
 
         try {
             $failed = DB::table('failed_jobs')->count();
-        } catch (\Exception $e) {}
+        } catch (\Exception) {
+        }
 
         try {
             $pending = DB::table('jobs')->count();
-        } catch (\Exception $e) {}
+        } catch (\Exception) {
+        }
 
         return [
-            'driver'  => config('queue.default'),
+            'driver' => config('queue.default'),
             'pending' => $pending,
-            'failed'  => $failed,
+            'failed' => $failed,
         ];
     }
 
@@ -44,15 +61,15 @@ class QueueMonitorPage extends Page
                 ->limit(20)
                 ->get()
                 ->map(fn ($job) => [
-                    'id'         => $job->id,
+                    'id' => $job->id,
                     'connection' => $job->connection,
-                    'queue'      => $job->queue,
-                    'payload'    => json_decode($job->payload, true)['displayName'] ?? 'Unknown',
-                    'exception'  => substr($job->exception, 0, 100) . '...',
-                    'failed_at'  => $job->failed_at,
+                    'queue' => $job->queue,
+                    'payload' => json_decode($job->payload, true)['displayName'] ?? 'Unknown',
+                    'exception' => substr($job->exception, 0, 100).'...',
+                    'failed_at' => $job->failed_at,
                 ])
                 ->toArray();
-        } catch (\Exception $e) {
+        } catch (\Exception) {
             return [];
         }
     }
@@ -72,7 +89,7 @@ class QueueMonitorPage extends Page
     public function getViewData(): array
     {
         return [
-            'stats'      => $this->getStats(),
+            'stats' => $this->getStats(),
             'failedJobs' => $this->getFailedJobs(),
         ];
     }

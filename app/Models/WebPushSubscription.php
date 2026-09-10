@@ -54,4 +54,11 @@ class WebPushSubscription extends Model
     {
         return $query->whereNull('revoked_at');
     }
+
+    public function scopeMarketingRecipients(Builder $query): Builder
+    {
+        return $query
+            ->active()
+            ->where('marketing_enabled', true);
+    }
 }

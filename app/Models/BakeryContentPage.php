@@ -13,6 +13,7 @@ class BakeryContentPage extends Model
         'slug',
         'title',
         'excerpt',
+        'cover_url',
         'content',
         'meta_title',
         'meta_description',
@@ -24,6 +25,16 @@ class BakeryContentPage extends Model
     {
         static::creating(function (self $page): void {
             $page->public_id ??= (string) Str::ulid();
+        });
+
+        static::saving(function (self $page): void {
+            if ($page->status === 'published' && $page->published_at === null) {
+                $page->published_at = now();
+            }
+
+            if ($page->status !== 'published') {
+                $page->published_at = null;
+            }
         });
     }
 
@@ -38,8 +49,7 @@ class BakeryContentPage extends Model
     {
         return $query
             ->where('status', 'published')
-            ->where(function (Builder $query): void {
-                $query->whereNull('published_at')->orWhere('published_at', '<=', now());
-            });
+            ->whereNotNull('published_at')
+            ->where('published_at', '<=', now());
     }
 }

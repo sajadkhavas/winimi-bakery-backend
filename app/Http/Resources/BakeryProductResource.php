@@ -76,9 +76,9 @@ class BakeryProductResource extends JsonResource
                 ? $defaultVariant->sale_price_toman
                 : null,
             'weightGrams' => $defaultVariant?->weight_grams,
-            'weight' => $defaultVariant?->weight_grams
-                ? number_format($defaultVariant->weight_grams).' گرم'
-                : null,
+            'weightMinGrams' => $defaultVariant?->weight_min_grams,
+            'weightMaxGrams' => $defaultVariant?->weight_max_grams,
+            'weight' => $defaultVariant?->weightLabel(),
             'stock' => $stock,
             'available' => $stock > 0,
             'requiresCooling' => (bool) $this->requires_cooling,

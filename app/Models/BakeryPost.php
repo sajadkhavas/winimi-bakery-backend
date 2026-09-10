@@ -27,6 +27,16 @@ class BakeryPost extends Model
         static::creating(function (self $post): void {
             $post->public_id ??= (string) Str::ulid();
         });
+
+        static::saving(function (self $post): void {
+            if ($post->status === 'published' && $post->published_at === null) {
+                $post->published_at = now();
+            }
+
+            if ($post->status !== 'published') {
+                $post->published_at = null;
+            }
+        });
     }
 
     protected function casts(): array

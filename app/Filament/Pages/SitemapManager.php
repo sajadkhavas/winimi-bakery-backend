@@ -21,9 +21,9 @@ class SitemapManager extends Page
 
     protected static ?string $navigationIcon = 'heroicon-o-map';
 
-    protected static ?string $navigationLabel = 'Sitemap';
+    protected static ?string $navigationLabel = 'نقشه سایت';
 
-    protected static ?string $title = 'مدیریت Sitemap';
+    protected static ?string $title = 'مدیریت نقشه سایت';
 
     protected static ?string $navigationGroup = 'سیستم';
 
@@ -42,6 +42,11 @@ class SitemapManager extends Page
     public bool $legacyDetected = false;
 
     public ?string $statusMessage = null;
+
+    public static function canAccess(): bool
+    {
+        return auth()->user()?->hasRole('super_admin') ?? false;
+    }
 
     public function mount(): void
     {
@@ -124,7 +129,7 @@ class SitemapManager extends Page
         $this->loadStatus();
 
         $notification = Notification::make()
-            ->title($this->reachable ? 'Sitemap وینیمی سالم است' : 'Sitemap نیاز به بررسی دارد')
+            ->title($this->reachable ? 'نقشه سایت وینیمی سالم است' : 'نقشه سایت نیاز به بررسی دارد')
             ->body($this->statusMessage);
 
         if ($this->reachable) {

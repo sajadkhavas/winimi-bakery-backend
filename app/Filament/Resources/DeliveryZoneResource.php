@@ -32,28 +32,44 @@ class DeliveryZoneResource extends Resource
             Forms\Components\Section::make('محدوده')
                 ->schema([
                     Forms\Components\TextInput::make('name')->label('نام')->required()->maxLength(140),
-                    Forms\Components\TextInput::make('province')->label('استان')->maxLength(100),
-                    Forms\Components\TextInput::make('city')->label('شهر')->maxLength(100),
-                    Forms\Components\TextInput::make('priority')->label('اولویت')->numeric()->default(100)->required(),
+                    Forms\Components\TextInput::make('province')
+                        ->label('استان')
+                        ->maxLength(100)
+                        ->dehydrateStateUsing(fn (?string $state): ?string => filled($state) ? trim($state) : null),
+                    Forms\Components\TextInput::make('city')
+                        ->label('شهر')
+                        ->maxLength(100)
+                        ->dehydrateStateUsing(fn (?string $state): ?string => filled($state) ? trim($state) : null),
+                    Forms\Components\TextInput::make('priority')->label('اولویت')->numeric()->minValue(0)->default(100)->required(),
                     Forms\Components\Toggle::make('is_active')->label('فعال')->default(true),
                 ])->columns(3),
             Forms\Components\Section::make('روش‌ها و هزینه‌ها')
                 ->schema([
                     Forms\Components\Toggle::make('standard_enabled')->label('ارسال عادی'),
-                    Forms\Components\TextInput::make('standard_fee_toman')->label('هزینه عادی')->numeric()->default(0)->suffix(' تومان'),
+                    Forms\Components\TextInput::make('standard_fee_toman')->label('هزینه عادی')->numeric()->minValue(0)->default(0)->suffix(' تومان'),
                     Forms\Components\Toggle::make('chilled_enabled')->label('ارسال سرد'),
-                    Forms\Components\TextInput::make('chilled_fee_toman')->label('هزینه سرد')->numeric()->default(0)->suffix(' تومان'),
+                    Forms\Components\TextInput::make('chilled_fee_toman')->label('هزینه سرد')->numeric()->minValue(0)->default(0)->suffix(' تومان'),
                     Forms\Components\Toggle::make('pickup_enabled')->label('تحویل حضوری'),
-                    Forms\Components\TextInput::make('pickup_fee_toman')->label('هزینه حضوری')->numeric()->default(0)->suffix(' تومان'),
-                    Forms\Components\TextInput::make('packaging_fee_toman')->label('هزینه بسته‌بندی')->numeric()->default(0)->suffix(' تومان'),
-                    Forms\Components\TextInput::make('free_delivery_threshold_toman')->label('ارسال رایگان از مبلغ')->numeric()->nullable()->suffix(' تومان'),
+                    Forms\Components\TextInput::make('pickup_fee_toman')->label('هزینه حضوری')->numeric()->minValue(0)->default(0)->suffix(' تومان'),
+                    Forms\Components\TextInput::make('packaging_fee_toman')->label('هزینه بسته‌بندی')->numeric()->minValue(0)->default(0)->suffix(' تومان'),
+                    Forms\Components\TextInput::make('free_delivery_threshold_toman')->label('ارسال رایگان از مبلغ')->numeric()->minValue(0)->nullable()->suffix(' تومان'),
                 ])->columns(4),
             Forms\Components\Section::make('محدودیت عملیات')
                 ->schema([
-                    Forms\Components\TextInput::make('minimum_order_toman')->label('حداقل سفارش')->numeric()->nullable()->suffix(' تومان'),
-                    Forms\Components\TextInput::make('preparation_min_days')->label('حداقل روز آماده‌سازی')->numeric()->default(0),
-                    Forms\Components\TextInput::make('preparation_max_days')->label('حداکثر روز آماده‌سازی')->numeric()->default(0),
-                    Forms\Components\TextInput::make('daily_order_limit')->label('ظرفیت روزانه')->numeric()->nullable(),
+                    Forms\Components\TextInput::make('minimum_order_toman')->label('حداقل سفارش')->numeric()->minValue(0)->nullable()->suffix(' تومان'),
+                    Forms\Components\TextInput::make('preparation_min_days')
+                        ->label('حداقل روز آماده‌سازی')
+                        ->numeric()
+                        ->minValue(0)
+                        ->default(0)
+                        ->rules(['lte:preparation_max_days']),
+                    Forms\Components\TextInput::make('preparation_max_days')
+                        ->label('حداکثر روز آماده‌سازی')
+                        ->numeric()
+                        ->minValue(0)
+                        ->default(0)
+                        ->rules(['gte:preparation_min_days']),
+                    Forms\Components\TextInput::make('daily_order_limit')->label('ظرفیت روزانه')->numeric()->minValue(1)->nullable(),
                 ])->columns(4),
         ]);
     }
@@ -74,8 +90,13 @@ class DeliveryZoneResource extends Resource
             ->filters([
                 Tables\Filters\TernaryFilter::make('is_active')->label('فعال'),
             ])
-            ->actions([Tables\Actions\EditAction::make()])
-            ->bulkActions([Tables\Actions\DeleteBulkAction::make()])
+            ->actions([
+                Tables\Actions\EditAction::make(),
+                Tables\Actions\DeleteAction::make()
+                    ->label('حذف')
+                    ->requiresConfirmation(),
+            ])
+            ->bulkActions([])
             ->defaultSort('priority');
     }
 

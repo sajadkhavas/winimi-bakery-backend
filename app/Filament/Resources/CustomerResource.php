@@ -32,7 +32,7 @@ class CustomerResource extends Resource
     {
         return $form->schema([
             Section::make('حساب مشتری')
-                ->description('شماره موبایل فقط از مسیر OTP تأیید می‌شود و در پنل قابل تغییر نیست.')
+                ->description('شماره موبایل فقط از مسیر OTP تأیید می‌شود. فعال/غیرفعال‌کردن حساب نیز فقط از اکشن تأییدشونده بالای صفحه انجام می‌شود.')
                 ->schema([
                     TextInput::make('public_id')
                         ->label('شناسه عمومی')
@@ -50,10 +50,13 @@ class CustomerResource extends Resource
                         ->unique(ignoreRecord: true),
                     Toggle::make('is_active')
                         ->label('حساب فعال')
-                        ->helperText('با غیرفعال‌کردن حساب، ورودهای بعدی مسدود می‌شوند.'),
+                        ->disabled()
+                        ->dehydrated(false)
+                        ->helperText('برای تغییر وضعیت حساب از دکمه فعال/غیرفعال‌کردن بالای صفحه استفاده کنید.'),
                     Toggle::make('marketing_consent')
                         ->label('رضایت دریافت پیام‌های بازاریابی')
-                        ->disabled(),
+                        ->disabled()
+                        ->dehydrated(false),
                 ])
                 ->columns(2),
         ]);
@@ -66,7 +69,8 @@ class CustomerResource extends Resource
                 Tables\Columns\TextColumn::make('mobile')
                     ->label('موبایل')
                     ->searchable()
-                    ->copyable(),
+                    ->formatStateUsing(fn (?string $state): string => self::maskMobile($state))
+                    ->extraAttributes(['dir' => 'ltr']),
                 Tables\Columns\TextColumn::make('full_name')
                     ->label('نام مشتری')
                     ->placeholder('ثبت نشده')
@@ -101,6 +105,22 @@ class CustomerResource extends Resource
             ])
             ->bulkActions([])
             ->defaultSort('created_at', 'desc');
+    }
+
+    public static function maskMobile(?string $mobile): string
+    {
+        $mobile = trim((string) $mobile);
+        if ($mobile === '') {
+            return '—';
+        }
+
+        if (mb_strlen($mobile) <= 6) {
+            return str_repeat('•', mb_strlen($mobile));
+        }
+
+        return mb_substr($mobile, 0, 4)
+            .str_repeat('•', max(3, mb_strlen($mobile) - 6))
+            .mb_substr($mobile, -2);
     }
 
     public static function getPages(): array

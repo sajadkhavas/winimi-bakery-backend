@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-labelledby="title desc">
+  <title id="title">لوگوی وینیمی بیکری</title>
+  <desc id="desc">نشان دایره‌ای سبز پاستیلی وینیمی بیکری با تصویر برش کیک</desc>
+  <circle cx="128" cy="128" r="126" fill="#D0E596"/>
+  <g fill="none" stroke="#27390C" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M88 83 128 61l39 13 1 42-73 12-7-45Z"/>
+    <path d="m88 83 79-9"/>
+    <path d="m94 101 74-10"/>
+    <path d="m96 116 72-10"/>
+    <path d="M119 65c-2-10 8-16 12-25 10 8 15 18 10 28-4 8-17 9-22-3Z"/>
+    <path d="M126 61c5-3 8-8 9-13"/>
+  </g>
+  <g fill="#27390C" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-weight="900">
+    <text x="128" y="174" font-size="47" letter-spacing="-2">winimi</text>
+    <text x="128" y="214" font-size="34" letter-spacing="-1">Bakery</text>
+  </g>
+</svg>

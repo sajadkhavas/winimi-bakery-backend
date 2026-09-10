@@ -2,8 +2,8 @@
 
 namespace App\Filament\Pages;
 
-use Filament\Pages\Page;
 use Filament\Notifications\Notification;
+use Filament\Pages\Page;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -20,6 +20,11 @@ class SiteHealthDashboard extends Page
 
     public array $checks = [];
 
+    public static function canAccess(): bool
+    {
+        return auth()->user()?->hasRole('super_admin') ?? false;
+    }
+
     public function mount(): void
     {
         $this->runChecks();
@@ -29,11 +34,11 @@ class SiteHealthDashboard extends Page
     {
         $this->checks = [
             'database' => $this->checkDatabase(),
-            'cache'    => $this->checkCache(),
-            'storage'  => $this->checkStorage(),
-            'queue'    => $this->checkQueue(),
-            'env'      => $this->checkEnv(),
-            'disk'     => $this->checkDisk(),
+            'cache' => $this->checkCache(),
+            'storage' => $this->checkStorage(),
+            'queue' => $this->checkQueue(),
+            'env' => $this->checkEnv(),
+            'disk' => $this->checkDisk(),
         ];
     }
 
@@ -42,18 +47,19 @@ class SiteHealthDashboard extends Page
         try {
             DB::connection()->getPdo();
             $tables = DB::select('SELECT COUNT(*) as count FROM information_schema.tables WHERE table_schema = DATABASE()');
+
             return [
                 'status' => 'ok',
-                'label'  => 'دیتابیس',
-                'value'  => $tables[0]->count . ' جدول',
-                'icon'   => 'heroicon-o-circle-stack',
+                'label' => 'دیتابیس',
+                'value' => $tables[0]->count.' جدول',
+                'icon' => 'heroicon-o-circle-stack',
             ];
         } catch (\Exception $e) {
             return [
                 'status' => 'error',
-                'label'  => 'دیتابیس',
-                'value'  => 'خطا: ' . $e->getMessage(),
-                'icon'   => 'heroicon-o-circle-stack',
+                'label' => 'دیتابیس',
+                'value' => 'خطا: '.$e->getMessage(),
+                'icon' => 'heroicon-o-circle-stack',
             ];
         }
     }
@@ -63,18 +69,19 @@ class SiteHealthDashboard extends Page
         try {
             Cache::put('health_check', true, 10);
             $ok = Cache::get('health_check') === true;
+
             return [
                 'status' => $ok ? 'ok' : 'error',
-                'label'  => 'کش',
-                'value'  => $ok ? 'فعال (' . config('cache.default') . ')' : 'غیرفعال',
-                'icon'   => 'heroicon-o-bolt',
+                'label' => 'کش',
+                'value' => $ok ? 'فعال ('.config('cache.default').')' : 'غیرفعال',
+                'icon' => 'heroicon-o-bolt',
             ];
         } catch (\Exception $e) {
             return [
                 'status' => 'error',
-                'label'  => 'کش',
-                'value'  => 'خطا',
-                'icon'   => 'heroicon-o-bolt',
+                'label' => 'کش',
+                'value' => 'خطا',
+                'icon' => 'heroicon-o-bolt',
             ];
         }
     }
@@ -84,18 +91,19 @@ class SiteHealthDashboard extends Page
         try {
             Storage::put('health_check.txt', 'ok');
             Storage::delete('health_check.txt');
+
             return [
                 'status' => 'ok',
-                'label'  => 'استوریج',
-                'value'  => 'قابل نوشتن',
-                'icon'   => 'heroicon-o-folder',
+                'label' => 'استوریج',
+                'value' => 'قابل نوشتن',
+                'icon' => 'heroicon-o-folder',
             ];
         } catch (\Exception $e) {
             return [
                 'status' => 'error',
-                'label'  => 'استوریج',
-                'value'  => 'خطا در نوشتن',
-                'icon'   => 'heroicon-o-folder',
+                'label' => 'استوریج',
+                'value' => 'خطا در نوشتن',
+                'icon' => 'heroicon-o-folder',
             ];
         }
     }
@@ -104,18 +112,19 @@ class SiteHealthDashboard extends Page
     {
         try {
             $driver = config('queue.default');
+
             return [
                 'status' => 'ok',
-                'label'  => 'صف',
-                'value'  => 'درایور: ' . $driver,
-                'icon'   => 'heroicon-o-queue-list',
+                'label' => 'صف',
+                'value' => 'درایور: '.$driver,
+                'icon' => 'heroicon-o-queue-list',
             ];
         } catch (\Exception $e) {
             return [
                 'status' => 'error',
-                'label'  => 'صف',
-                'value'  => 'خطا',
-                'icon'   => 'heroicon-o-queue-list',
+                'label' => 'صف',
+                'value' => 'خطا',
+                'icon' => 'heroicon-o-queue-list',
             ];
         }
     }
@@ -124,26 +133,28 @@ class SiteHealthDashboard extends Page
     {
         $env = app()->environment();
         $debug = config('app.debug');
-        $status = ($env === 'production' && !$debug) ? 'ok' : 'warning';
+        $status = ($env === 'production' && ! $debug) ? 'ok' : 'warning';
+
         return [
             'status' => $status,
-            'label'  => 'محیط',
-            'value'  => $env . ($debug ? ' (debug روشن!)' : ''),
-            'icon'   => 'heroicon-o-cog-6-tooth',
+            'label' => 'محیط',
+            'value' => $env.($debug ? ' (debug روشن!)' : ''),
+            'icon' => 'heroicon-o-cog-6-tooth',
         ];
     }
 
     private function checkDisk(): array
     {
-        $free  = disk_free_space(base_path());
+        $free = disk_free_space(base_path());
         $total = disk_total_space(base_path());
         $usedPercent = round((($total - $free) / $total) * 100);
         $status = $usedPercent > 90 ? 'error' : ($usedPercent > 75 ? 'warning' : 'ok');
+
         return [
             'status' => $status,
-            'label'  => 'دیسک',
-            'value'  => $usedPercent . '% استفاده شده (' . round($free / 1073741824, 1) . ' GB آزاد)',
-            'icon'   => 'heroicon-o-server',
+            'label' => 'دیسک',
+            'value' => $usedPercent.'% استفاده شده ('.round($free / 1073741824, 1).' GB آزاد)',
+            'icon' => 'heroicon-o-server',
         ];
     }
 

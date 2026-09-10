@@ -10,6 +10,7 @@ on:
       - 'app/Filament/Resources/StoreSettingResource/**'
       - 'app/Filament/Resources/BakeryCategoryLandingResource.php'
       - 'app/Filament/Resources/BakeryCategoryLandingResource/**'
+      - 'app/Filament/Resources/BakeryProductResource.php'
       - 'app/Http/Controllers/Api/CatalogController.php'
       - 'app/Models/BakeryCategoryLanding.php'
       - 'database/migrations/2026_09_06_153500_seed_storefront_authority.php'
@@ -17,6 +18,10 @@ on:
       - 'database/migrations/2026_09_06_161000_add_guides_to_bakery_category_landings.php'
       - 'database/migrations/2026_09_06_162000_seed_category_guide_section_authority.php'
       - 'tests/Feature/F30StorefrontAuthorityTest.php'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'vite.admin.config.ts'
+      - 'resources/css/filament/admin/**'
       - '.github/workflows/f30-storefront-authority.yml'
 
 permissions:
@@ -37,8 +42,23 @@ jobs:
           coverage: none
           tools: composer:v2
 
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
       - name: Install dependencies
         run: composer install --no-interaction --prefer-dist --no-progress
+
+      - name: Install admin asset dependencies
+        run: npm ci
+
+      - name: Build Winimi Filament admin theme
+        run: |
+          npm run build:admin
+          test -s public/build-admin/manifest.json
+          grep -q 'resources/css/filament/admin/theme.css' public/build-admin/manifest.json
 
       - name: Prepare Laravel test environment
         run: |

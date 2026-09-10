@@ -24,7 +24,10 @@ class ManageNotificationOutbox extends ManageRecords
                 ->label('ارسال اعلان عمومی')
                 ->icon('heroicon-o-megaphone')
                 ->color('success')
-                ->modalDescription('برای تمام دستگاه‌هایی ارسال می‌شود که کاربر روی همان دستگاه اعلان‌های وینیمی را فعال کرده است.')
+                ->modalDescription(fn (): string => sprintf(
+                    'این پیام فقط برای %s دستگاه فعال که رضایت اعلان‌های بازاریابی را داده‌اند در صف قرار می‌گیرد. اعلان‌های تراکنشی سفارش مسیر جداگانه دارند.',
+                    number_format(WebPushSubscription::query()->marketingRecipients()->count()),
+                ))
                 ->form([
                     Forms\Components\TextInput::make('title')
                         ->label('عنوان اعلان')
@@ -46,7 +49,7 @@ class ManageNotificationOutbox extends ManageRecords
                 ->action(function (array $data): void {
                     $count = DB::transaction(function () use ($data): int {
                         $subscriptions = WebPushSubscription::query()
-                            ->active()
+                            ->marketingRecipients()
                             ->lockForUpdate()
                             ->get();
 
@@ -72,7 +75,7 @@ class ManageNotificationOutbox extends ManageRecords
                     }, 3);
 
                     Notification::make()
-                        ->title("{$count} اعلان در صف امن ارسال قرار گرفت")
+                        ->title("{$count} اعلان بازاریابی رضایت‌مند در صف امن ارسال قرار گرفت")
                         ->success()
                         ->send();
                 }),

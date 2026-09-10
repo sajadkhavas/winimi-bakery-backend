@@ -4,11 +4,14 @@ namespace App\Filament\Resources;
 
 use App\Filament\Resources\BakeryPostResource\Pages;
 use App\Models\BakeryPost;
+use App\Support\AdminMediaLibrary;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
+use FilamentTiptapEditor\Enums\TiptapOutput;
+use FilamentTiptapEditor\TiptapEditor;
 
 class BakeryPostResource extends Resource
 {
@@ -26,21 +29,56 @@ class BakeryPostResource extends Resource
 
     protected static ?int $navigationSort = 5;
 
+    private const EDITOR_TOOLS = [
+        'heading',
+        'hr',
+        'bullet-list',
+        'ordered-list',
+        'checked-list',
+        'blockquote',
+        'bold',
+        'italic',
+        'strike',
+        'underline',
+        'lead',
+        'small',
+        'link',
+        'table',
+        'details',
+    ];
+
     public static function form(Form $form): Form
     {
         return $form->schema([
             Forms\Components\Section::make('مقاله')
+                ->description('ویرایشگر حرفه‌ای با خروجی HTML سازگار با Frontend فعال است. ابزارهای اجرای کد، HTML خام، iframe، Embed و آپلود رسانه داخل متن عمداً غیرفعال‌اند؛ تصویر شاخص از کتابخانه رسانه انتخاب می‌شود.')
                 ->schema([
                     Forms\Components\TextInput::make('title')->label('عنوان')->required()->maxLength(260)->columnSpanFull(),
                     Forms\Components\TextInput::make('slug')->label('Slug')->required()->unique(ignoreRecord: true)->maxLength(180),
                     Forms\Components\TextInput::make('category')->label('دسته')->maxLength(120),
                     Forms\Components\TagsInput::make('tags')->label('برچسب‌ها')->columnSpanFull(),
-                    Forms\Components\Textarea::make('excerpt')->label('خلاصه')->rows(3)->columnSpanFull(),
-                    Forms\Components\RichEditor::make('content')->label('محتوا')->required()->columnSpanFull(),
-                    Forms\Components\TextInput::make('cover_url')->label('آدرس تصویر شاخص')->url()->columnSpanFull(),
+                    Forms\Components\Textarea::make('excerpt')->label('خلاصه')->rows(3)->maxLength(500)->columnSpanFull(),
+                    TiptapEditor::make('content')
+                        ->label('محتوا')
+                        ->required()
+                        ->tools(self::EDITOR_TOOLS)
+                        ->output(TiptapOutput::Html)
+                        ->maxContentWidth('full')
+                        ->extraInputAttributes(['style' => 'min-height: 20rem;'])
+                        ->helperText('برای ساختار خوانا از Heading، فهرست، نقل‌قول، جدول، جزئیات و لینک استفاده کنید. محتوای ذخیره‌شده HTML باقی می‌ماند تا قرارداد فعلی Frontend تغییر نکند.')
+                        ->columnSpanFull(),
+                    Forms\Components\Select::make('cover_url')
+                        ->label('تصویر شاخص از کتابخانه رسانه')
+                        ->options(fn (?BakeryPost $record): array => AdminMediaLibrary::imageUrlOptions($record?->cover_url))
+                        ->searchable()
+                        ->preload()
+                        ->nullable()
+                        ->helperText('از «کتابخانه رسانه» انتخاب کنید. URL فعلی قدیمی نیز برای جلوگیری از حذف ناخواسته حفظ می‌شود.')
+                        ->columnSpanFull(),
                     Forms\Components\TextInput::make('author')->label('نویسنده')->maxLength(160),
                 ])->columns(2),
             Forms\Components\Section::make('انتشار')
+                ->description('با انتخاب «منتشرشده»، اگر زمان انتشار خالی باشد هنگام ذخیره به‌صورت خودکار زمان فعلی ثبت می‌شود؛ تاریخ آینده برای انتشار زمان‌بندی‌شده حفظ می‌شود.')
                 ->schema([
                     Forms\Components\Select::make('status')
                         ->label('وضعیت')
@@ -71,7 +109,7 @@ class BakeryPostResource extends Resource
                     ->options(fn (): array => BakeryPost::query()->whereNotNull('category')->distinct()->orderBy('category')->pluck('category', 'category')->all()),
             ])
             ->actions([Tables\Actions\EditAction::make()])
-            ->bulkActions([Tables\Actions\DeleteBulkAction::make()])
+            ->bulkActions([])
             ->defaultSort('published_at', 'desc');
     }
 

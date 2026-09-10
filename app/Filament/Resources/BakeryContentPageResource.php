@@ -4,11 +4,14 @@ namespace App\Filament\Resources;
 
 use App\Filament\Resources\BakeryContentPageResource\Pages;
 use App\Models\BakeryContentPage;
+use App\Support\AdminMediaLibrary;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
+use FilamentTiptapEditor\Enums\TiptapOutput;
+use FilamentTiptapEditor\TiptapEditor;
 
 class BakeryContentPageResource extends Resource
 {
@@ -26,10 +29,29 @@ class BakeryContentPageResource extends Resource
 
     protected static ?int $navigationSort = 1;
 
+    private const EDITOR_TOOLS = [
+        'heading',
+        'hr',
+        'bullet-list',
+        'ordered-list',
+        'checked-list',
+        'blockquote',
+        'bold',
+        'italic',
+        'strike',
+        'underline',
+        'lead',
+        'small',
+        'link',
+        'table',
+        'details',
+    ];
+
     public static function form(Form $form): Form
     {
         return $form->schema([
             Forms\Components\Section::make('محتوا')
+                ->description('صفحات عمومی فروشگاه از همین بخش مدیریت می‌شوند. ویرایشگر خروجی HTML سازگار با Frontend دارد و ابزارهای کد خام، iframe، Embed و آپلود رسانه داخل متن عمداً غیرفعال‌اند.')
                 ->schema([
                     Forms\Components\Select::make('type')
                         ->label('نوع')
@@ -54,12 +76,28 @@ class BakeryContentPageResource extends Resource
                     Forms\Components\Textarea::make('excerpt')
                         ->label('خلاصه')
                         ->rows(3)
+                        ->maxLength(500)
                         ->columnSpanFull(),
-                    Forms\Components\RichEditor::make('content')
+                    Forms\Components\Select::make('cover_url')
+                        ->label('تصویر شاخص از کتابخانه رسانه')
+                        ->options(fn (?BakeryContentPage $record): array => AdminMediaLibrary::imageUrlOptions($record?->cover_url))
+                        ->searchable()
+                        ->preload()
+                        ->nullable()
+                        ->helperText('اختیاری؛ تصویر را از کتابخانه رسانه وینیمی انتخاب کنید. مقدار قبلی در صورت وجود حفظ می‌شود.')
+                        ->columnSpanFull(),
+                    TiptapEditor::make('content')
                         ->label('متن')
+                        ->required()
+                        ->tools(self::EDITOR_TOOLS)
+                        ->output(TiptapOutput::Html)
+                        ->maxContentWidth('full')
+                        ->extraInputAttributes(['style' => 'min-height: 20rem;'])
+                        ->helperText('برای ساختار صفحه از Heading، فهرست، نقل‌قول، جدول، جزئیات و لینک استفاده کنید. خروجی HTML است تا قرارداد فعلی Frontend تغییر نکند.')
                         ->columnSpanFull(),
                 ])->columns(2),
             Forms\Components\Section::make('انتشار و سئو')
+                ->description('انتشار بدون زمان، هنگام ذخیره زمان فعلی می‌گیرد؛ تاریخ آینده برای انتشار زمان‌بندی‌شده حفظ می‌شود.')
                 ->schema([
                     Forms\Components\Select::make('status')
                         ->label('وضعیت')
@@ -68,7 +106,7 @@ class BakeryContentPageResource extends Resource
                         ->required(),
                     Forms\Components\DateTimePicker::make('published_at')->label('زمان انتشار'),
                     Forms\Components\TextInput::make('meta_title')->label('عنوان سئو')->maxLength(220),
-                    Forms\Components\Textarea::make('meta_description')->label('توضیح سئو')->rows(3),
+                    Forms\Components\Textarea::make('meta_description')->label('توضیح سئو')->rows(3)->maxLength(500),
                 ])->columns(2),
         ]);
     }
@@ -79,8 +117,19 @@ class BakeryContentPageResource extends Resource
             ->columns([
                 Tables\Columns\TextColumn::make('title')->label('عنوان')->searchable()->sortable(),
                 Tables\Columns\TextColumn::make('slug')->label('Slug')->searchable()->copyable(),
-                Tables\Columns\TextColumn::make('type')->label('نوع')->badge(),
-                Tables\Columns\TextColumn::make('status')->label('وضعیت')->badge(),
+                Tables\Columns\TextColumn::make('type')
+                    ->label('نوع')
+                    ->badge()
+                    ->formatStateUsing(fn (string $state): string => match ($state) {
+                        'legal' => 'قوانین و حریم خصوصی',
+                        'shipping' => 'ارسال و تحویل',
+                        'homepage' => 'صفحه اصلی',
+                        default => 'صفحه عمومی',
+                    }),
+                Tables\Columns\TextColumn::make('status')
+                    ->label('وضعیت')
+                    ->badge()
+                    ->formatStateUsing(fn (string $state): string => $state === 'published' ? 'منتشرشده' : 'پیش‌نویس'),
                 Tables\Columns\TextColumn::make('published_at')->label('انتشار')->dateTime('Y/m/d H:i')->sortable(),
             ])
             ->filters([
@@ -91,14 +140,34 @@ class BakeryContentPageResource extends Resource
                     ->label('نوع')
                     ->options([
                         'page' => 'صفحه عمومی',
-                        'legal' => 'قوانین',
-                        'shipping' => 'ارسال',
+                        'legal' => 'قوانین و حریم خصوصی',
+                        'shipping' => 'ارسال و تحویل',
                         'homepage' => 'صفحه اصلی',
                     ]),
             ])
-            ->actions([Tables\Actions\EditAction::make()])
-            ->bulkActions([Tables\Actions\DeleteBulkAction::make()])
+            ->actions([
+                Tables\Actions\Action::make('preview')
+                    ->label('مشاهده')
+                    ->icon('heroicon-o-arrow-top-right-on-square')
+                    ->url(fn (BakeryContentPage $record): ?string => self::publicUrl($record))
+                    ->openUrlInNewTab()
+                    ->visible(fn (BakeryContentPage $record): bool => self::publicUrl($record) !== null),
+                Tables\Actions\EditAction::make()->label('ویرایش'),
+                Tables\Actions\DeleteAction::make()->label('حذف')->requiresConfirmation(),
+            ])
+            ->bulkActions([])
             ->defaultSort('updated_at', 'desc');
+    }
+
+    public static function publicUrl(BakeryContentPage $record): ?string
+    {
+        $origin = trim((string) config('winimi.frontend_origins.0', ''));
+
+        if ($origin === '' || trim((string) $record->slug) === '') {
+            return null;
+        }
+
+        return rtrim($origin, '/').'/'.ltrim($record->slug, '/');
     }
 
     public static function getPages(): array

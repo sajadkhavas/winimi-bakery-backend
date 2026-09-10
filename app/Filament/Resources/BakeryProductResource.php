@@ -10,6 +10,8 @@ use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
+use FilamentTiptapEditor\Enums\TiptapOutput;
+use FilamentTiptapEditor\TiptapEditor;
 use Illuminate\Database\Eloquent\Builder;
 
 class BakeryProductResource extends Resource
@@ -27,6 +29,24 @@ class BakeryProductResource extends Resource
     protected static ?string $navigationGroup = 'فروشگاه وینیمی';
 
     protected static ?int $navigationSort = 2;
+
+    private const EDITOR_TOOLS = [
+        'heading',
+        'hr',
+        'bullet-list',
+        'ordered-list',
+        'checked-list',
+        'blockquote',
+        'bold',
+        'italic',
+        'strike',
+        'underline',
+        'lead',
+        'small',
+        'link',
+        'table',
+        'details',
+    ];
 
     public static function form(Form $form): Form
     {
@@ -63,8 +83,13 @@ class BakeryProductResource extends Resource
                                         ->rows(3)
                                         ->maxLength(320)
                                         ->columnSpanFull(),
-                                    Forms\Components\RichEditor::make('description')
+                                    TiptapEditor::make('description')
                                         ->label('توضیح کامل')
+                                        ->tools(self::EDITOR_TOOLS)
+                                        ->output(TiptapOutput::Html)
+                                        ->maxContentWidth('full')
+                                        ->extraInputAttributes(['style' => 'min-height: 18rem;'])
+                                        ->helperText('ویرایشگر حرفه‌ای با خروجی HTML سازگار با Frontend است. ابزارهای HTML خام، اجرای کد، iframe، Embed و آپلود رسانه داخل متن عمداً فعال نیستند؛ تصاویر محصول از تب رسانه مدیریت می‌شوند.')
                                         ->columnSpanFull(),
                                 ])
                                 ->columns(2),
@@ -101,18 +126,20 @@ class BakeryProductResource extends Resource
                                         ->label('حداقل زمان آماده‌سازی (روز)')
                                         ->numeric()
                                         ->minValue(0)
-                                        ->maxValue(30),
+                                        ->maxValue(30)
+                                        ->rules(['lte:preparation_max_days']),
                                     Forms\Components\TextInput::make('preparation_max_days')
                                         ->label('حداکثر زمان آماده‌سازی (روز)')
                                         ->numeric()
                                         ->minValue(0)
-                                        ->maxValue(30),
-                                    Forms\Components\TextInput::make('preparation_time_days')
-                                        ->label('زمان آماده‌سازی قدیمی / fallback')
-                                        ->numeric()
-                                        ->minValue(0)
                                         ->maxValue(30)
-                                        ->helperText('فقط برای سازگاری داده‌های قدیمی نگه داشته شده است؛ برای داده جدید بازه بالا را تکمیل کنید.'),
+                                        ->rules(['gte:preparation_min_days']),
+                                    Forms\Components\TextInput::make('preparation_time_days')
+                                        ->label('زمان آماده‌سازی قدیمی (فقط مشاهده)')
+                                        ->numeric()
+                                        ->disabled()
+                                        ->dehydrated(false)
+                                        ->helperText('فقط برای سازگاری داده‌های قدیمی نمایش داده می‌شود. برای ویرایش از بازه حداقل/حداکثر بالا استفاده کنید.'),
                                     Forms\Components\Select::make('shipping_scope')
                                         ->label('سیاست محدوده ارسال')
                                         ->options([
@@ -153,9 +180,20 @@ class BakeryProductResource extends Resource
                                         ->maxLength(100)
                                         ->unique(ignoreRecord: true),
                                     Forms\Components\TextInput::make('weight_grams')
-                                        ->label('وزن (گرم)')
+                                        ->label('وزن دقیق / قدیمی (گرم)')
                                         ->numeric()
-                                        ->minValue(1),
+                                        ->minValue(1)
+                                        ->helperText('اختیاری است. اگر محصول وزن بازه‌ای دارد، حداقل و حداکثر وزن را وارد کنید؛ بازه در سایت اولویت دارد.'),
+                                    Forms\Components\TextInput::make('weight_min_grams')
+                                        ->label('حداقل وزن (گرم)')
+                                        ->numeric()
+                                        ->minValue(1)
+                                        ->rules(['lte:weight_max_grams']),
+                                    Forms\Components\TextInput::make('weight_max_grams')
+                                        ->label('حداکثر وزن (گرم)')
+                                        ->numeric()
+                                        ->minValue(1)
+                                        ->rules(['gte:weight_min_grams']),
                                     Forms\Components\TextInput::make('package_quantity')
                                         ->label('تعداد در بسته')
                                         ->numeric()

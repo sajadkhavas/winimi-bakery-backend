@@ -2,20 +2,35 @@
 
 namespace App\Filament\Pages;
 
-use Filament\Pages\Page;
 use Filament\Notifications\Notification;
+use Filament\Pages\Page;
 use Illuminate\Support\Facades\Artisan;
 
 class CacheManagerPage extends Page
 {
-    protected static ?string $navigationIcon  = 'heroicon-o-bolt';
-    protected static ?string $navigationLabel = 'Cache Manager';
+    protected static ?string $navigationIcon = 'heroicon-o-bolt';
+
+    protected static ?string $navigationLabel = 'مدیریت کش';
+
     protected static ?string $navigationGroup = 'سیستم';
-    protected static ?int    $navigationSort  = 4;
-    protected static ?string $title           = 'مدیریت Cache';
-    protected static string  $view            = 'filament.pages.cache-manager';
+
+    protected static ?int $navigationSort = 4;
+
+    protected static ?string $title = 'مدیریت کش';
+
+    protected static string $view = 'filament.pages.cache-manager';
 
     public array $results = [];
+
+    public static function canAccess(): bool
+    {
+        return auth()->user()?->hasRole('super_admin') ?? false;
+    }
+
+    public static function shouldRegisterNavigation(): bool
+    {
+        return static::canAccess();
+    }
 
     public function clearAll(): void
     {
@@ -88,13 +103,13 @@ class CacheManagerPage extends Page
     public function getStats(): array
     {
         return [
-            'php'        => PHP_VERSION,
-            'laravel'    => app()->version(),
-            'env'        => app()->environment(),
-            'cache'      => config('cache.default'),
-            'disk_free'  => round(disk_free_space(base_path()) / 1024 / 1024 / 1024, 2) . ' GB',
-            'disk_total' => round(disk_total_space(base_path()) / 1024 / 1024 / 1024, 2) . ' GB',
-            'memory'     => round(memory_get_usage(true) / 1024 / 1024, 1) . ' MB',
+            'php' => PHP_VERSION,
+            'laravel' => app()->version(),
+            'env' => app()->environment(),
+            'cache' => config('cache.default'),
+            'disk_free' => round(disk_free_space(base_path()) / 1024 / 1024 / 1024, 2).' GB',
+            'disk_total' => round(disk_total_space(base_path()) / 1024 / 1024 / 1024, 2).' GB',
+            'memory' => round(memory_get_usage(true) / 1024 / 1024, 1).' MB',
         ];
     }
 

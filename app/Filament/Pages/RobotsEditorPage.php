@@ -2,28 +2,44 @@
 
 namespace App\Filament\Pages;
 
-use Filament\Pages\Page;
-use Filament\Notifications\Notification;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Concerns\InteractsWithForms;
 use Filament\Forms\Contracts\HasForms;
 use Filament\Forms\Form;
+use Filament\Notifications\Notification;
+use Filament\Pages\Page;
 
 class RobotsEditorPage extends Page implements HasForms
 {
     use InteractsWithForms;
 
-    protected static ?string $navigationIcon  = 'heroicon-o-document-text';
+    protected static ?string $navigationIcon = 'heroicon-o-document-text';
+
     protected static ?string $navigationLabel = 'Robots.txt';
-    protected static ?string $navigationGroup = 'سئو';
-    protected static ?int    $navigationSort  = 1;
-    protected static ?string $title           = 'ویرایش Robots.txt';
-    protected static string  $view            = 'filament.pages.robots-editor';
+
+    protected static ?string $navigationGroup = 'سیستم';
+
+    protected static ?int $navigationSort = 6;
+
+    protected static ?string $title = 'ویرایش Robots.txt';
+
+    protected static string $view = 'filament.pages.robots-editor';
 
     public ?string $content = '';
 
+    public static function canAccess(): bool
+    {
+        return auth()->user()?->hasRole('super_admin') ?? false;
+    }
+
+    public static function shouldRegisterNavigation(): bool
+    {
+        return static::canAccess();
+    }
+
     public function mount(): void
     {
+        abort_unless(static::canAccess(), 403);
         $path = public_path('robots.txt');
         $this->content = file_exists($path) ? file_get_contents($path) : '';
         $this->form->fill(['content' => $this->content]);
@@ -48,7 +64,7 @@ class RobotsEditorPage extends Page implements HasForms
 
     public function resetToDefault(): void
     {
-        $default = "User-agent: Googlebot\nAllow: /\nUser-agent: Bingbot\nAllow: /\nUser-agent: *\nAllow: /\nSitemap: " . config('app.url') . "/sitemap.xml\n";
+        $default = "User-agent: Googlebot\nAllow: /\nUser-agent: Bingbot\nAllow: /\nUser-agent: *\nAllow: /\nSitemap: ".config('app.url')."/sitemap.xml\n";
         $this->form->fill(['content' => $default]);
         Notification::make()->title('به حالت پیش‌فرض برگشت')->info()->send();
     }

@@ -3,7 +3,9 @@
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\StoreSettingResource\Pages;
+use App\Models\BakeryPost;
 use App\Models\StoreSetting;
+use App\Support\AdminMediaLibrary;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
@@ -29,27 +31,15 @@ class StoreSettingResource extends Resource
     public static function form(Form $form): Form
     {
         return $form->schema([
-            Forms\Components\Section::make('محتوای قابل مدیریت')
-                ->description('کلید، نوع داده و وضعیت عمومی بخشی از قرارداد Frontend/API هستند و از پنل قابل تغییر نیستند. فقط مقدار محتوایی را ویرایش کنید.')
+            Forms\Components\Section::make('ویرایش محتوای سایت')
+                ->description('فقط مقدار قابل‌نمایش برای کارفرما ویرایش می‌شود. کلید فنی، نوع داده و قرارداد API پنهان و محافظت‌شده باقی می‌مانند.')
                 ->schema([
                     Forms\Components\TextInput::make('label')
                         ->label('عنوان')
                         ->disabled()
                         ->dehydrated(false),
                     Forms\Components\TextInput::make('group')
-                        ->label('گروه')
-                        ->disabled()
-                        ->dehydrated(false),
-                    Forms\Components\TextInput::make('key')
-                        ->label('کلید فنی')
-                        ->disabled()
-                        ->dehydrated(false),
-                    Forms\Components\TextInput::make('type')
-                        ->label('نوع داده')
-                        ->disabled()
-                        ->dehydrated(false),
-                    Forms\Components\Toggle::make('is_public')
-                        ->label('قابل نمایش در API عمومی')
+                        ->label('بخش')
                         ->disabled()
                         ->dehydrated(false),
                     Forms\Components\Group::make()
@@ -92,6 +82,14 @@ class StoreSettingResource extends Resource
 
         if ($record->key === 'trust.enamad_badge_code') {
             return 'enamad-badge';
+        }
+
+        if (in_array($record->key, [
+            'home.editorial_1_slug',
+            'home.editorial_2_slug',
+            'home.editorial_3_slug',
+        ], true)) {
+            return 'post-slug';
         }
 
         if ($record->type === 'boolean') {
@@ -172,6 +170,7 @@ class StoreSettingResource extends Resource
                     Forms\Components\TextInput::make('url')
                         ->label('مسیر داخلی')
                         ->required()
+                        ->datalist(['/', '/products', '/blog', '/account', '/cart'])
                         ->helperText('مسیر با / شروع شود و آدرس خارجی وارد نشود.')
                         ->rules(['string', 'max:255', 'regex:/^\/(?!\/).*$/']),
                 ])
@@ -181,7 +180,7 @@ class StoreSettingResource extends Resource
                 ->reorderable(),
             'slug-list' => Forms\Components\TagsInput::make('value')
                 ->label('دسته‌های مشمول تخفیف عمده')
-                ->helperText('فقط slug دسته‌های معتبر را وارد کنید؛ مانند kokyhay-khangy. هر مورد جداگانه ثبت می‌شود و JSON لازم نیست.')
+                ->helperText('فقط slug دسته‌های معتبر را وارد کنید؛ هر مورد جداگانه ثبت می‌شود و JSON لازم نیست.')
                 ->formatStateUsing(function ($state): array {
                     if (is_array($state)) {
                         return array_values(array_filter($state, 'is_string'));
@@ -250,6 +249,17 @@ class StoreSettingResource extends Resource
                 ->helperText('فقط token عمومی meta verification را وارد کنید؛ فایل، HTML یا Secret وارد نشود.')
                 ->maxLength(255)
                 ->rules(['nullable', 'regex:/^[A-Za-z0-9_-]+$/']),
+            'post-slug' => Forms\Components\Select::make('value')
+                ->label('مقاله منتشرشده')
+                ->options(fn (): array => BakeryPost::query()
+                    ->published()
+                    ->orderByDesc('published_at')
+                    ->pluck('title', 'slug')
+                    ->all())
+                ->searchable()
+                ->preload()
+                ->nullable()
+                ->helperText('فقط مقاله‌ای که واقعاً منتشر شده انتخاب می‌شود؛ نیازی به واردکردن دستی slug نیست.'),
             'boolean' => Forms\Components\Toggle::make('value')
                 ->label('فعال')
                 ->formatStateUsing(fn ($state): bool => filter_var($state, FILTER_VALIDATE_BOOL))
@@ -269,18 +279,24 @@ class StoreSettingResource extends Resource
                 ->maxLength(255),
             'internal-path' => Forms\Components\TextInput::make('value')
                 ->label('مسیر داخلی سایت')
-                ->helperText('مثل /products یا /blog؛ آدرس خارجی مجاز نیست.')
+                ->datalist(['/', '/products', '/blog', '/contact', '/about', '/cart', '/account'])
+                ->helperText('یکی از مسیرهای پیشنهادی را انتخاب کنید یا مسیر داخلی معتبر با / وارد کنید؛ آدرس خارجی مجاز نیست.')
                 ->maxLength(255)
                 ->rules(['nullable', 'regex:/^\/(?!\/).*$/']),
-            'media-url' => Forms\Components\TextInput::make('value')
-                ->label('آدرس تصویر')
-                ->helperText('مسیر داخلی /... یا URL کامل http/https مجاز است.')
-                ->maxLength(2048)
-                ->rules(['nullable', 'regex:/^(\/(?!\/).+|https?:\/\/\S+)$/i']),
+            'media-url' => Forms\Components\Select::make('value')
+                ->label('تصویر از کتابخانه رسانه')
+                ->options(AdminMediaLibrary::imageUrlOptions($record?->value))
+                ->searchable()
+                ->preload()
+                ->nullable()
+                ->helperText('تصویر را از کتابخانه رسانه تخصصی وینیمی انتخاب کنید. مقدار قدیمی فعلی برای جلوگیری از حذف ناخواسته حفظ می‌شود.'),
             'url' => Forms\Components\TextInput::make('value')
                 ->label('نشانی اینترنتی')
                 ->url()
-                ->maxLength(2048),
+                ->maxLength(2048)
+                ->helperText($record?->key === 'social.instagram'
+                    ? 'این فیلد برای سازگاری قدیمی باقی مانده است؛ برای اطلاعات تماس اصلی از فیلد اینستاگرام در بخش برند و تماس استفاده کنید.'
+                    : null),
             'phone' => Forms\Components\TextInput::make('value')
                 ->label('شماره تماس')
                 ->tel()
@@ -299,20 +315,29 @@ class StoreSettingResource extends Resource
     {
         return $table
             ->columns([
-                Tables\Columns\TextColumn::make('group')->label('گروه')->badge()->sortable(),
-                Tables\Columns\TextColumn::make('label')->label('عنوان')->searchable(),
-                Tables\Columns\TextColumn::make('key')->label('کلید')->searchable()->copyable()->toggleable(),
-                Tables\Columns\TextColumn::make('type')->label('نوع')->badge()->toggleable(),
-                Tables\Columns\IconColumn::make('is_public')->label('عمومی')->boolean(),
+                Tables\Columns\TextColumn::make('group')->label('بخش')->badge()->sortable(),
+                Tables\Columns\TextColumn::make('label')->label('عنوان')->searchable()->wrap(),
                 Tables\Columns\TextColumn::make('updated_at')->label('آخرین تغییر')->dateTime('Y/m/d H:i')->sortable(),
+                Tables\Columns\TextColumn::make('key')
+                    ->label('کلید فنی')
+                    ->searchable()
+                    ->copyable()
+                    ->toggleable(isToggledHiddenByDefault: true),
+                Tables\Columns\TextColumn::make('type')
+                    ->label('نوع')
+                    ->badge()
+                    ->toggleable(isToggledHiddenByDefault: true),
+                Tables\Columns\IconColumn::make('is_public')
+                    ->label('عمومی')
+                    ->boolean()
+                    ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
                 Tables\Filters\SelectFilter::make('group')
-                    ->label('گروه')
+                    ->label('بخش')
                     ->options(fn (): array => StoreSetting::query()->distinct()->orderBy('group')->pluck('group', 'group')->all()),
-                Tables\Filters\TernaryFilter::make('is_public')->label('عمومی'),
             ])
-            ->actions([Tables\Actions\EditAction::make()->label('ویرایش مقدار')])
+            ->actions([Tables\Actions\EditAction::make()->label('ویرایش')])
             ->bulkActions([])
             ->defaultSort('group');
     }
