@@ -15,6 +15,8 @@ class BakeryMediaAsset extends Model implements HasMedia
     use InteractsWithMedia;
     use SoftDeletes;
 
+    public const MAX_PUBLIC_PREVIEW_BYTES = 1_048_576;
+
     public const USAGE_UNASSIGNED = 'unassigned';
 
     public const USAGE_PRODUCT_MAIN = 'product_main';
@@ -64,6 +66,21 @@ class BakeryMediaAsset extends Model implements HasMedia
         'notes',
     ];
 
+    protected static function booted(): void
+    {
+        static::saving(function (self $asset): void {
+            if (
+                $asset->isDirty('status')
+                && in_array($asset->status, [self::STATUS_READY, self::STATUS_ASSIGNED], true)
+                && ! $asset->publicPreviewWithinBudget()
+            ) {
+                throw new \DomainException(
+                    'نسخه WebP مصرفی باید آماده و حداکثر ۱ مگابایت باشد؛ ابتدا پردازش/بازسازی رسانه را کامل کنید.'
+                );
+            }
+        });
+    }
+
     public function registerMediaCollections(): void
     {
         $this->addMediaCollection('source')
@@ -75,28 +92,26 @@ class BakeryMediaAsset extends Model implements HasMedia
             ]);
     }
 
-    public function registerMediaConversions(
-        ?Media $media = null,
-    ): void {
+    public function registerMediaConversions(?Media $media = null): void
+    {
         $this->addMediaConversion('thumb')
             ->performOnCollections('source')
             ->fit(Fit::Crop, 240, 240)
             ->format('webp')
-            ->quality(80);
+            ->quality(78)
+            ->queued();
 
         $this->addMediaConversion('preview')
             ->performOnCollections('source')
             ->fit(Fit::Max, 1200, 1200)
             ->format('webp')
-            ->quality(84);
+            ->quality(80)
+            ->queued();
     }
 
     public function product(): BelongsTo
     {
-        return $this->belongsTo(
-            BakeryProduct::class,
-            'product_id',
-        );
+        return $this->belongsTo(BakeryProduct::class, 'product_id');
     }
 
     public function assignToProduct(
@@ -105,22 +120,15 @@ class BakeryMediaAsset extends Model implements HasMedia
         ?string $altText = null,
     ): Media {
         if ($this->status !== self::STATUS_READY) {
-            throw new \DomainException(
-                'این رسانه باید ابتدا در وضعیت آماده تخصیص قرار بگیرد.'
-            );
+            throw new \DomainException('این رسانه باید ابتدا در وضعیت آماده تخصیص قرار بگیرد.');
         }
 
-        if (! in_array(
-            $usage,
-            [
-                self::USAGE_PRODUCT_MAIN,
-                self::USAGE_PRODUCT_GALLERY,
-            ],
-            true,
-        )) {
-            throw new \InvalidArgumentException(
-                'کاربرد انتخاب‌شده برای رسانه محصول معتبر نیست.'
-            );
+        if (! $this->publicPreviewWithinBudget()) {
+            throw new \DomainException('نسخه بهینه رسانه آماده نیست یا از سقف ۱ مگابایت بیشتر است.');
+        }
+
+        if (! in_array($usage, [self::USAGE_PRODUCT_MAIN, self::USAGE_PRODUCT_GALLERY], true)) {
+            throw new \InvalidArgumentException('کاربرد انتخاب‌شده برای رسانه محصول معتبر نیست.');
         }
 
         $this->unsetRelation('media');
@@ -129,9 +137,7 @@ class BakeryMediaAsset extends Model implements HasMedia
         $source = $this->sourceMedia();
 
         if (! $source instanceof Media) {
-            throw new \DomainException(
-                'فایل اصلی این رسانه پیدا نشد.'
-            );
+            throw new \DomainException('فایل اصلی این رسانه پیدا نشد.');
         }
 
         $collection = match ($usage) {
@@ -139,31 +145,17 @@ class BakeryMediaAsset extends Model implements HasMedia
             self::USAGE_PRODUCT_GALLERY => 'catalog-gallery',
         };
 
-        if (
-            $collection === 'catalog-main'
-            && $product->getFirstMedia('catalog-main') instanceof Media
-        ) {
-            throw new \DomainException(
-                'این محصول از قبل تصویر اصلی دارد؛ جایگزینی خودکار انجام نشد.'
-            );
+        if ($collection === 'catalog-main' && $product->getFirstMedia('catalog-main') instanceof Media) {
+            throw new \DomainException('این محصول از قبل تصویر اصلی دارد؛ جایگزینی خودکار انجام نشد.');
         }
 
-        $resolvedAlt = trim(
-            (string) (
-                $altText
-                ?? $this->alt_text
-                ?? $this->title
-            )
-        );
+        $resolvedAlt = trim((string) ($altText ?? $this->alt_text ?? $this->title));
 
         if ($resolvedAlt === '') {
             $resolvedAlt = $product->name;
         }
 
-        $copiedMedia = $source->copy(
-            $product,
-            $collection,
-        );
+        $copiedMedia = $source->copy($product, $collection);
 
         try {
             $copiedMedia
@@ -203,13 +195,94 @@ class BakeryMediaAsset extends Model implements HasMedia
             && $media->hasGeneratedConversion('preview');
     }
 
+    public function publicPreviewBytes(): ?int
+    {
+        $media = $this->sourceMedia();
+
+        if ($media === null || ! $media->hasGeneratedConversion('preview')) {
+            return null;
+        }
+
+        $path = $media->getPath('preview');
+
+        if (! is_file($path)) {
+            return null;
+        }
+
+        $bytes = filesize($path);
+
+        return $bytes === false ? null : $bytes;
+    }
+
+    public function publicPreviewWithinBudget(): bool
+    {
+        $bytes = $this->publicPreviewBytes();
+
+        return $this->conversionsReady()
+            && $bytes !== null
+            && $bytes <= self::MAX_PUBLIC_PREVIEW_BYTES;
+    }
+
     public function conversionState(): string
     {
         if ($this->sourceMedia() === null) {
             return 'missing';
         }
 
-        return $this->conversionsReady() ? 'ready' : 'pending';
+        if (! $this->conversionsReady()) {
+            return 'pending';
+        }
+
+        return $this->publicPreviewWithinBudget() ? 'ready' : 'oversized';
+    }
+
+    public function originalUrl(): ?string
+    {
+        return $this->sourceMedia()?->getFullUrl();
+    }
+
+    public function optimizedUrl(): ?string
+    {
+        $media = $this->sourceMedia();
+
+        return $media !== null && $media->hasGeneratedConversion('preview')
+            ? $media->getFullUrl('preview')
+            : null;
+    }
+
+    public function originalSizeLabel(): string
+    {
+        return self::humanBytes($this->sourceMedia()?->size);
+    }
+
+    public function optimizedSizeLabel(): string
+    {
+        return self::humanBytes($this->publicPreviewBytes());
+    }
+
+    public function dimensionsLabel(): string
+    {
+        $media = $this->sourceMedia();
+        if ($media === null) {
+            return '—';
+        }
+
+        $path = $media->getPath();
+        if (! is_file($path)) {
+            return 'نامشخص';
+        }
+
+        $size = @getimagesize($path);
+        if (! is_array($size) || ! isset($size[0], $size[1])) {
+            return 'نامشخص';
+        }
+
+        return $size[0].'×'.$size[1].' px';
+    }
+
+    public function formatLabel(): string
+    {
+        return $this->sourceMedia()?->mime_type ?? '—';
     }
 
     public function previewUrl(): ?string
@@ -223,5 +296,22 @@ class BakeryMediaAsset extends Model implements HasMedia
         return $media->hasGeneratedConversion('thumb')
             ? $media->getFullUrl('thumb')
             : $media->getFullUrl();
+    }
+
+    private static function humanBytes(?int $bytes): string
+    {
+        if ($bytes === null) {
+            return '—';
+        }
+
+        if ($bytes < 1024) {
+            return $bytes.' B';
+        }
+
+        if ($bytes < 1024 * 1024) {
+            return number_format($bytes / 1024, 1).' KB';
+        }
+
+        return number_format($bytes / (1024 * 1024), 2).' MB';
     }
 }
