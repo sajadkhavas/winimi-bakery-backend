@@ -7,7 +7,9 @@ use App\Filament\Resources\BakeryCategoryLandingResource;
 use App\Filament\Resources\NavigationItemResource;
 use App\Filament\Resources\StoreSettingResource;
 use App\Models\BakeryCategoryLanding;
+use App\Models\NavigationItem;
 use App\Models\StoreSetting;
+use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -190,6 +192,31 @@ class F30StorefrontAuthorityTest extends TestCase
         $this->assertStringContainsString('«فروشگاه» را انتخاب کنید', $source);
         $this->assertStringContainsString("Select::make('linked_category_id')", $source);
         $this->assertStringContainsString("Select::make('placement')", $source);
+    }
+
+    public function test_panel_operator_can_manage_navigation_without_stale_shield_permissions(): void
+    {
+        $role = \Spatie\Permission\Models\Role::create([
+            'name' => 'panel_user',
+            'guard_name' => 'web',
+        ]);
+        $operator = User::factory()->create();
+        $operator->assignRole($role);
+        $item = NavigationItem::query()->create([
+            'label' => 'فروشگاه',
+            'href' => '/products',
+            'placement' => 'all',
+            'sort_order' => 10,
+            'is_active' => true,
+        ]);
+        $policy = app(\App\Policies\NavigationItemPolicy::class);
+
+        $this->assertTrue($policy->viewAny($operator));
+        $this->assertTrue($policy->view($operator, $item));
+        $this->assertTrue($policy->create($operator));
+        $this->assertTrue($policy->update($operator, $item));
+        $this->assertTrue($policy->delete($operator, $item));
+        $this->assertTrue($policy->reorder($operator));
     }
 
     public function test_category_landing_filament_resource_exposes_seo_and_internal_link_control(): void
