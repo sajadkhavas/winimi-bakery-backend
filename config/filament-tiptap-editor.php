@@ -18,7 +18,7 @@ return [
     */
     'profiles' => [
         'default' => [
-            'heading', 'bullet-list', 'ordered-list', 'checked-list', 'blockquote', 'hr', '|',
+            'heading', 'bullet-list', 'ordered-list', 'checked-list', 'blockquote', 'hr', 'hurdle', '|',
             'bold', 'italic', 'strike', 'underline', 'superscript', 'subscript', 'lead', 'small', 'color', 'highlight', 'align-left', 'align-center', 'align-right', '|',
             'link', 'media', 'table', 'details',
         ],
