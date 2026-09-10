@@ -3,6 +3,7 @@
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\CustomerResource\Pages;
+use App\Filament\Resources\CustomerResource\RelationManagers\AdminActionsRelationManager;
 use App\Models\Customer;
 use Filament\Forms\Components\Section;
 use Filament\Forms\Components\TextInput;
@@ -32,14 +33,18 @@ class CustomerResource extends Resource
     {
         return $form->schema([
             Section::make('حساب مشتری')
-                ->description('شماره موبایل فقط از مسیر OTP تأیید می‌شود. فعال/غیرفعال‌کردن حساب نیز فقط از اکشن تأییدشونده بالای صفحه انجام می‌شود.')
+                ->description('شماره موبایل فقط از مسیر احراز هویت معتبر می‌شود. تغییر وضعیت حساب فقط از اکشن تأییدشونده انجام و در تاریخچه مدیریتی ثبت می‌شود.')
                 ->schema([
                     TextInput::make('public_id')
                         ->label('شناسه عمومی')
                         ->disabled(),
                     TextInput::make('mobile')
                         ->label('شماره موبایل')
-                        ->disabled(),
+                        ->formatStateUsing(fn (?string $state): string => auth()->user()?->hasRole('super_admin')
+                            ? (string) $state
+                            : self::maskMobile($state))
+                        ->disabled()
+                        ->helperText('شماره کامل فقط برای Super Admin نمایش داده می‌شود.'),
                     TextInput::make('full_name')
                         ->label('نام و نام خانوادگی')
                         ->maxLength(120),
@@ -56,7 +61,8 @@ class CustomerResource extends Resource
                     Toggle::make('marketing_consent')
                         ->label('رضایت دریافت پیام‌های بازاریابی')
                         ->disabled()
-                        ->dehydrated(false),
+                        ->dehydrated(false)
+                        ->helperText('رضایت بازاریابی از مسیر رضایت کاربر مدیریت می‌شود و ادمین آن را دستی فعال نمی‌کند.'),
                 ])
                 ->columns(2),
         ]);
@@ -101,7 +107,7 @@ class CustomerResource extends Resource
                 Tables\Filters\TernaryFilter::make('marketing_consent')->label('رضایت بازاریابی'),
             ])
             ->actions([
-                Tables\Actions\EditAction::make(),
+                Tables\Actions\EditAction::make()->label('مشاهده / مدیریت'),
             ])
             ->bulkActions([])
             ->defaultSort('created_at', 'desc');
@@ -121,6 +127,13 @@ class CustomerResource extends Resource
         return mb_substr($mobile, 0, 4)
             .str_repeat('•', max(3, mb_strlen($mobile) - 6))
             .mb_substr($mobile, -2);
+    }
+
+    public static function getRelations(): array
+    {
+        return [
+            AdminActionsRelationManager::class,
+        ];
     }
 
     public static function getPages(): array
