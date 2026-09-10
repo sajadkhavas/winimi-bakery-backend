@@ -14,30 +14,30 @@ final class AdminMediaLibrary
         $options = [];
 
         BakeryMediaAsset::query()
-            ->where('status', '!=', BakeryMediaAsset::STATUS_REJECTED)
+            ->whereIn('status', [BakeryMediaAsset::STATUS_READY, BakeryMediaAsset::STATUS_ASSIGNED])
             ->latest('updated_at')
             ->get()
             ->each(function (BakeryMediaAsset $asset) use (&$options): void {
-                $media = $asset->sourceMedia();
-                if ($media === null) {
+                if (! $asset->publicPreviewWithinBudget()) {
                     return;
                 }
 
-                $url = $media->hasGeneratedConversion('preview')
-                    ? $media->getFullUrl('preview')
-                    : $media->getFullUrl();
+                $url = $asset->optimizedUrl();
+                if ($url === null) {
+                    return;
+                }
 
                 $label = trim((string) $asset->title);
                 if ($label === '') {
                     $label = 'رسانه #'.$asset->getKey();
                 }
 
-                $options[$url] = $label;
+                $options[$url] = $label.' — '.$asset->optimizedSizeLabel();
             });
 
         $current = trim((string) $current);
         if ($current !== '' && ! array_key_exists($current, $options)) {
-            $options = [$current => 'تصویر فعلی (خارج از کتابخانه تخصصی)'] + $options;
+            $options = [$current => 'تصویر فعلی (Legacy / نیازمند بازبینی کتابخانه)'] + $options;
         }
 
         return $options;
