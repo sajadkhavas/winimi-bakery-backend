@@ -12,6 +12,11 @@ use Filament\Tables\Table;
 
 class CategoryResource extends Resource
 {
+    public static function shouldRegisterNavigation(): bool
+    {
+        return false;
+    }
+
     protected static ?string $model = Category::class;
     protected static ?string $navigationIcon = 'heroicon-o-rectangle-group';
     protected static ?string $navigationLabel = 'دسته‌بندی‌ها';

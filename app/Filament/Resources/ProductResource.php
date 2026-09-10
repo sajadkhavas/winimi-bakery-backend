@@ -27,6 +27,11 @@ use pxlrbt\FilamentExcel\Columns\Column;
 
 class ProductResource extends Resource
 {
+    public static function shouldRegisterNavigation(): bool
+    {
+        return false;
+    }
+
     protected static ?string $model = Product::class;
     protected static ?string $navigationIcon  = 'heroicon-o-cube';
     protected static ?string $navigationLabel = 'محصولات';

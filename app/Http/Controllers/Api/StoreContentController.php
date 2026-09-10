@@ -46,15 +46,19 @@ class StoreContentController extends Controller
         ]);
     }
 
-    public function navigation(): JsonResponse
+    public function navigation(Request $request): JsonResponse
     {
+        $placement = $request->validate([
+            'placement' => ['nullable', 'in:header,mobile,footer'],
+        ])['placement'] ?? 'header';
+
         $items = NavigationItem::query()
             ->whereNull('parent_id')
             ->where('is_active', true)
-            ->whereIn('placement', ['all', 'header', 'mobile'])
+            ->whereIn('placement', ['all', $placement])
             ->with(['children' => fn ($query) => $query
                 ->where('is_active', true)
-                ->whereIn('placement', ['all', 'header', 'mobile'])
+                ->whereIn('placement', ['all', $placement])
                 ->with(['linkedCategory' => fn ($query) => $query->withCount([
                     'products' => fn ($products) => $products->active(),
                 ])])
@@ -86,7 +90,7 @@ class StoreContentController extends Controller
                     ])->values()->all(),
             ])->values()->all();
 
-        return ApiResponse::success($items);
+        return ApiResponse::success($items, meta: ['placement' => $placement]);
     }
 
     public function page(string $slug): JsonResponse
