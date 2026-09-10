@@ -60,12 +60,8 @@ return new class extends Migration
 
     public function down(): void
     {
-        DB::table('store_settings')->whereIn('key', [
-            'pwa.name', 'pwa.short_name', 'pwa.description', 'pwa.theme_color',
-            'pwa.background_color', 'pwa.offline_title', 'pwa.offline_description',
-            'pwa.shortcuts', 'integrations.google_tag_mode', 'integrations.google_tag_id',
-            'integrations.search_console_verification', 'consent.analytics_enabled',
-            'consent.title', 'consent.description', 'consent.accept_label', 'consent.reject_label',
-        ])->delete();
+        // These rows become operator-owned as soon as they exist. A migration rollback
+        // must not delete values an operator may already have changed. Leaving the
+        // public settings in place is backward-compatible and preserves business data.
     }
 };
