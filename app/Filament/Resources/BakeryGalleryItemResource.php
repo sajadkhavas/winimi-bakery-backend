@@ -71,9 +71,9 @@ class BakeryGalleryItemResource extends Resource
                 ->columnSpanFull(),
             Forms\Components\TextInput::make('link_url')
                 ->label('لینک مقصد')
-                ->url()
                 ->nullable()
-                ->helperText('برای لینک خارجی می‌توانید URL کامل وارد کنید. برای لینک داخلی از انتخاب‌گر بالا استفاده کنید.')
+                ->rules(['nullable', 'regex:~^(?:https?://[^\s]+|/(?!/)[^\s]*)$~'])
+                ->helperText('برای مقصد داخلی از Picker بالا استفاده کنید؛ لینک خارجی باید با http:// یا https:// شروع شود.')
                 ->columnSpanFull(),
             Forms\Components\Textarea::make('caption')
                 ->label('توضیح')
