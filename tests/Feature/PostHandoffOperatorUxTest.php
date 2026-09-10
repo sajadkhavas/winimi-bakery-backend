@@ -4,8 +4,10 @@ namespace Tests\Feature;
 
 use App\Filament\Resources\BakeryFaqResource;
 use App\Filament\Resources\CustomerResource;
+use App\Filament\Resources\StoreSettingResource;
 use App\Models\BakeryFaq;
 use App\Models\BakeryProductVariant;
+use App\Models\StoreSetting;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -63,6 +65,28 @@ class PostHandoffOperatorUxTest extends TestCase
         $this->assertStringContainsString("->rules(['gte:preparation_min_days'])", $source);
         $this->assertStringContainsString('->bulkActions([])', $source);
         $this->assertStringContainsString('DeleteAction::make()', $source);
+    }
+
+    public function test_store_setting_media_picker_and_instagram_have_one_operator_contract(): void
+    {
+        $heroImage = new StoreSetting([
+            'key' => 'home.hero_image_url',
+            'type' => 'string',
+        ]);
+
+        $this->assertSame('media-url', StoreSettingResource::editorKind($heroImage));
+
+        $resource = file_get_contents(app_path('Filament/Resources/StoreSettingResource.php'));
+        $page = file_get_contents(
+            app_path('Filament/Resources/StoreSettingResource/Pages/ManageStoreSettings.php'),
+        );
+
+        $this->assertIsString($resource);
+        $this->assertIsString($page);
+        $this->assertStringContainsString("'media-url' => Forms\\Components\\Select::make('value')", $resource);
+        $this->assertStringContainsString('AdminMediaLibrary::imageUrlOptions', $resource);
+        $this->assertStringContainsString("where('key', '!=', 'social.instagram')", $page);
+        $this->assertStringContainsString("['brand', 'contact', 'social']", $page);
     }
 
     public function test_product_variant_weight_range_has_a_public_label_and_safe_admin_contract(): void
