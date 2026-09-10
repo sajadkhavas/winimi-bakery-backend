@@ -65,7 +65,11 @@ class F31AdminCompletionTest extends TestCase
     public function test_push_subscription_inventory_is_operator_only_and_read_only(): void
     {
         $role = Role::findOrCreate('panel_user', 'web');
-        $operator = User::factory()->create();
+        $operator = User::query()->create([
+            'name' => 'Panel Operator',
+            'email' => 'f31-panel-operator@example.test',
+            'password' => bcrypt('password'),
+        ]);
         $operator->assignRole($role);
         $this->actingAs($operator);
 
