@@ -20,6 +20,7 @@ use Illuminate\Cookie\Middleware\EncryptCookies;
 use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
 use Illuminate\Routing\Middleware\SubstituteBindings;
 use Illuminate\Session\Middleware\StartSession;
+use Illuminate\Support\Facades\Vite;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
 use ShuvroRoy\FilamentSpatieLaravelBackup\FilamentSpatieLaravelBackupPlugin;
 use Tapp\FilamentAuthenticationLog\FilamentAuthenticationLogPlugin;
@@ -47,6 +48,12 @@ class AdminPanelProvider extends PanelProvider
             ->colors(['primary' => Color::Emerald])
             ->font('Vazirmatn')
             ->viteTheme('resources/css/filament/admin/theme.css', 'build-admin')
+            ->renderHook(
+                'panels::body.end',
+                fn (): string => Vite::useBuildDirectory('build-admin')
+                    ->withEntryPoints(['resources/js/filament/media-upload-optimizer.js'])
+                    ->toHtml(),
+            )
             ->discoverResources(in: app_path('Filament/Resources'), for: 'App\\Filament\\Resources')
             ->discoverPages(in: app_path('Filament/Pages'), for: 'App\\Filament\\Pages')
             ->pages([Pages\Dashboard::class])
