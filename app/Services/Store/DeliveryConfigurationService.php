@@ -5,6 +5,7 @@ namespace App\Services\Store;
 use App\Enums\DeliveryMethod;
 use App\Models\DeliveryZone;
 use App\Models\StoreSetting;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Validation\ValidationException;
 
 final class DeliveryConfigurationService
@@ -15,7 +16,20 @@ final class DeliveryConfigurationService
         'هزینه ارسال در مبلغ سفارش محاسبه نشده و هنگام تحویل مستقیماً به پیک پرداخت می‌شود.';
 
     /**
-     * DeliveryZone pricing is intentionally non-authoritative for new checkout.
+     * Confirmed business coverage for temperature-sensitive orders.
+     * Additional verified surrounding cities may be added through an active
+     * DeliveryZone with an explicit city and chilled_enabled=true.
+     */
+    private const BASE_CHILLED_CITIES = [
+        'تهران',
+        'کرج',
+        'اندیشه',
+    ];
+
+    /**
+     * DeliveryZone pricing remains non-authoritative for new checkout.
+     * Zones can only extend chilled-delivery eligibility to an explicitly
+     * named verified city; province-wide wildcard coverage is not allowed.
      *
      * @return array{
      *     zone: null,
@@ -33,6 +47,7 @@ final class DeliveryConfigurationService
         bool $requiresCooling,
     ): array {
         $this->assertStoreCanAcceptOrder($subtotalToman);
+        $this->assertDestinationEligible($province, $city, $requiresCooling);
 
         return [
             'zone' => null,
@@ -45,6 +60,8 @@ final class DeliveryConfigurationService
 
     /**
      * Only the canonical merchant-arranged courier method is offered.
+     * For dry products it is nationwide. For a chilled cart it is enabled only
+     * for a confirmed base city or an explicitly configured extra covered city.
      *
      * @return array<int, array{
      *     method: string,
@@ -62,7 +79,7 @@ final class DeliveryConfigurationService
         return [[
             'method' => DeliveryMethod::Standard->value,
             'label' => DeliveryMethod::Standard->label(),
-            'enabled' => true,
+            'enabled' => ! $requiresCooling || $this->supportsChilledDestination($province, $city),
             'feeToman' => 0,
         ]];
     }
@@ -70,11 +87,68 @@ final class DeliveryConfigurationService
     /**
      * Retained for backward-compatible callers.
      *
-     * Delivery zones no longer determine price or checkout eligibility.
+     * Delivery zones do not determine new-checkout price or courier fee.
      */
     public function resolve(?string $province, ?string $city): ?DeliveryZone
     {
         return null;
+    }
+
+    private function assertDestinationEligible(
+        ?string $province,
+        ?string $city,
+        bool $requiresCooling,
+    ): void {
+        if (! $requiresCooling || $this->supportsChilledDestination($province, $city)) {
+            return;
+        }
+
+        throw ValidationException::withMessages([
+            'customer.city' => [
+                'ارسال محصولات یخچالی برای این مقصد فعال نیست. لطفاً یک شهر تحت پوشش انتخاب کنید یا با پشتیبانی هماهنگ کنید.',
+            ],
+        ]);
+    }
+
+    private function supportsChilledDestination(?string $province, ?string $city): bool
+    {
+        $normalizedCity = DeliveryZone::normalizeLocation($city);
+
+        if ($normalizedCity === null) {
+            return false;
+        }
+
+        if (in_array($normalizedCity, self::BASE_CHILLED_CITIES, true)) {
+            return true;
+        }
+
+        return $this->resolveChilledZone($province, $normalizedCity) !== null;
+    }
+
+    private function resolveChilledZone(?string $province, ?string $city): ?DeliveryZone
+    {
+        $normalizedProvince = DeliveryZone::normalizeLocation($province);
+        $normalizedCity = DeliveryZone::normalizeLocation($city);
+
+        if ($normalizedCity === null) {
+            return null;
+        }
+
+        return DeliveryZone::query()
+            ->active()
+            ->where('chilled_enabled', true)
+            ->whereNotNull('city')
+            ->where('city', $normalizedCity)
+            ->where(function (Builder $query) use ($normalizedProvince): void {
+                $query->whereNull('province');
+
+                if ($normalizedProvince !== null) {
+                    $query->orWhere('province', $normalizedProvince);
+                }
+            })
+            ->orderBy('priority')
+            ->orderBy('id')
+            ->first();
     }
 
     private function assertStoreCanAcceptOrder(int $subtotalToman): void
