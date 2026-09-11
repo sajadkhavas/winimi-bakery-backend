@@ -36,7 +36,7 @@ class ManageBakeryMediaAssets extends ManageRecords
                             'image/png',
                             'image/webp',
                         ])
-                        ->maxSize(12 * 1024)
+                        ->maxSize(BakeryMediaAssetResource::maxUploadSizeKilobytes())
                         ->maxFiles(50)
                         ->rules([
                             'dimensions:max_width=6000,max_height=6000',
