@@ -43,7 +43,9 @@ class ManageBakeryMediaAssets extends ManageRecords
                         ])
                         ->required()
                         ->helperText(
-                            'تا ۵۰ تصویر در هر مرحله؛ هر فایل حداکثر ۱۲ مگابایت و ۶۰۰۰×۶۰۰۰ پیکسل.'
+                            'تا ۵۰ تصویر در هر مرحله؛ هر فایل حداکثر '.
+                            (int) floor(BakeryMediaAssetResource::maxUploadSizeKilobytes() / 1024).
+                            ' مگابایت و ۶۰۰۰×۶۰۰۰ پیکسل.'
                         ),
 
                     Forms\Components\Select::make(
