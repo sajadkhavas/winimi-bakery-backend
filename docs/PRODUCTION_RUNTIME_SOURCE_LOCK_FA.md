@@ -58,9 +58,9 @@ Frontend scripts:
 - Audit #4 historical media regeneration is derivative-only (`thumb`, `preview`) with Spatie `--force`; Original is preserved.
 - Audit #26 Delivery Zone is real business data only. If real data is unavailable, no fake Zone is created.
 
-### Important preflight caveat
+### Reconciled preflight contract
 
-`preflight-backend-server.sh` contains historical frozen expectations from an older production mode, including disabled checkout/payment/provider values. Those expectations are **not authority to mutate current Production**. Before any deploy, the live environment must first be read **read-only**, and the F31-accepted payment/auth state must be preserved. If the historical preflight disagrees with live accepted configuration, fix/reconcile the preflight contract before using it as a mutation gate; do not change Production to satisfy stale expectations.
+`preflight-backend-server.sh` is state-aware: it validates disabled and enabled production modes without rewriting `.env`. Enabled Zarinpal, Google, OTP/Kavenegar and Web Push require their real production dependencies; dormant credentials are permitted while a feature is disabled. The F31-accepted payment/auth/push state must be preserved. The canonical encrypted-backup secret is `BACKUP_ARCHIVE_PASSWORD`, matching `config/backup.php`.
 
 ## Required evidence for closing Production sync
 

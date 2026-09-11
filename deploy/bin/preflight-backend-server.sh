@@ -94,21 +94,23 @@ validate_environment_contract() {
   require_env LEGACY_TOOLMASTER_API_ENABLED false
   require_env SEED_WINIMI_STAGING false
   require_env OTP_EXPOSE_TEST_CODE false
-  require_env ENAMAD_ENABLED false
 
   require_bool_env CHECKOUT_ENABLED
-  require_bool_env ORDER_SUBMISSION_ENABLED
   require_bool_env PAYMENT_ENABLED
   require_bool_env GOOGLE_AUTH_ENABLED
+  require_bool_env OTP_ENABLED
+  require_bool_env PUSH_ENABLED
 
   require_one_of_env PAYMENT_PROVIDER disabled zarinpal
   require_one_of_env SMS_PROVIDER disabled kavenegar
   require_one_of_env ORDER_SMS_PROVIDER disabled kavenegar
 
-  local payment_enabled payment_provider google_enabled sms_provider order_sms_provider
+  local payment_enabled payment_provider google_enabled otp_enabled push_enabled sms_provider order_sms_provider
   payment_enabled=$(read_env_value PAYMENT_ENABLED || true)
   payment_provider=$(read_env_value PAYMENT_PROVIDER || true)
   google_enabled=$(read_env_value GOOGLE_AUTH_ENABLED || true)
+  otp_enabled=$(read_env_value OTP_ENABLED || true)
+  push_enabled=$(read_env_value PUSH_ENABLED || true)
   sms_provider=$(read_env_value SMS_PROVIDER || true)
   order_sms_provider=$(read_env_value ORDER_SMS_PROVIDER || true)
 
@@ -121,7 +123,17 @@ validate_environment_contract() {
   if [[ "$google_enabled" == "true" ]]; then
     require_nonempty_secret GOOGLE_CLIENT_ID
     require_nonempty_secret GOOGLE_CLIENT_SECRET
-    require_nonempty_secret GOOGLE_REDIRECT_URI
+    require_env GOOGLE_REDIRECT_URI https://api.winimibakery.com/auth/google/callback
+  fi
+
+  if [[ "$otp_enabled" == "true" ]]; then
+    [[ "$sms_provider" == "kavenegar" ]] || errors+=("OTP_ENABLED=true requires SMS_PROVIDER=kavenegar in production")
+  fi
+
+  if [[ "$push_enabled" == "true" ]]; then
+    require_nonempty_secret VAPID_SUBJECT
+    require_nonempty_secret VAPID_PUBLIC_KEY
+    require_nonempty_secret VAPID_PRIVATE_KEY
   fi
 
   if [[ "$sms_provider" == "kavenegar" ]]; then
@@ -135,7 +147,7 @@ validate_environment_contract() {
 
   grep -Eq '^APP_KEY=base64:.+' "$ENV_FILE" || errors+=("APP_KEY is missing or invalid")
   grep -Eq '^DB_PASSWORD=.+$' "$ENV_FILE" || errors+=("DB_PASSWORD is empty")
-  grep -Eq '^BACKUP_ENCRYPTION_PASSWORD=.+$' "$ENV_FILE" || errors+=("BACKUP_ENCRYPTION_PASSWORD is empty")
+  grep -Eq '^BACKUP_ARCHIVE_PASSWORD=.+$' "$ENV_FILE" || errors+=("BACKUP_ARCHIVE_PASSWORD is empty")
 }
 
 for command in php composer nginx curl openssl realpath df awk grep stat systemctl systemd-analyze; do
