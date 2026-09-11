@@ -5,6 +5,7 @@ namespace App\Filament\Resources;
 use App\Filament\Resources\BakeryMediaAssetResource\Pages;
 use App\Models\BakeryMediaAsset;
 use App\Models\BakeryProduct;
+use App\Support\AdminImageUpload;
 use Filament\Forms;
 use Filament\Forms\Components\SpatieMediaLibraryFileUpload;
 use Filament\Forms\Form;
@@ -30,6 +31,11 @@ class BakeryMediaAssetResource extends Resource
 
     protected static ?int $navigationSort = 1;
 
+    public static function maxUploadSizeKilobytes(): int
+    {
+        return AdminImageUpload::maxKilobytes();
+    }
+
     public static function form(Form $form): Form
     {
         return $form
@@ -39,16 +45,14 @@ class BakeryMediaAssetResource extends Resource
                     ->collection('source')
                     ->image()
                     ->imageEditor()
-                    ->acceptedFileTypes([
-                        'image/jpeg',
-                        'image/png',
-                        'image/webp',
-                    ])
-                    ->maxSize(12 * 1024)
-                    ->rules([
-                        'dimensions:max_width=6000,max_height=6000',
-                    ])
-                    ->helperText('فایل اصلی حفظ می‌شود. Preview و Thumbnail به WebP تبدیل و بهینه می‌شوند. نسخه مصرفی سایت فقط وقتی قابل استفاده است که آماده و حداکثر ۱MB باشد.')
+                    ->acceptedFileTypes(AdminImageUpload::acceptedMimeTypes())
+                    ->maxSize(self::maxUploadSizeKilobytes())
+                    ->rules(AdminImageUpload::dimensionRules())
+                    ->required(fn (?BakeryMediaAsset $record): bool => $record === null)
+                    ->disabled(fn (?BakeryMediaAsset $record): bool => $record !== null)
+                    ->helperText(fn (?BakeryMediaAsset $record): string => $record === null
+                        ? 'JPEG، PNG یا WebP تا '.AdminImageUpload::maxMegabytesLabel().' و حداکثر '.AdminImageUpload::MAX_WIDTH.'×'.AdminImageUpload::MAX_HEIGHT.' پیکسل. فایل اصلی حفظ می‌شود و Preview/Thumbnail به WebP تبدیل می‌شوند.'
+                        : 'فایل اصلی این رکورد قفل است چون ممکن است دسته‌ها، صفحات و محتوای سایت به URL/مسیر نسخه بهینه آن ارجاع داشته باشند. برای جایگزینی تصویر، رسانه جدید بسازید و مقصد را به آن تغییر دهید.')
                     ->columnSpanFull(),
                 Forms\Components\TextInput::make('title')
                     ->label('عنوان داخلی')
@@ -114,11 +118,12 @@ class BakeryMediaAssetResource extends Resource
                         'ready' => 'WebP آماده ≤ 1MB',
                         'oversized' => 'بیشتر از 1MB',
                         'missing' => 'فایل اصلی ندارد',
+                        'broken' => 'فایل/Storage ناسالم',
                         default => 'در انتظار پردازش',
                     })
                     ->color(fn (string $state): string => match ($state) {
                         'ready' => 'success',
-                        'oversized', 'missing' => 'danger',
+                        'oversized', 'missing', 'broken' => 'danger',
                         default => 'warning',
                     })
                     ->badge(),

@@ -4,6 +4,7 @@ namespace App\Filament\Resources;
 
 use App\Filament\Resources\BakeryProductResource\Pages;
 use App\Models\BakeryProduct;
+use App\Support\AdminImageUpload;
 use Filament\Forms;
 use Filament\Forms\Components\SpatieMediaLibraryFileUpload;
 use Filament\Forms\Form;
@@ -342,17 +343,11 @@ class BakeryProductResource extends Resource
                                 ->collection('catalog-main')
                                 ->image()
                                 ->imageEditor()
-                                ->acceptedFileTypes([
-                                    'image/jpeg',
-                                    'image/png',
-                                    'image/webp',
-                                ])
-                                ->maxSize(12 * 1024)
-                                ->rules([
-                                    'dimensions:max_width=6000,max_height=6000',
-                                ])
+                                ->acceptedFileTypes(AdminImageUpload::acceptedMimeTypes())
+                                ->maxSize(AdminImageUpload::maxKilobytes())
+                                ->rules(AdminImageUpload::dimensionRules())
                                 ->helperText(
-                                    'JPEG، PNG یا WebP؛ حداکثر ۱۲ مگابایت و ۶۰۰۰×۶۰۰۰ پیکسل. نسخه‌های بهینه خودکار ساخته می‌شوند.'
+                                    'JPEG، PNG یا WebP؛ حداکثر '.AdminImageUpload::maxMegabytesLabel().' و '.AdminImageUpload::MAX_WIDTH.'×'.AdminImageUpload::MAX_HEIGHT.' پیکسل. نسخه‌های بهینه خودکار ساخته می‌شوند.'
                                 )
                                 ->columnSpanFull(),
                             SpatieMediaLibraryFileUpload::make('gallery_images')
@@ -362,17 +357,11 @@ class BakeryProductResource extends Resource
                                 ->reorderable()
                                 ->maxFiles(10)
                                 ->image()
-                                ->acceptedFileTypes([
-                                    'image/jpeg',
-                                    'image/png',
-                                    'image/webp',
-                                ])
-                                ->maxSize(12 * 1024)
-                                ->rules([
-                                    'dimensions:max_width=6000,max_height=6000',
-                                ])
+                                ->acceptedFileTypes(AdminImageUpload::acceptedMimeTypes())
+                                ->maxSize(AdminImageUpload::maxKilobytes())
+                                ->rules(AdminImageUpload::dimensionRules())
                                 ->helperText(
-                                    'برای هر تصویر: JPEG، PNG یا WebP؛ حداکثر ۱۲ مگابایت و ۶۰۰۰×۶۰۰۰ پیکسل.'
+                                    'برای هر تصویر: JPEG، PNG یا WebP؛ حداکثر '.AdminImageUpload::maxMegabytesLabel().' و '.AdminImageUpload::MAX_WIDTH.'×'.AdminImageUpload::MAX_HEIGHT.' پیکسل.'
                                 )
                                 ->columnSpanFull(),
                             Forms\Components\Toggle::make('media_verified')

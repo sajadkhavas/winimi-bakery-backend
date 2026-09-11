@@ -4,6 +4,8 @@ namespace App\Support;
 
 use App\Models\BakeryMediaAsset;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Log;
+use Throwable;
 
 final class AdminMediaLibrary
 {
@@ -15,12 +17,16 @@ final class AdminMediaLibrary
         $options = [];
 
         self::eligibleAssets()->each(function (BakeryMediaAsset $asset) use (&$options): void {
-            $url = $asset->optimizedUrl();
-            if ($url === null) {
-                return;
-            }
+            try {
+                $url = $asset->optimizedUrl();
+                if ($url === null) {
+                    return;
+                }
 
-            $options[$url] = self::label($asset);
+                $options[$url] = self::label($asset);
+            } catch (Throwable $exception) {
+                self::reportUnusableAsset($asset, 'url-option', $exception);
+            }
         });
 
         return self::preserveCurrent($options, $current);
@@ -29,6 +35,9 @@ final class AdminMediaLibrary
     /**
      * Return public-disk relative paths for legacy fields that are intentionally
      * stored as paths rather than absolute URLs (for example category.image_path).
+     * A relative path is safe only when the preview conversion itself lives on
+     * the public disk because the public API resolves these fields with
+     * Storage::disk('public')->url(...).
      *
      * @return array<string, string>
      */
@@ -37,17 +46,28 @@ final class AdminMediaLibrary
         $options = [];
 
         self::eligibleAssets()->each(function (BakeryMediaAsset $asset) use (&$options): void {
-            $media = $asset->sourceMedia();
-            if ($media === null || ! $media->hasGeneratedConversion('preview')) {
-                return;
-            }
+            try {
+                $media = $asset->sourceMedia();
+                if ($media === null || ! $media->hasGeneratedConversion('preview')) {
+                    return;
+                }
 
-            $path = trim($media->getPathRelativeToRoot('preview'));
-            if ($path === '') {
-                return;
-            }
+                $conversionDisk = trim((string) ($media->conversions_disk ?: $media->disk));
+                if ($conversionDisk !== 'public') {
+                    self::reportSkippedAsset($asset, 'path-option-non-public-disk');
 
-            $options[$path] = self::label($asset);
+                    return;
+                }
+
+                $path = trim($media->getPathRelativeToRoot('preview'));
+                if ($path === '') {
+                    return;
+                }
+
+                $options[$path] = self::label($asset);
+            } catch (Throwable $exception) {
+                self::reportUnusableAsset($asset, 'path-option', $exception);
+            }
         });
 
         return self::preserveCurrent($options, $current);
@@ -59,10 +79,19 @@ final class AdminMediaLibrary
     private static function eligibleAssets(): Collection
     {
         return BakeryMediaAsset::query()
+            ->with('media')
             ->whereIn('status', [BakeryMediaAsset::STATUS_READY, BakeryMediaAsset::STATUS_ASSIGNED])
             ->latest('updated_at')
             ->get()
-            ->filter(fn (BakeryMediaAsset $asset): bool => $asset->publicPreviewWithinBudget())
+            ->filter(function (BakeryMediaAsset $asset): bool {
+                try {
+                    return $asset->publicPreviewWithinBudget();
+                } catch (Throwable $exception) {
+                    self::reportUnusableAsset($asset, 'eligibility', $exception);
+
+                    return false;
+                }
+            })
             ->values();
     }
 
@@ -74,6 +103,23 @@ final class AdminMediaLibrary
         }
 
         return $label.' — '.$asset->optimizedSizeLabel();
+    }
+
+    private static function reportSkippedAsset(BakeryMediaAsset $asset, string $stage): void
+    {
+        Log::warning('Admin media library skipped an incompatible asset.', [
+            'asset_id' => $asset->getKey(),
+            'stage' => $stage,
+        ]);
+    }
+
+    private static function reportUnusableAsset(BakeryMediaAsset $asset, string $stage, Throwable $exception): void
+    {
+        Log::warning('Admin media library skipped an unusable asset.', [
+            'asset_id' => $asset->getKey(),
+            'stage' => $stage,
+            'exception' => $exception::class,
+        ]);
     }
 
     /**

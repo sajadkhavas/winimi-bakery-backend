@@ -9,6 +9,7 @@ use Spatie\Image\Enums\Fit;
 use Spatie\MediaLibrary\HasMedia;
 use Spatie\MediaLibrary\InteractsWithMedia;
 use Spatie\MediaLibrary\MediaCollections\Models\Media;
+use Throwable;
 
 class BakeryMediaAsset extends Model implements HasMedia
 {
@@ -170,7 +171,7 @@ class BakeryMediaAsset extends Model implements HasMedia
                     'alt_text' => $resolvedAlt,
                 ])
                 ->save();
-        } catch (\Throwable $exception) {
+        } catch (Throwable $exception) {
             $copiedMedia->delete();
 
             throw $exception;
@@ -186,30 +187,38 @@ class BakeryMediaAsset extends Model implements HasMedia
 
     public function conversionsReady(): bool
     {
-        $media = $this->sourceMedia();
+        try {
+            $media = $this->sourceMedia();
 
-        return $media !== null
-            && $media->hasGeneratedConversion('thumb')
-            && $media->hasGeneratedConversion('preview');
+            return $media !== null
+                && $media->hasGeneratedConversion('thumb')
+                && $media->hasGeneratedConversion('preview');
+        } catch (Throwable) {
+            return false;
+        }
     }
 
     public function publicPreviewBytes(): ?int
     {
-        $media = $this->sourceMedia();
+        try {
+            $media = $this->sourceMedia();
 
-        if ($media === null || ! $media->hasGeneratedConversion('preview')) {
+            if ($media === null || ! $media->hasGeneratedConversion('preview')) {
+                return null;
+            }
+
+            $path = $media->getPath('preview');
+
+            if (! is_file($path)) {
+                return null;
+            }
+
+            $bytes = filesize($path);
+
+            return $bytes === false ? null : $bytes;
+        } catch (Throwable) {
             return null;
         }
-
-        $path = $media->getPath('preview');
-
-        if (! is_file($path)) {
-            return null;
-        }
-
-        $bytes = filesize($path);
-
-        return $bytes === false ? null : $bytes;
     }
 
     public function publicPreviewWithinBudget(): bool
@@ -223,34 +232,57 @@ class BakeryMediaAsset extends Model implements HasMedia
 
     public function conversionState(): string
     {
-        if ($this->sourceMedia() === null) {
-            return 'missing';
-        }
+        try {
+            $media = $this->sourceMedia();
 
-        if (! $this->conversionsReady()) {
-            return 'pending';
-        }
+            if ($media === null) {
+                return 'missing';
+            }
 
-        return $this->publicPreviewWithinBudget() ? 'ready' : 'oversized';
+            if (! $this->conversionsReady()) {
+                return 'pending';
+            }
+
+            $bytes = $this->publicPreviewBytes();
+            if ($bytes === null) {
+                return 'broken';
+            }
+
+            return $bytes <= self::MAX_PUBLIC_PREVIEW_BYTES ? 'ready' : 'oversized';
+        } catch (Throwable) {
+            return 'broken';
+        }
     }
 
     public function originalUrl(): ?string
     {
-        return $this->sourceMedia()?->getFullUrl();
+        try {
+            return $this->sourceMedia()?->getFullUrl();
+        } catch (Throwable) {
+            return null;
+        }
     }
 
     public function optimizedUrl(): ?string
     {
-        $media = $this->sourceMedia();
+        try {
+            $media = $this->sourceMedia();
 
-        return $media !== null && $media->hasGeneratedConversion('preview')
-            ? $media->getFullUrl('preview')
-            : null;
+            return $media !== null && $media->hasGeneratedConversion('preview')
+                ? $media->getFullUrl('preview')
+                : null;
+        } catch (Throwable) {
+            return null;
+        }
     }
 
     public function originalSizeLabel(): string
     {
-        return self::humanBytes($this->sourceMedia()?->size);
+        try {
+            return self::humanBytes($this->sourceMedia()?->size);
+        } catch (Throwable) {
+            return '—';
+        }
     }
 
     public function optimizedSizeLabel(): string
@@ -260,40 +292,52 @@ class BakeryMediaAsset extends Model implements HasMedia
 
     public function dimensionsLabel(): string
     {
-        $media = $this->sourceMedia();
-        if ($media === null) {
-            return '—';
-        }
+        try {
+            $media = $this->sourceMedia();
+            if ($media === null) {
+                return '—';
+            }
 
-        $path = $media->getPath();
-        if (! is_file($path)) {
+            $path = $media->getPath();
+            if (! is_file($path)) {
+                return 'نامشخص';
+            }
+
+            $size = @getimagesize($path);
+            if (! is_array($size) || ! isset($size[0], $size[1])) {
+                return 'نامشخص';
+            }
+
+            return $size[0].'×'.$size[1].' px';
+        } catch (Throwable) {
             return 'نامشخص';
         }
-
-        $size = @getimagesize($path);
-        if (! is_array($size) || ! isset($size[0], $size[1])) {
-            return 'نامشخص';
-        }
-
-        return $size[0].'×'.$size[1].' px';
     }
 
     public function formatLabel(): string
     {
-        return $this->sourceMedia()?->mime_type ?? '—';
+        try {
+            return $this->sourceMedia()?->mime_type ?? '—';
+        } catch (Throwable) {
+            return '—';
+        }
     }
 
     public function previewUrl(): ?string
     {
-        $media = $this->sourceMedia();
+        try {
+            $media = $this->sourceMedia();
 
-        if ($media === null) {
+            if ($media === null) {
+                return null;
+            }
+
+            return $media->hasGeneratedConversion('thumb')
+                ? $media->getFullUrl('thumb')
+                : $media->getFullUrl();
+        } catch (Throwable) {
             return null;
         }
-
-        return $media->hasGeneratedConversion('thumb')
-            ? $media->getFullUrl('thumb')
-            : $media->getFullUrl();
     }
 
     private static function humanBytes(?int $bytes): string

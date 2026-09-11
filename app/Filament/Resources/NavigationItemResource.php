@@ -5,6 +5,7 @@ namespace App\Filament\Resources;
 use App\Filament\Resources\NavigationItemResource\Pages;
 use App\Models\BakeryCategory;
 use App\Models\NavigationItem;
+use App\Support\AdminImageUpload;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
@@ -96,8 +97,15 @@ class NavigationItemResource extends Resource
 
                     Forms\Components\FileUpload::make('image_path')
                         ->label('تصویر منو (اختیاری)')
+                        ->disk('public')
+                        ->visibility('public')
+                        ->directory('navigation')
                         ->image()
-                        ->directory('navigation'),
+                        ->imageEditor()
+                        ->acceptedFileTypes(AdminImageUpload::acceptedMimeTypes())
+                        ->maxSize(AdminImageUpload::maxKilobytes())
+                        ->rules(AdminImageUpload::dimensionRules())
+                        ->helperText('JPEG، PNG یا WebP تا '.AdminImageUpload::maxMegabytesLabel().' و حداکثر '.AdminImageUpload::MAX_WIDTH.'×'.AdminImageUpload::MAX_HEIGHT.' پیکسل؛ فایل جدید روی public storage ذخیره می‌شود.'),
 
                     Forms\Components\Toggle::make('open_in_new_tab')
                         ->label('بازشدن در تب جدید'),
