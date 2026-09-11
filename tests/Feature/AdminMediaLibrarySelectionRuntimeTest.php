@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Filament\Resources\BakeryCategoryResource\Pages\EditBakeryCategory;
+use App\Filament\Resources\BakeryMediaAssetResource\Pages\ManageBakeryMediaAssets;
 use App\Models\BakeryCategory;
 use App\Models\BakeryMediaAsset;
 use App\Models\User;
@@ -72,9 +73,10 @@ class AdminMediaLibrarySelectionRuntimeTest extends TestCase
         $this->assertSame($path, $category->fresh()->image_path);
     }
 
-    public function test_broken_library_asset_cannot_take_down_media_selectors(): void
+    public function test_broken_library_asset_cannot_take_down_media_selectors_or_library_table(): void
     {
         $this->configureMediaTesting();
+        $this->actingAs($this->operator());
 
         $asset = BakeryMediaAsset::query()->create([
             'title' => 'رسانه خراب قدیمی',
@@ -112,6 +114,51 @@ class AdminMediaLibrarySelectionRuntimeTest extends TestCase
             'تصویر فعلی (Legacy / نیازمند بازبینی کتابخانه)',
             $options['legacy/category.webp'],
         );
+
+        $asset->unsetRelation('media');
+        $asset->load('media');
+        $this->assertFalse($asset->publicPreviewWithinBudget());
+        $this->assertContains($asset->conversionState(), ['pending', 'broken']);
+        $this->assertNull($asset->previewUrl());
+        $this->assertNull($asset->optimizedUrl());
+        $this->assertSame('نامشخص', $asset->dimensionsLabel());
+
+        Livewire::test(ManageBakeryMediaAssets::class)
+            ->assertOk();
+    }
+
+    public function test_path_selector_never_exposes_preview_from_non_public_conversion_disk(): void
+    {
+        $this->configureMediaTesting();
+        Storage::fake('private-media');
+        config(['media-library.conversions_disk_name' => 'private-media']);
+
+        $asset = BakeryMediaAsset::query()->create([
+            'title' => 'رسانه با conversion خصوصی',
+            'usage' => BakeryMediaAsset::USAGE_CATEGORY,
+            'status' => BakeryMediaAsset::STATUS_PENDING,
+        ]);
+
+        $asset
+            ->addMedia(UploadedFile::fake()->image('private-preview.jpg', 1200, 900))
+            ->toMediaCollection('source');
+
+        $asset->refresh();
+        $asset->update(['status' => BakeryMediaAsset::STATUS_READY]);
+
+        $media = $asset->sourceMedia();
+        $this->assertNotNull($media);
+        $this->assertSame('private-media', $media->conversions_disk);
+        $this->assertTrue($asset->publicPreviewWithinBudget());
+
+        $options = AdminMediaLibrary::imagePathOptions('legacy/category.webp');
+
+        $this->assertCount(1, $options);
+        $this->assertArrayHasKey('legacy/category.webp', $options);
+        $this->assertSame(
+            'تصویر فعلی (Legacy / نیازمند بازبینی کتابخانه)',
+            $options['legacy/category.webp'],
+        );
     }
 
     private function configureMediaTesting(): void
@@ -121,6 +168,7 @@ class AdminMediaLibrarySelectionRuntimeTest extends TestCase
         config([
             'filesystems.default' => 'public',
             'media-library.disk_name' => 'public',
+            'media-library.conversions_disk_name' => null,
             'media-library.queue_conversions_by_default' => false,
         ]);
     }
