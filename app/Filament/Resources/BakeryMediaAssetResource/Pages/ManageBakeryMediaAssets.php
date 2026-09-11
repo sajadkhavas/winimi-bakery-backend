@@ -4,6 +4,7 @@ namespace App\Filament\Resources\BakeryMediaAssetResource\Pages;
 
 use App\Filament\Resources\BakeryMediaAssetResource;
 use App\Models\BakeryMediaAsset;
+use App\Support\AdminImageUpload;
 use Filament\Actions;
 use Filament\Forms;
 use Filament\Resources\Pages\ManageRecords;
@@ -31,21 +32,15 @@ class ManageBakeryMediaAssets extends ManageRecords
                         ->multiple()
                         ->image()
                         ->storeFiles(false)
-                        ->acceptedFileTypes([
-                            'image/jpeg',
-                            'image/png',
-                            'image/webp',
-                        ])
+                        ->acceptedFileTypes(AdminImageUpload::acceptedMimeTypes())
                         ->maxSize(BakeryMediaAssetResource::maxUploadSizeKilobytes())
                         ->maxFiles(50)
-                        ->rules([
-                            'dimensions:max_width=6000,max_height=6000',
-                        ])
+                        ->rules(AdminImageUpload::dimensionRules())
                         ->required()
                         ->helperText(
                             'تا ۵۰ تصویر در هر مرحله؛ هر فایل حداکثر '.
-                            (int) floor(BakeryMediaAssetResource::maxUploadSizeKilobytes() / 1024).
-                            ' مگابایت و ۶۰۰۰×۶۰۰۰ پیکسل.'
+                            AdminImageUpload::maxMegabytesLabel().
+                            ' و '.AdminImageUpload::MAX_WIDTH.'×'.AdminImageUpload::MAX_HEIGHT.' پیکسل.'
                         ),
 
                     Forms\Components\Select::make(
