@@ -4,13 +4,12 @@ namespace App\Filament\Resources;
 
 use App\Filament\Resources\BakeryCityPageResource\Pages;
 use App\Models\BakeryCityPage;
+use App\Support\WinimiContentEditor;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
-use FilamentTiptapEditor\Enums\TiptapOutput;
-use FilamentTiptapEditor\TiptapEditor;
 
 class BakeryCityPageResource extends Resource
 {
@@ -50,13 +49,9 @@ class BakeryCityPageResource extends Resource
                         ->helperText('فقط پس از تکمیل محتوای واقعی و بررسی SEO فعال شود.'),
                     Forms\Components\TextInput::make('title')->label('عنوان')->required()->maxLength(220)->columnSpanFull(),
                     Forms\Components\Textarea::make('description')->label('خلاصه')->rows(3)->columnSpanFull(),
-                    TiptapEditor::make('content')
+                    WinimiContentEditor::make('content')
                         ->label('محتوا')
-                        ->profile('default')
-                        ->output(TiptapOutput::Html)
-                        ->maxContentWidth('full')
-                        ->extraInputAttributes(['style' => 'min-height: 20rem;'])
-                        ->helperText('Editor استاندارد WINIMI شامل Heading، رنگ/Highlight، Alignment، لینک داخلی و تصویر از Media Library مرکزی است. HTML خام و Embed عمومی غیرفعال‌اند.')
+                        ->helperText(WinimiContentEditor::helperText())
                         ->columnSpanFull(),
                 ])
                 ->columns(3),
