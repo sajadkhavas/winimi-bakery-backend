@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\StoreSetting;
 use App\Support\ProductionContentFingerprint;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Artisan;
 use Tests\TestCase;
 
 class ProductionContentFingerprintTest extends TestCase
@@ -42,10 +43,11 @@ class ProductionContentFingerprintTest extends TestCase
 
     public function test_hash_only_command_prints_only_a_sha256_digest(): void
     {
-        $this->artisan('production:content-fingerprint', ['--hash-only' => true])
-            ->expectsOutputToContain('')
-            ->assertSuccessful();
+        $this->assertSame(0, Artisan::call('production:content-fingerprint', ['--hash-only' => true]));
 
-        $this->assertSame(0, $this->artisan('production:content-fingerprint', ['--hash-only' => true])->run());
+        $output = trim(Artisan::output());
+
+        $this->assertMatchesRegularExpression('/^[0-9a-f]{64}$/', $output);
+        $this->assertSame(64, strlen($output));
     }
 }
