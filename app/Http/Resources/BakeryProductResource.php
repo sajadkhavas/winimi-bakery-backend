@@ -7,6 +7,8 @@ use App\Models\BakeryProductVariant;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Log;
+use Throwable;
 
 class BakeryProductResource extends JsonResource
 {
@@ -159,67 +161,66 @@ class BakeryProductResource extends JsonResource
     {
         return $this->getMedia('catalog-main')
             ->concat($this->getMedia('catalog-gallery'))
-            ->map(function ($media): array {
-                $hasThumb = $media->hasGeneratedConversion(
-                    'thumb'
-                );
+            ->map(function ($media): ?array {
+                try {
+                    $hasThumb = $media->hasGeneratedConversion('thumb');
+                    $hasCard = $media->hasGeneratedConversion('card');
+                    $hasDetail = $media->hasGeneratedConversion('detail');
 
-                $hasCard = $media->hasGeneratedConversion(
-                    'card'
-                );
+                    $srcSet = $hasDetail
+                        ? trim((string) $media->getSrcset('detail'))
+                        : '';
 
-                $hasDetail = $media->hasGeneratedConversion(
-                    'detail'
-                );
+                    return [
+                        // Backward-compatible optimized URL.
+                        'url' => $hasDetail
+                            ? $media->getFullUrl('detail')
+                            : $media->getFullUrl(),
 
-                $srcSet = $hasDetail
-                    ? trim((string) $media->getSrcset('detail'))
-                    : '';
+                        'alt' => $media->getCustomProperty(
+                            'alt',
+                            $this->name,
+                        ),
 
-                return [
-                    // Backward-compatible optimized URL.
-                    'url' => $hasDetail
-                        ? $media->getFullUrl('detail')
-                        : $media->getFullUrl(),
+                        'verified' => (bool) $this->media_verified,
 
-                    'alt' => $media->getCustomProperty(
-                        'alt',
-                        $this->name,
-                    ),
+                        'originalUrl' => $media->getFullUrl(),
 
-                    'verified' => (bool) $this->media_verified,
+                        'thumbnailUrl' => $hasThumb
+                            ? $media->getFullUrl('thumb')
+                            : null,
 
-                    'originalUrl' => $media->getFullUrl(),
+                        'cardUrl' => $hasCard
+                            ? $media->getFullUrl('card')
+                            : null,
 
-                    'thumbnailUrl' => $hasThumb
-                        ? $media->getFullUrl('thumb')
-                        : null,
+                        'detailUrl' => $hasDetail
+                            ? $media->getFullUrl('detail')
+                            : null,
 
-                    'cardUrl' => $hasCard
-                        ? $media->getFullUrl('card')
-                        : null,
+                        'srcSet' => $srcSet !== ''
+                            ? $srcSet
+                            : null,
 
-                    'detailUrl' => $hasDetail
-                        ? $media->getFullUrl('detail')
-                        : null,
+                        'width' => $media->getCustomProperty('width'),
 
-                    'srcSet' => $srcSet !== ''
-                        ? $srcSet
-                        : null,
+                        'height' => $media->getCustomProperty('height'),
 
-                    'width' => $media->getCustomProperty(
-                        'width'
-                    ),
+                        'mimeType' => $hasDetail
+                            ? 'image/webp'
+                            : $media->mime_type,
+                    ];
+                } catch (Throwable $exception) {
+                    Log::warning('Catalog skipped an unusable product media row.', [
+                        'product_id' => $this->resource->getKey(),
+                        'media_id' => $media->getKey(),
+                        'exception' => $exception::class,
+                    ]);
 
-                    'height' => $media->getCustomProperty(
-                        'height'
-                    ),
-
-                    'mimeType' => $hasDetail
-                        ? 'image/webp'
-                        : $media->mime_type,
-                ];
+                    return null;
+                }
             })
+            ->filter()
             ->values()
             ->all();
     }
