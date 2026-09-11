@@ -113,7 +113,32 @@ class DeliveryEligibilityTest extends TestCase
         $this->assertDatabaseCount('inventory_reservations', 1);
     }
 
-    public function test_chilled_cart_is_rejected_when_destination_has_no_explicit_active_chilled_zone(): void
+    public function test_confirmed_base_chilled_cities_are_allowed_without_delivery_zone_rows(): void
+    {
+        $destinations = [
+            ['تهران', 'تهران'],
+            ['البرز', 'کرج'],
+            ['تهران', 'اندیشه'],
+        ];
+
+        foreach ($destinations as $index => [$province, $city]) {
+            $this->checkout(
+                'delivery-base-city-'.str_pad((string) ($index + 1), 2, '0', STR_PAD_LEFT),
+                [['variantId' => $this->chilledVariant->public_id, 'quantity' => 1]],
+                $province,
+                $city,
+            )
+                ->assertCreated()
+                ->assertJsonPath('data.order.delivery.requiresCooling', true)
+                ->assertJsonPath('data.order.delivery.method', 'standard')
+                ->assertJsonPath('data.order.delivery.feeToman', 0);
+        }
+
+        $this->assertDatabaseCount('delivery_zones', 0);
+        $this->assertDatabaseCount('orders', 3);
+    }
+
+    public function test_chilled_cart_is_rejected_when_destination_is_not_confirmed_or_configured(): void
     {
         $this->checkout(
             'delivery-chilled-denied-01',
@@ -129,15 +154,15 @@ class DeliveryEligibilityTest extends TestCase
         $this->assertDatabaseCount('inventory_reservations', 0);
     }
 
-    public function test_chilled_cart_is_accepted_for_exact_active_chilled_zone(): void
+    public function test_explicit_active_chilled_zone_can_extend_coverage_to_a_verified_city(): void
     {
-        $this->createChilledZone('تهران', 'تهران');
+        $this->createChilledZone('استان تست', 'شهر تست پوشش');
 
         $this->checkout(
-            'delivery-chilled-allowed-01',
+            'delivery-chilled-extension-01',
             [['variantId' => $this->chilledVariant->public_id, 'quantity' => 1]],
-            'تهران',
-            'تهران',
+            'استان تست',
+            'شهر تست پوشش',
         )
             ->assertCreated()
             ->assertJsonPath('data.order.delivery.requiresCooling', true)
@@ -150,12 +175,12 @@ class DeliveryEligibilityTest extends TestCase
         $this->assertDatabaseCount('inventory_reservations', 1);
     }
 
-    public function test_inactive_or_non_chilled_zone_does_not_authorize_chilled_checkout(): void
+    public function test_non_chilled_or_inactive_zone_does_not_extend_chilled_coverage(): void
     {
         DeliveryZone::query()->create([
-            'name' => 'تهران بدون ارسال سرد',
-            'province' => 'تهران',
-            'city' => 'تهران',
+            'name' => 'شهر تست بدون ارسال سرد',
+            'province' => 'استان تست',
+            'city' => 'شهر تست بدون پوشش',
             'standard_enabled' => true,
             'chilled_enabled' => false,
             'pickup_enabled' => false,
@@ -169,14 +194,20 @@ class DeliveryEligibilityTest extends TestCase
             'is_active' => true,
         ]);
 
-        $this->checkout(
-            'delivery-chilled-disabled-01',
-            [['variantId' => $this->chilledVariant->public_id, 'quantity' => 1]],
-            'تهران',
-            'تهران',
-        )
-            ->assertUnprocessable()
-            ->assertJsonValidationErrors('customer.city');
+        $this->createChilledZone('استان تست', 'شهر تست غیرفعال')->update([
+            'is_active' => false,
+        ]);
+
+        foreach (['شهر تست بدون پوشش', 'شهر تست غیرفعال'] as $index => $city) {
+            $this->checkout(
+                'delivery-zone-disabled-'.($index + 1),
+                [['variantId' => $this->chilledVariant->public_id, 'quantity' => 1]],
+                'استان تست',
+                $city,
+            )
+                ->assertUnprocessable()
+                ->assertJsonValidationErrors('customer.city');
+        }
 
         $this->assertDatabaseCount('orders', 0);
     }
@@ -215,9 +246,14 @@ class DeliveryEligibilityTest extends TestCase
             ->assertJsonPath('data.methods.0.enabled', false)
             ->assertJsonPath('data.methods.0.feeToman', 0);
 
-        $this->createChilledZone('تهران', 'تهران');
-
         $this->getJson('/api/delivery/options?province=تهران&city=تهران&subtotalToman=150000&requiresCooling=1')
+            ->assertOk()
+            ->assertJsonPath('data.methods.0.enabled', true)
+            ->assertJsonPath('data.methods.0.feeToman', 0);
+
+        $this->createChilledZone('استان تست', 'شهر تست پوشش');
+
+        $this->getJson('/api/delivery/options?province='.rawurlencode('استان تست').'&city='.rawurlencode('شهر تست پوشش').'&subtotalToman=150000&requiresCooling=1')
             ->assertOk()
             ->assertJsonPath('data.methods.0.enabled', true)
             ->assertJsonPath('data.methods.0.feeToman', 0);
@@ -226,8 +262,8 @@ class DeliveryEligibilityTest extends TestCase
     public function test_chilled_zone_requires_explicit_city_and_cannot_authorize_an_entire_province(): void
     {
         DeliveryZone::query()->create([
-            'name' => 'استان تهران - نباید wildcard باشد',
-            'province' => 'تهران',
+            'name' => 'استان تست بدون شهر',
+            'province' => 'استان تست',
             'city' => null,
             'standard_enabled' => true,
             'chilled_enabled' => true,
@@ -245,8 +281,8 @@ class DeliveryEligibilityTest extends TestCase
         $this->checkout(
             'delivery-no-province-wildcard-01',
             [['variantId' => $this->chilledVariant->public_id, 'quantity' => 1]],
-            'تهران',
-            'شهر تأییدنشده',
+            'استان تست',
+            'شهر تست تأییدنشده',
         )
             ->assertUnprocessable()
             ->assertJsonValidationErrors('customer.city');
