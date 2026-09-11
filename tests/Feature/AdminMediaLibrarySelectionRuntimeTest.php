@@ -130,6 +130,14 @@ class AdminMediaLibrarySelectionRuntimeTest extends TestCase
     public function test_path_selector_never_exposes_preview_from_non_public_conversion_disk(): void
     {
         $this->configureMediaTesting();
+
+        config([
+            'filesystems.disks.private-media' => [
+                'driver' => 'local',
+                'root' => storage_path('framework/testing/disks/private-media'),
+                'throw' => false,
+            ],
+        ]);
         Storage::fake('private-media');
         config(['media-library.conversions_disk_name' => 'private-media']);
 
