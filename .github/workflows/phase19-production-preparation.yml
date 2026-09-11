@@ -132,12 +132,135 @@ jobs:
             exit 1
           fi
 
-      - name: Run non-host preflight contract
+      - name: Validate state-aware production preflight contract
         env:
           WINIMI_PREFLIGHT_TEST_MODE: "true"
           BACKEND_DEPLOY_ROOT: /tmp/winimi-backend-preflight
           BACKEND_MIN_FREE_KIB: "1"
-        run: bash deploy/bin/preflight-backend-server.sh
+        run: |
+          set -Eeuo pipefail
+          mkdir -p "$RUNNER_TEMP/winimi-preflight"
+
+          write_common_env() {
+            cat <<'ENV'
+          APP_ENV=production
+          APP_DEBUG=false
+          APP_URL=https://api.winimibakery.com
+          SESSION_DOMAIN=.winimibakery.com
+          SESSION_SECURE_COOKIE=true
+          SESSION_HTTP_ONLY=true
+          SESSION_ENCRYPT=true
+          LEGACY_TOOLMASTER_API_ENABLED=false
+          SEED_WINIMI_STAGING=false
+          OTP_EXPOSE_TEST_CODE=false
+          APP_KEY=base64:phase19-preflight-key
+          DB_PASSWORD=phase19-db-password
+          BACKUP_ARCHIVE_PASSWORD=phase19-backup-password
+          ENV
+          }
+
+          run_preflight() {
+            BACKEND_ENV_FILE="$1" bash deploy/bin/preflight-backend-server.sh
+          }
+
+          expect_preflight_failure() {
+            local file=$1
+            local label=$2
+            if run_preflight "$file"; then
+              echo "Preflight incorrectly accepted negative case: $label" >&2
+              exit 1
+            fi
+          }
+
+          DISABLED_ENV="$RUNNER_TEMP/winimi-preflight/disabled.env"
+          {
+            write_common_env
+            cat <<'ENV'
+          CHECKOUT_ENABLED=false
+          PAYMENT_ENABLED=false
+          PAYMENT_PROVIDER=disabled
+          ZARINPAL_MERCHANT_ID=dormant-credential-is-allowed
+          ZARINPAL_SANDBOX=false
+          GOOGLE_AUTH_ENABLED=false
+          GOOGLE_CLIENT_ID=dormant-google-id
+          GOOGLE_CLIENT_SECRET=dormant-google-secret
+          GOOGLE_REDIRECT_URI=https://api.winimibakery.com/api/v1/auth/google/callback
+          OTP_ENABLED=false
+          SMS_PROVIDER=disabled
+          ORDER_SMS_PROVIDER=disabled
+          KAVENEGAR_API_KEY=dormant-kavenegar-key
+          KAVENEGAR_TEMPLATE=dormant-template
+          KAVENEGAR_ORDER_SENDER=dormant-sender
+          PUSH_ENABLED=false
+          VAPID_SUBJECT=mailto:ops@winimibakery.com
+          VAPID_PUBLIC_KEY=dormant-public-key
+          VAPID_PRIVATE_KEY=dormant-private-key
+          ENV
+          } > "$DISABLED_ENV"
+          run_preflight "$DISABLED_ENV"
+
+          ENABLED_ENV="$RUNNER_TEMP/winimi-preflight/enabled.env"
+          {
+            write_common_env
+            cat <<'ENV'
+          CHECKOUT_ENABLED=true
+          PAYMENT_ENABLED=true
+          PAYMENT_PROVIDER=zarinpal
+          ZARINPAL_MERCHANT_ID=phase19-zarinpal-merchant
+          ZARINPAL_SANDBOX=false
+          GOOGLE_AUTH_ENABLED=true
+          GOOGLE_CLIENT_ID=phase19-google-client
+          GOOGLE_CLIENT_SECRET=phase19-google-secret
+          GOOGLE_REDIRECT_URI=https://api.winimibakery.com/auth/google/callback
+          OTP_ENABLED=true
+          SMS_PROVIDER=kavenegar
+          ORDER_SMS_PROVIDER=kavenegar
+          KAVENEGAR_API_KEY=phase19-kavenegar-key
+          KAVENEGAR_TEMPLATE=phase19-template
+          KAVENEGAR_ORDER_SENDER=phase19-sender
+          PUSH_ENABLED=true
+          VAPID_SUBJECT=mailto:ops@winimibakery.com
+          VAPID_PUBLIC_KEY=phase19-vapid-public-key
+          VAPID_PRIVATE_KEY=phase19-vapid-private-key
+          ENV
+          } > "$ENABLED_ENV"
+          run_preflight "$ENABLED_ENV"
+
+          BAD_PAYMENT_PROVIDER="$RUNNER_TEMP/winimi-preflight/bad-payment-provider.env"
+          sed 's/^PAYMENT_PROVIDER=zarinpal$/PAYMENT_PROVIDER=disabled/' "$ENABLED_ENV" > "$BAD_PAYMENT_PROVIDER"
+          expect_preflight_failure "$BAD_PAYMENT_PROVIDER" 'payment enabled with disabled provider'
+
+          BAD_PAYMENT_SECRET="$RUNNER_TEMP/winimi-preflight/bad-payment-secret.env"
+          sed 's/^ZARINPAL_MERCHANT_ID=.*/ZARINPAL_MERCHANT_ID=/' "$ENABLED_ENV" > "$BAD_PAYMENT_SECRET"
+          expect_preflight_failure "$BAD_PAYMENT_SECRET" 'payment enabled without merchant id'
+
+          TESTING_PAYMENT="$RUNNER_TEMP/winimi-preflight/testing-payment.env"
+          sed 's/^PAYMENT_PROVIDER=zarinpal$/PAYMENT_PROVIDER=testing/' "$ENABLED_ENV" > "$TESTING_PAYMENT"
+          expect_preflight_failure "$TESTING_PAYMENT" 'testing payment provider in production'
+
+          BAD_GOOGLE="$RUNNER_TEMP/winimi-preflight/bad-google.env"
+          sed 's/^GOOGLE_CLIENT_SECRET=.*/GOOGLE_CLIENT_SECRET=/' "$ENABLED_ENV" > "$BAD_GOOGLE"
+          expect_preflight_failure "$BAD_GOOGLE" 'Google enabled without client secret'
+
+          BAD_GOOGLE_REDIRECT="$RUNNER_TEMP/winimi-preflight/bad-google-redirect.env"
+          sed 's#^GOOGLE_REDIRECT_URI=.*#GOOGLE_REDIRECT_URI=https://api.winimibakery.com/api/v1/auth/google/callback#' "$ENABLED_ENV" > "$BAD_GOOGLE_REDIRECT"
+          expect_preflight_failure "$BAD_GOOGLE_REDIRECT" 'Google enabled with a non-canonical callback'
+
+          TESTING_SMS="$RUNNER_TEMP/winimi-preflight/testing-sms.env"
+          sed 's/^SMS_PROVIDER=kavenegar$/SMS_PROVIDER=testing/' "$ENABLED_ENV" > "$TESTING_SMS"
+          expect_preflight_failure "$TESTING_SMS" 'testing OTP provider in production'
+
+          DISABLED_OTP_PROVIDER="$RUNNER_TEMP/winimi-preflight/disabled-otp-provider.env"
+          sed 's/^SMS_PROVIDER=kavenegar$/SMS_PROVIDER=disabled/' "$ENABLED_ENV" > "$DISABLED_OTP_PROVIDER"
+          expect_preflight_failure "$DISABLED_OTP_PROVIDER" 'OTP enabled with disabled provider'
+
+          BAD_KAVENEGAR_TEMPLATE="$RUNNER_TEMP/winimi-preflight/bad-kavenegar-template.env"
+          sed 's/^KAVENEGAR_TEMPLATE=.*/KAVENEGAR_TEMPLATE=/' "$ENABLED_ENV" > "$BAD_KAVENEGAR_TEMPLATE"
+          expect_preflight_failure "$BAD_KAVENEGAR_TEMPLATE" 'Kavenegar OTP without template'
+
+          BAD_VAPID_KEY="$RUNNER_TEMP/winimi-preflight/bad-vapid-key.env"
+          sed 's/^VAPID_PRIVATE_KEY=.*/VAPID_PRIVATE_KEY=/' "$ENABLED_ENV" > "$BAD_VAPID_KEY"
+          expect_preflight_failure "$BAD_VAPID_KEY" 'web push enabled without private key'
 
       - name: Upload Phase 19 package evidence
         if: always()

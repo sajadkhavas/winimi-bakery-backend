@@ -56,11 +56,15 @@ $requireText('production env', $env, [
     'SESSION_SECURE_COOKIE=true',
     'SEED_WINIMI_STAGING=false',
     'CHECKOUT_ENABLED=false',
+    'GOOGLE_AUTH_ENABLED=false',
+    'OTP_ENABLED=false',
     'PAYMENT_ENABLED=false',
     'PAYMENT_PROVIDER=disabled',
     'SMS_PROVIDER=disabled',
     'ORDER_SMS_PROVIDER=disabled',
+    'PUSH_ENABLED=false',
     'OTP_EXPOSE_TEST_CODE=false',
+    'BACKUP_ARCHIVE_PASSWORD=',
 ]);
 $requireText('Nginx API config', $nginx, [
     'server_name api.winimibakery.com',
@@ -99,7 +103,10 @@ $requireText('backend rollback', $rollback, [
 ]);
 $requireText('backend preflight', $preflight, [
     'production PHP must be 8.3',
-    'Zarinpal credential must remain empty before Phase 20',
+    'PAYMENT_ENABLED=true requires PAYMENT_PROVIDER=zarinpal in production',
+    'OTP_ENABLED=true requires SMS_PROVIDER=kavenegar in production',
+    'VAPID_PRIVATE_KEY',
+    'BACKUP_ARCHIVE_PASSWORD',
     'nginx -t',
     'systemd-analyze verify',
 ]);

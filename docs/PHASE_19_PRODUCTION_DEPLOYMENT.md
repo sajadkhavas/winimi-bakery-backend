@@ -32,7 +32,7 @@ Only these paths persist across releases:
 
 The private `.env` must be owner `root:winimi` or `winimi:www-data`, mode `0640` or stricter. Product/content media live in shared storage and are exposed through Laravel's `public/storage` link.
 
-## Disabled-provider environment
+## State-aware production environment
 
 Copy `deploy/backend.production.env.example` to the shared `.env`, then generate:
 
@@ -41,19 +41,19 @@ Copy `deploy/backend.production.env.example` to the shared `.env`, then generate
 - backup encryption password
 - remote private backup disk credentials
 
-Before Phase 20, keep exactly these disabled/empty:
+The preflight validates the configured state without changing it. Disabled providers may retain dormant credentials. When a feature is enabled, its production provider and credentials must be complete: Zarinpal must be live (not sandbox), Google must use the canonical callback, OTP must use Kavenegar, and Web Push must have all VAPID values.
 
 ```env
 CHECKOUT_ENABLED=false
+GOOGLE_AUTH_ENABLED=false
+OTP_ENABLED=false
 PAYMENT_ENABLED=false
 PAYMENT_PROVIDER=disabled
-ZARINPAL_MERCHANT_ID=
 SMS_PROVIDER=disabled
 ORDER_SMS_PROVIDER=disabled
+PUSH_ENABLED=false
 OTP_EXPOSE_TEST_CODE=false
-KAVENEGAR_API_KEY=
 ENAMAD_ENABLED=false
-ENAMAD_BADGE_CODE=
 SEED_WINIMI_STAGING=false
 ```
 
@@ -121,7 +121,7 @@ deploy/bin/preflight-backend-server.sh
 deploy/bin/smoke-backend-production.sh
 ```
 
-Preflight validates PHP 8.3/extensions, systemd units, Nginx, filesystem, private env permissions, secure cookies, provider-disabled settings, empty external credentials and free disk space.
+Preflight validates PHP 8.3/extensions, systemd units, Nginx, filesystem, private env permissions, secure cookies, state-aware provider dependencies, the canonical backup encryption secret and free disk space. It never rewrites the environment or disables an accepted feature.
 
 Smoke validates API readiness, frozen contract, system metadata, migration status, backend readiness, routes, schedule discovery and failed-job command access without revealing secrets.
 
