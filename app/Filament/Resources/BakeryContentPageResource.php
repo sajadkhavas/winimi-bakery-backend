@@ -29,6 +29,14 @@ class BakeryContentPageResource extends Resource
 
     protected static ?int $navigationSort = 1;
 
+    private const PROTECTED_SLUGS = [
+        'about',
+        'shipping',
+        'privacy',
+        'terms',
+        'quality',
+    ];
+
     private const EDITOR_TOOLS = [
         'heading',
         'hr',
@@ -67,7 +75,9 @@ class BakeryContentPageResource extends Resource
                         ->label('Slug')
                         ->required()
                         ->unique(ignoreRecord: true)
-                        ->maxLength(160),
+                        ->maxLength(160)
+                        ->disabled(fn (?BakeryContentPage $record): bool => $record !== null && self::isProtectedPage($record))
+                        ->helperText('Slug صفحات اصلی درباره ما، ارسال، حریم خصوصی، قوانین و کیفیت محافظت می‌شود تا مسیرهای عمومی سایت ناخواسته خراب نشوند.'),
                     Forms\Components\TextInput::make('title')
                         ->label('عنوان')
                         ->required()
@@ -153,10 +163,18 @@ class BakeryContentPageResource extends Resource
                     ->openUrlInNewTab()
                     ->visible(fn (BakeryContentPage $record): bool => self::publicUrl($record) !== null),
                 Tables\Actions\EditAction::make()->label('ویرایش'),
-                Tables\Actions\DeleteAction::make()->label('حذف')->requiresConfirmation(),
+                Tables\Actions\DeleteAction::make()
+                    ->label('حذف')
+                    ->requiresConfirmation()
+                    ->visible(fn (BakeryContentPage $record): bool => ! self::isProtectedPage($record)),
             ])
             ->bulkActions([])
             ->defaultSort('updated_at', 'desc');
+    }
+
+    public static function isProtectedPage(BakeryContentPage $record): bool
+    {
+        return in_array($record->slug, self::PROTECTED_SLUGS, true);
     }
 
     public static function publicUrl(BakeryContentPage $record): ?string
