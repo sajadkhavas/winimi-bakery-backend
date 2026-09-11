@@ -2,6 +2,24 @@
 
 آخرین reconciliation: 2026-09-11
 
+## Production preflight reconciliation checkpoint
+
+```text
+PR=23
+BRANCH=maintenance/winimi-production-preflight-state-aware-20260911
+IMPLEMENTATION_HEAD=d47c3a90cbc2d912cb68c734715a5b0478d83959
+STATE=OPEN / DRAFT / NOT MERGED / NOT DEPLOYED
+
+INITIAL_EXACT_HEAD_RUNS:
+BACKEND_CI=34572319100
+PHASE_18_BACKEND_ACCEPTANCE=34572319170
+PHASE_19_PRODUCTION_PACKAGE=34572319200
+```
+
+این patch قرارداد قدیمی preflight را بدون تغییر Production با وضعیت واقعی F31 هماهنگ می‌کند. در بازبینی نهایی، متغیر مرده `ORDER_SUBMISSION_ENABLED` حذف شد، نام رمز بکاپ با مصرف‌کنندهٔ واقعی `config/backup.php` روی `BACKUP_ARCHIVE_PASSWORD` یکسان شد، callback واقعی Google روی `/auth/google/callback` قفل شد و dependencyهای فعال Zarinpal، Google، OTP/Kavenegar و Web Push به‌صورت fail-closed اعتبارسنجی شدند.
+
+`CURRENT_NEXT_ACTION`: وضعیت Gateهای exact-head روی آخرین HEAD زندهٔ PR #23 بررسی شود. هر Failure واقعی باید روی همین branch اصلاح شود و هر سه Gate روی HEAD تازه دوباره SUCCESS شوند. سپس review thread و source drift صفر، PR از Draft خارج و Merge شود؛ post-merge CI روی `main` نیز باید SUCCESS باشد. فقط بعد از آن اجرای read-only Hostwinds preflight و یک Final Production Deploy مجاز است. هیچ خرید، پرداخت، سفارش، Google Login، backup/restore drill یا migration پذیرفته‌شده‌ای بدون evidence جدید تکرار نشود.
+
 این سند فقط برای جلوگیری از ابهام بین **Runtime implementation source** و branch `main` ایجاد شده است. Docs-only commitها می‌توانند `main` را جلو ببرند بدون اینکه Runtime code تغییر کند؛ بنابراین Deploy نباید صرفاً بر اساس «آخرین main» انجام شود.
 
 ## Runtime implementation source lock
