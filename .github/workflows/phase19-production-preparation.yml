@@ -106,8 +106,8 @@ jobs:
             deploy/systemd/winimi-backend-queue.service \
             deploy/systemd/winimi-backend-scheduler.service \
             deploy/systemd/winimi-backend-scheduler.timer \
-            deploy/systemd/winimi-backup.service \
-            deploy/systemd/winimi-backup.timer
+            deploy/systemd/winimi-backend-backup.service \
+            deploy/systemd/winimi-backend-backup.timer
 
       - name: Install optimized production dependencies
         run: composer install --no-dev --prefer-dist --optimize-autoloader --no-interaction --no-progress
