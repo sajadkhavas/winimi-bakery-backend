@@ -107,7 +107,20 @@ class EditStorefrontSettings extends Page
 
         foreach ($this->settings() as $setting) {
             $name = 'setting_'.$setting->getKey();
-            $values[$name] = ['value' => $setting->value];
+            $value = $setting->value;
+
+            // A Filament Repeater must receive array state before it builds its
+            // child containers. pwa.shortcuts is stored as JSON text, so passing
+            // the raw string to Form::fill() can throw before formatStateUsing()
+            // gets a chance to normalize it.
+            if (StoreSettingResource::editorKind($setting) === 'shortcuts') {
+                $decoded = json_decode((string) $value, true);
+                $value = is_array($decoded) ? array_values($decoded) : [];
+            }
+
+            $values[$name] = ['value' => $value];
+            // Keep the raw stored value for optimistic concurrency checks and
+            // to preserve the database contract used by the storefront API.
             $this->originalValues[$name] = $setting->value;
         }
 
