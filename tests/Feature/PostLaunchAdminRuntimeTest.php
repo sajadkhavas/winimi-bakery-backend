@@ -19,19 +19,51 @@ class PostLaunchAdminRuntimeTest extends TestCase
         $this->actingAs($this->operator());
         $this->seedPwaLaunchSettings();
 
+        $before = StoreSetting::query()
+            ->whereIn('group', ['pwa', 'app_ui', 'integrations', 'consent'])
+            ->pluck('value', 'key')
+            ->all();
+
         $component = Livewire::test(EditStorefrontSettings::class)
             ->call('changeSection', 'pwa-launch')
             ->assertSet('section', 'pwa-launch')
             ->assertHasNoErrors();
 
-        foreach (StoreSetting::query()
+        $shortcuts = StoreSetting::query()->where('key', 'pwa.shortcuts')->firstOrFail();
+        $shortcutState = $component->get('data.setting_'.$shortcuts->getKey().'.value');
+
+        $this->assertIsArray($shortcutState);
+        $firstShortcut = array_values($shortcutState)[0] ?? null;
+        $this->assertIsArray($firstShortcut);
+        $this->assertSame('فروشگاه', $firstShortcut['name'] ?? null);
+        $this->assertSame('/products', $firstShortcut['url'] ?? null);
+
+        $after = StoreSetting::query()
             ->whereIn('group', ['pwa', 'app_ui', 'integrations', 'consent'])
-            ->get() as $setting) {
-            $component->assertSet(
-                'data.setting_'.$setting->getKey().'.value',
-                $setting->value,
-            );
-        }
+            ->pluck('value', 'key')
+            ->all();
+
+        $this->assertSame($before, $after, 'Hydrating the admin form must not mutate persisted settings.');
+    }
+
+    public function test_pwa_shortcuts_with_malformed_json_fail_closed_without_mutating_storage(): void
+    {
+        $this->actingAs($this->operator());
+        $this->seedPwaLaunchSettings();
+
+        $shortcuts = StoreSetting::query()->where('key', 'pwa.shortcuts')->firstOrFail();
+        $shortcuts->update(['value' => '{malformed-json']);
+
+        $component = Livewire::test(EditStorefrontSettings::class)
+            ->call('changeSection', 'pwa-launch')
+            ->assertSet('section', 'pwa-launch')
+            ->assertHasNoErrors();
+
+        $shortcutState = $component->get('data.setting_'.$shortcuts->getKey().'.value');
+
+        $this->assertIsArray($shortcutState);
+        $this->assertSame([], array_values($shortcutState));
+        $this->assertSame('{malformed-json', $shortcuts->fresh()->value);
     }
 
     public function test_pwa_launch_section_save_preserves_other_values_and_never_creates_browser_supplied_keys(): void
