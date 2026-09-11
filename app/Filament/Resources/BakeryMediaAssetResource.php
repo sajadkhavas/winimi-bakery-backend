@@ -30,6 +30,11 @@ class BakeryMediaAssetResource extends Resource
 
     protected static ?int $navigationSort = 1;
 
+    public static function maxUploadSizeKilobytes(): int
+    {
+        return max(1, (int) floor(((int) config('media-library.max_file_size', 12 * 1024 * 1024)) / 1024));
+    }
+
     public static function form(Form $form): Form
     {
         return $form
@@ -44,10 +49,11 @@ class BakeryMediaAssetResource extends Resource
                         'image/png',
                         'image/webp',
                     ])
-                    ->maxSize(12 * 1024)
+                    ->maxSize(self::maxUploadSizeKilobytes())
                     ->rules([
                         'dimensions:max_width=6000,max_height=6000',
                     ])
+                    ->required(fn (?BakeryMediaAsset $record): bool => $record === null)
                     ->helperText('فایل اصلی حفظ می‌شود. Preview و Thumbnail به WebP تبدیل و بهینه می‌شوند. نسخه مصرفی سایت فقط وقتی قابل استفاده است که آماده و حداکثر ۱MB باشد.')
                     ->columnSpanFull(),
                 Forms\Components\TextInput::make('title')
