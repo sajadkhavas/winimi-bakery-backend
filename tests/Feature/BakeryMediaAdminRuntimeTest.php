@@ -30,13 +30,13 @@ class BakeryMediaAdminRuntimeTest extends TestCase
         $this->assertDatabaseCount('bakery_media_assets', 0);
     }
 
-    public function test_admin_upload_limit_uses_the_same_spatie_limit_and_allows_a_five_megabyte_file(): void
+    public function test_admin_upload_limit_is_single_source_and_exactly_twelve_mebibytes(): void
     {
         $configuredBytes = (int) config('media-library.max_file_size');
         $resourceKilobytes = BakeryMediaAssetResource::maxUploadSizeKilobytes();
 
-        $this->assertSame((int) floor($configuredBytes / 1024), $resourceKilobytes);
-        $this->assertGreaterThanOrEqual(5 * 1024, $resourceKilobytes);
+        $this->assertSame(12 * 1024 * 1024, $configuredBytes);
+        $this->assertSame(12 * 1024, $resourceKilobytes);
     }
 
     private function operator(): User
