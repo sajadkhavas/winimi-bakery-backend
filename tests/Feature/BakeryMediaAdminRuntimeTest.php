@@ -39,6 +39,24 @@ class BakeryMediaAdminRuntimeTest extends TestCase
         $this->assertSame(12 * 1024, $resourceKilobytes);
     }
 
+    public function test_media_library_has_an_explicit_client_side_pre_upload_optimizer_contract(): void
+    {
+        $optimizer = file_get_contents(resource_path('js/filament/media-upload-optimizer.js'));
+        $viteConfig = file_get_contents(base_path('vite.admin.config.ts'));
+        $panelProvider = file_get_contents(app_path('Providers/Filament/AdminPanelProvider.php'));
+
+        $this->assertIsString($optimizer);
+        $this->assertStringContainsString('بهینه‌سازی برای وب', $optimizer);
+        $this->assertStringContainsString('استفاده از نسخه بهینه', $optimizer);
+        $this->assertStringContainsString('بازگشت به فایل اصلی', $optimizer);
+        $this->assertStringContainsString('event.stopImmediatePropagation()', $optimizer);
+        $this->assertStringContainsString('imageOrientation: "from-image"', $optimizer);
+        $this->assertStringContainsString('sourceFile.type === "image/png"', $optimizer);
+        $this->assertStringContainsString('TARGET_BYTES = 1024 * 1024', $optimizer);
+        $this->assertStringContainsString('media-upload-optimizer.js', $viteConfig);
+        $this->assertStringContainsString('media-upload-optimizer.js', $panelProvider);
+    }
+
     private function operator(): User
     {
         Role::findOrCreate('super_admin', 'web');
