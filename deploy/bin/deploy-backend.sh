@@ -8,6 +8,7 @@ KEEP_RELEASES=${KEEP_RELEASES:-5}
 BACKEND_RESTART_COMMAND=${BACKEND_RESTART_COMMAND:-}
 BACKEND_HEALTH_URL=${BACKEND_HEALTH_URL:-}
 BACKEND_RUN_MIGRATIONS=${BACKEND_RUN_MIGRATIONS:-true}
+BACKEND_REQUIRE_NO_PENDING_MIGRATIONS=${BACKEND_REQUIRE_NO_PENDING_MIGRATIONS:-false}
 BACKEND_MAINTENANCE=${BACKEND_MAINTENANCE:-true}
 
 if [[ -z "$RELEASE_SOURCE" ]]; then
@@ -20,6 +21,10 @@ if [[ ! "$KEEP_RELEASES" =~ ^[2-9][0-9]*$ ]]; then
 fi
 if [[ "$BACKEND_RUN_MIGRATIONS" != "true" && "$BACKEND_RUN_MIGRATIONS" != "false" ]]; then
   echo "BACKEND_RUN_MIGRATIONS must be true or false." >&2
+  exit 64
+fi
+if [[ "$BACKEND_REQUIRE_NO_PENDING_MIGRATIONS" != "true" && "$BACKEND_REQUIRE_NO_PENDING_MIGRATIONS" != "false" ]]; then
+  echo "BACKEND_REQUIRE_NO_PENDING_MIGRATIONS must be true or false." >&2
   exit 64
 fi
 
@@ -63,6 +68,15 @@ rm -rf "$APP_DIR/storage"
 ln -s "$DEPLOY_ROOT/shared/storage" "$APP_DIR/storage"
 mkdir -p "$APP_DIR/bootstrap/cache"
 chmod 0770 "$APP_DIR/bootstrap/cache"
+
+if [[ "$BACKEND_RUN_MIGRATIONS" == "false" && "$BACKEND_REQUIRE_NO_PENDING_MIGRATIONS" == "true" ]]; then
+  migration_status=$(cd "$APP_DIR" && php artisan migrate:status --no-interaction)
+  if grep -Eqi '(^|[[:space:]])Pending([[:space:]]|$)' <<< "$migration_status"; then
+    echo "Production deployment stopped before maintenance mode: pending migrations exist." >&2
+    echo "Review the pending migration set, take/verify a backup, then rerun once with BACKEND_ALLOW_PRODUCTION_MIGRATIONS=true only if explicitly approved." >&2
+    exit 78
+  fi
+fi
 
 maintenance_started=false
 if [[ "$BACKEND_MAINTENANCE" == "true" && -n "$PREVIOUS_TARGET" && -f "$DEPLOY_ROOT/current/app/artisan" ]]; then
