@@ -35,6 +35,9 @@ final class AdminMediaLibrary
     /**
      * Return public-disk relative paths for legacy fields that are intentionally
      * stored as paths rather than absolute URLs (for example category.image_path).
+     * A relative path is safe only when the preview conversion itself lives on
+     * the public disk because the public API resolves these fields with
+     * Storage::disk('public')->url(...).
      *
      * @return array<string, string>
      */
@@ -46,6 +49,13 @@ final class AdminMediaLibrary
             try {
                 $media = $asset->sourceMedia();
                 if ($media === null || ! $media->hasGeneratedConversion('preview')) {
+                    return;
+                }
+
+                $conversionDisk = trim((string) ($media->conversions_disk ?: $media->disk));
+                if ($conversionDisk !== 'public') {
+                    self::reportSkippedAsset($asset, 'path-option-non-public-disk');
+
                     return;
                 }
 
@@ -93,6 +103,14 @@ final class AdminMediaLibrary
         }
 
         return $label.' — '.$asset->optimizedSizeLabel();
+    }
+
+    private static function reportSkippedAsset(BakeryMediaAsset $asset, string $stage): void
+    {
+        Log::warning('Admin media library skipped an incompatible asset.', [
+            'asset_id' => $asset->getKey(),
+            'stage' => $stage,
+        ]);
     }
 
     private static function reportUnusableAsset(BakeryMediaAsset $asset, string $stage, Throwable $exception): void
