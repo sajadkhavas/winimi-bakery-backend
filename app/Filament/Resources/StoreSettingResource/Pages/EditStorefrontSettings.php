@@ -80,7 +80,7 @@ class EditStorefrontSettings extends Page
                     continue;
                 }
 
-                $value = $values[$name]['value'] ?? null;
+                $value = $this->valueForStorage($setting, $values[$name]['value'] ?? null);
                 if ((string) $value === (string) $this->originalValues[$name]) {
                     continue;
                 }
@@ -109,11 +109,9 @@ class EditStorefrontSettings extends Page
             $name = 'setting_'.$setting->getKey();
             $value = $setting->value;
 
-            // A Filament Repeater must receive array state before it builds its
-            // child containers. pwa.shortcuts is stored as JSON text, so passing
-            // the raw string to Form::fill() can throw before formatStateUsing()
-            // gets a chance to normalize it.
-            if (StoreSettingResource::editorKind($setting) === 'shortcuts') {
+            // Repeaters and TagsInput require array state before Filament builds
+            // child containers. These settings remain JSON text in storage.
+            if (in_array(StoreSettingResource::editorKind($setting), ['shortcuts', 'slug-list'], true)) {
                 $decoded = json_decode((string) $value, true);
                 $value = is_array($decoded) ? array_values($decoded) : [];
             }
@@ -125,6 +123,32 @@ class EditStorefrontSettings extends Page
         }
 
         $this->form->fill($values);
+    }
+
+    private function valueForStorage(StoreSetting $setting, mixed $value): mixed
+    {
+        $kind = StoreSettingResource::editorKind($setting);
+
+        if ($kind === 'shortcuts') {
+            return json_encode(
+                array_values(is_array($value) ? $value : []),
+                JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES,
+            ) ?: '[]';
+        }
+
+        if ($kind === 'slug-list') {
+            $slugs = array_values(array_unique(array_filter(
+                array_map(
+                    fn ($slug): string => strtolower(trim((string) $slug)),
+                    is_array($value) ? $value : [],
+                ),
+                fn (string $slug): bool => preg_match('/^[a-z0-9]+(?:-[a-z0-9]+)*$/', $slug) === 1,
+            )));
+
+            return json_encode($slugs, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?: '[]';
+        }
+
+        return $value;
     }
 
     private function settings(bool $lock = false): Collection
