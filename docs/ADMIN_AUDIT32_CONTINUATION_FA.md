@@ -1,44 +1,76 @@
-# ادامهٔ Audit ۳۲ موردی پنل — PR #20
+# Audit ۳۲ موردی پنل WINIMI — GitHub Closure
 
-## مرجع ادامه
+آخرین GitHub reconciliation: 2026-09-11
+
+## مرجع نهایی
 
 - Repository Backend: `sajadkhavas/winimi-bakery-backend`
-- Backend PR: #20 — Branch: `maintenance/winimi-admin-audit32-completion-20260911`
-- Main مبنا: `513af66e3ea1bdaf1eb28abcaa5a3917c17a0383`
-- شروع این ادامه: `3fc735412114949d68d79984f295401b264dc510`
-- Implementation acceptance HEAD پیش از این ثبت مستندی: `c60ae02fc2448fbecc8b92013fe05f1ada2497d6`
+- Backend PR: #20 — `Complete WINIMI 32-item admin delivery audit` — **MERGED**
+- Backend final PR HEAD: `e3d46ccec2a037f4226f5db10a07977ca08349a4`
+- Backend accepted main / merge SHA: `fc93669455d9bf22fe41260b192d76fb1e65f284`
 - Repository Frontend: `sajadkhavas/cooci`
-- Frontend companion PR: #58 — Branch: `maintenance/winimi-audit32-callout-render-20260911`
+- Frontend companion PR: #58 — `Render WINIMI managed editor callouts safely` — **MERGED**
 - Frontend implementation HEAD: `506519ced3d68e4c42991c848faf05d376063782`
-- Frontend main مبنا: `c0393a041036510675a77216ffe867520216b3e4`
-- F31 تاریخی بسته است؛ این کار اصلاحات پس از تحویل است و Production را در این مرحله تغییر نمی‌دهد.
+- Frontend accepted main / merge SHA: `ca074dbd0664c88a7d618299ba04d8d20d729b07`
+- F31 تاریخی بسته و Production آن قبلاً تحویل شده است؛ Admin Audit 32 یک maintenance پس از تحویل است.
+- **Accepted mainهای بالا هنوز به‌عنوان Production deployed source این maintenance ثبت نشده‌اند.**
 
-## وضعیت پذیرش Implementation
+## نتیجهٔ GitHub closure
 
-### Backend — `c60ae02fc2448fbecc8b92013fe05f1ada2497d6`
+```text
+AUDIT_CODE_SCOPE=32_OF_32_RECONCILED
+BACKEND_PR20=MERGED
+FRONTEND_PR58=MERGED
+BACKEND_POST_MERGE_CI=PASS
+FRONTEND_POST_MERGE_CI=PASS
+COORDINATED_BACKEND_FRONTEND_PHASE18=PASS
+PRODUCTION_MAINTENANCE_SYNC=PENDING
+```
 
-- Backend CI #741 — run `34541247423` — `SUCCESS`
-- Phase 18 Backend Acceptance #239 — run `34541247377` — `SUCCESS`
-- F30 Storefront Backend Authority #161 — run `34541247389` — `SUCCESS`
-- Phase 19 Production Package #227 — run `34541247436` — `SUCCESS`
-- Full regression، migrations، Filament discovery، Pint و Composer security audit در Gateهای بالا PASS شده‌اند.
+### Backend exact-head acceptance — `e3d46ccec2a037f4226f5db10a07977ca08349a4`
 
-### Frontend — `506519ced3d68e4c42991c848faf05d376063782`
+- Backend CI #742 — run `34541429972` — `SUCCESS`
+- Phase 18 Backend Acceptance #240 — run `34541429968` — `SUCCESS`
+- F30 Storefront Backend Authority #162 — run `34541430019` — `SUCCESS`
+- Phase 19 Production Package #228 — run `34541429944` — `SUCCESS`
+- Review threads: `0` بلافاصله قبل از Merge.
+- Base `main` قبل از Merge بدون drift و دقیقاً `513af66e3ea1bdaf1eb28abcaa5a3917c17a0383` بود.
+- Merge با `expected_head_sha` انجام شد.
+
+### Backend post-merge main — `fc93669455d9bf22fe41260b192d76fb1e65f284`
+
+- Backend CI #743 — run `34541614246` — `SUCCESS`
+- Phase 18 Backend Acceptance #241 — run `34541614236` — `SUCCESS`
+- Phase 19 Production Package #229 — run `34541614252` — `SUCCESS`
+
+### Frontend exact-head acceptance — `506519ced3d68e4c42991c848faf05d376063782`
 
 - Frontend CI #1818 — run `34540720209` — `SUCCESS`
 - Phase 18 End-to-End Acceptance #634 — run `34540720028` — `SUCCESS`
 - Phase 8 Deployment Readiness #767 — run `34540720042` — `SUCCESS`
 - Phase 19 Production Package #202 — run `34540720081` — `SUCCESS`
-- Phase18 شامل desktop/mobile browser acceptance، SSR، PWA، SEO 10.3–10.9، adversarial acceptance و scroll baseline است.
 
-این Runها شواهد Implementation هستند. چون همین فایل مستند یک commit جدید ایجاد می‌کند، Merge نهایی فقط بعد از exact-head Gateهای HEAD نهایی PR و بررسی مجدد review-thread/base-drift انجام می‌شود.
+بعد از Merge شدن Backend، همان Phase18 روی Frontend HEAD دوباره اجرا شد. workflow صریحاً Backend `main` را checkout می‌کند و job جدید `103085747602` روی run `34540720028` با Backend `main=fc936694...` کامل `SUCCESS` شد. این coordinated acceptance شامل Laravel install/migrations/seed، backend adversarial acceptance، delivery contract، Production SSR build، desktop/mobile browser، SEO 10.3–10.9، PWA، final adversarial و scroll baseline بود.
+
+بلافاصله قبل از Merge Frontend:
+- PR head همچنان دقیقاً `506519ced3d68e4c42991c848faf05d376063782` بود.
+- Review threads: `0`.
+- Frontend `main` بدون drift و دقیقاً `c0393a041036510675a77216ffe867520216b3e4` بود.
+- Merge با `expected_head_sha` انجام شد.
+
+### Frontend post-merge main — `ca074dbd0664c88a7d618299ba04d8d20d729b07`
+
+- Frontend CI #1819 — run `34542268389` — `SUCCESS`
+- Phase 8 Deployment Readiness #768 — run `34542268400` — `SUCCESS`
+- Phase 19 Production Package #203 — run `34542268410` — `SUCCESS`
+- Phase 18 End-to-End Acceptance #635 — run `34542268430` — `SUCCESS`
 
 ## ماتریس نهایی Audit ۳۲ موردی
 
 1. **Push consent و eligible count — RECONCILED:** Broadcast عمومی فقط `marketingRecipients()` فعال و opt-in شده را هدف می‌گیرد و تعداد واجد شرایط پیش از ارسال نمایش داده می‌شود.
 2. **Review integrity — RECONCILED:** `status` و `published_at` در فرم مستقیم قابل تغییر نیستند؛ transition فقط از Actionهای تأیید/رد انجام می‌شود.
 3. **Media source of truth — RECONCILED:** Bakery Media Library مرجع تصاویر جدید پنل است؛ مسیرهای مستقیم Product در runtime غیرفعال‌اند، Curator قدیمی Navigation ندارد و Media قبلی حذف نشده است.
-4. **WebP/regeneration — CODE READY / PRODUCTION ACTION REMAINS:** thumb/preview واقعی WebP تولید و تست می‌شوند و regeneration مشتق‌ها با قرارداد رسمی Spatie و `--force` آماده است؛ regeneration دارایی‌های تاریخی Production هنوز عمداً اجرا نشده است.
+4. **WebP/regeneration — CODE READY / PRODUCTION ACTION REMAINS:** `thumb`/`preview` واقعی WebP تولید و تست می‌شوند و regeneration مشتق‌ها با قرارداد رسمی Spatie و `--force` آماده است؛ regeneration دارایی‌های تاریخی Production هنوز عمداً اجرا نشده است.
 5. **Image optimization — RECONCILED:** مشتق‌های بهینه، محدودیت ابعاد/ورودی و سقف عملی preview حداکثر ۱MB برای مصرف جدید enforce می‌شود؛ Original حفظ می‌شود.
 6. **Media operator metadata — RECONCILED:** Preview، URL Original/Optimized، اندازه، ابعاد، فرمت و وضعیت conversion در پنل در دسترس‌اند.
 7. **Gallery media/link picker — RECONCILED:** تصویر از Media Library و مقصد از Internal Link picker انتخاب می‌شود؛ legacy value بدون حذف حفظ می‌شود.
@@ -72,7 +104,7 @@
 
 `AUDIT_CODE_SCOPE = 32/32 RECONCILED`
 
-دو مورد زیر عمداً **کدنویسی ناقص محسوب نمی‌شوند** و فقط در Final Production execution انجام/تصمیم‌گیری می‌شوند:
+دو مورد زیر عمداً **کدنویسی ناقص محسوب نمی‌شوند**:
 
 - #4: regeneration مشتق‌های media تاریخی روی سرور Production، بدون حذف Original.
 - #26: ثبت Delivery Zone واقعی فقط در صورت وجود دادهٔ واقعی کسب‌وکار؛ در غیر این صورت مسیر مربوط باید fail-closed/غیرفعال بماند.
@@ -84,19 +116,50 @@
 - `ManagedHtmlSanitizer` خروجی Callout را فقط با class دقیق `filament-tiptap-hurdle` و toneهای محدود پذیرفته و attribute/class دلخواه را حذف می‌کند.
 - Spatie Media Library نسخه قفل‌شده `11.23.7` است؛ regeneration در Production به دلیل ConfirmableTrait با `--force` انجام می‌شود و فقط derivativeهای `thumb` و `preview` هدف هستند.
 
-## ترتیب بسته‌شدن PRها و Production
+## Production status پس از GitHub closure
 
-1. exact-head Gateهای Backend بعد از این ثبت مستندی باید سبز باشند.
-2. review-thread هر دو PR باید صفر و base-drift باید دوباره صفر باشد.
-3. Backend PR #20 با `expected_head_sha` Merge شود و post-merge main CI سبز شود.
-4. Frontend PR #58 بعد از Backend accepted main دوباره هماهنگ بررسی شود؛ سپس با `expected_head_sha` Merge و post-merge CI سبز شود.
-5. فقط پس از آن یک Final Production Deploy اجرا شود.
-6. در Deploy نهایی: migration امن، admin assets/theme، restartهای لازم، health checks و derivative-only media regeneration انجام می‌شود؛ Order/Payment mutation ممنوع است.
-7. Production admin QA پس از Deploy انجام و SHA/Run/Runtime evidence در Living Handoff ثبت می‌شود.
+GitHub closure کامل است، اما maintenance جدید هنوز روی Hostwinds deploy نشده است. Production همچنان runtime تاریخی F31 را اجرا می‌کند تا evidence جدید خلاف آن را ثابت کند:
+
+```text
+HISTORICAL_F31_FRONTEND_DEPLOYED_SOURCE=7d5e3fe03b11bc007652908b5f2fff2e78504b31
+HISTORICAL_F31_BACKEND_DEPLOYED_SOURCE=a2e5c48e8c73c49caaac1f5c9cbb0f608f066e3b
+LATEST_ACCEPTED_FRONTEND_MAIN=ca074dbd0664c88a7d618299ba04d8d20d729b07
+LATEST_ACCEPTED_BACKEND_MAIN=fc93669455d9bf22fe41260b192d76fb1e65f284
+PRODUCTION_MAINTENANCE_SYNC=PENDING
+```
+
+هیچ migration، restart، media regeneration، Delivery Zone mutation، Order mutation یا Payment mutation برای این maintenance از طریق GitHub انجام نشده است.
+
+## قرارداد Final Production sync
+
+Deployment واقعی باید فقط یک‌بار و با Source lock دقیق دو accepted main بالا انجام شود. مسیر versioned مخازن:
+
+Backend:
+- `deploy/bin/preflight-backend-server.sh`
+- `deploy/bin/deploy-production-backend.sh`
+- `deploy/bin/smoke-backend-production.sh`
+- `deploy/bin/rollback-backend.sh`
+
+Frontend:
+- `deploy/bin/preflight-frontend-server.sh`
+- `deploy/bin/deploy-production-frontend.sh`
+- smoke و rollback scripts متناظر در repo Frontend.
+
+در اجرای واقعی:
+1. Host/source/release lock قبل از mutation ثبت شود.
+2. Orders/Payment attempts و checksumهای shared env/runtime env قبل و بعد ثبت شوند.
+3. Backend release جدید با migration امن و admin theme/assets فعال شود.
+4. queue/scheduler/PHP-FPM فقط طبق deploy contract موجود restart/reload شوند.
+5. derivative-only regeneration برای `thumb` و `preview` با `--force` انجام شود؛ Original حذف نشود.
+6. Delivery Zone فقط با دادهٔ واقعی کسب‌وکار ثبت شود؛ در نبود اطلاعات واقعی هیچ دادهٔ آزمایشی ساخته نشود.
+7. Frontend release deterministic و SSR runtime فعال شود.
+8. readiness/health، public surfaces، PWA، admin QA و smoke scripts PASS شوند.
+9. در صورت failure از rollback versioned استفاده شود.
+10. release IDها و runtime evidence واقعی در `cooci/docs/WINIMI_LIVING_HANDOFF_FA.md` ثبت شوند.
 
 ## محدودیت‌های ثابت
 
-Production، Order، Payment و Google Login در این PR دست‌نخورده‌اند. Media قدیمی حذف نشده. هیچ محتوای جعلی یا Delivery Zone آزمایشی ساخته نشده. regeneration Production هنوز اجرا نشده است. شواهد Production فقط پس از اجرای واقعی روی سرور ثبت می‌شوند.
+Production، Order، Payment و Google Login در PRهای #20/#58 mutate نشده‌اند. Media قدیمی حذف نشده. هیچ محتوای جعلی یا Delivery Zone آزمایشی ساخته نشده. regeneration Production هنوز اجرا نشده است. شواهد Production جدید فقط پس از اجرای واقعی روی سرور ثبت می‌شوند.
 
 ## منابع رسمی استفاده‌شده
 
@@ -107,3 +170,15 @@ Production، Order، Payment و Google Login در این PR دست‌نخورد�
 - [Spatie Media Library 11.23.7](https://github.com/spatie/laravel-medialibrary/tree/11.23.7)
 - قرارداد داخلی Storefront authority: `database/migrations/2026_09_06_153500_seed_storefront_authority.php`
 - Gate داخلی: `.github/workflows/f30-storefront-authority.yml`
+
+## NEXT
+
+```text
+NEXT=ADMIN_AUDIT32_SINGLE_PRODUCTION_SYNC
+GITHUB_IMPLEMENTATION=COMPLETE
+GITHUB_DOCUMENTATION=COMPLETE_AFTER_DOCS_PR_MERGE
+PRODUCTION_MAINTENANCE_SYNC=PENDING
+ORDER_MUTATION=FORBIDDEN
+PAYMENT_MUTATION=FORBIDDEN
+FAKE_BUSINESS_DATA=FORBIDDEN
+```
