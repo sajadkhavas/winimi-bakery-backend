@@ -50,7 +50,7 @@ return [
      * The maximum file size of an item in bytes.
      * Adding a larger file will result in an exception.
      */
-    'max_file_size' => 1024 * 1024 * 10, // 10MB
+    'max_file_size' => (int) env('MEDIA_LIBRARY_MAX_FILE_SIZE', 12 * 1024 * 1024),
 
     /*
      * Uploads whose file name contains any of these extensions will be rejected.
@@ -182,41 +182,41 @@ return [
      */
     'image_optimizers' => [
         Jpegoptim::class => [
-            '-m85', // set maximum quality to 85%
-            '--force', // ensure that progressive generation is always done also if a little bigger
-            '--strip-all', // this strips out all text information such as comments and EXIF data
-            '--all-progressive', // this will make sure the resulting image is a progressive one
+            '-m85',
+            '--force',
+            '--strip-all',
+            '--all-progressive',
         ],
         Pngquant::class => [
-            '--force', // required parameter for this package
+            '--force',
         ],
         Optipng::class => [
-            '-i0', // this will result in a non-interlaced, progressive scanned image
-            '-o2', // this set the optimization level to two (multiple IDAT compression trials)
-            '-quiet', // required parameter for this package
+            '-i0',
+            '-o2',
+            '-quiet',
         ],
         Svgo::class => [
-            '--disable=cleanupIDs', // disabling because it is known to cause troubles
+            '--disable=cleanupIDs',
         ],
         Gifsicle::class => [
-            '-b', // required parameter for this package
-            '-O3', // this produces the slowest but best results
+            '-b',
+            '-O3',
         ],
         Cwebp::class => [
-            '-m 6', // for the slowest compression method in order to get the best compression.
-            '-pass 10', // for maximizing the amount of analysis pass.
-            '-mt', // multithreading for some speed improvements.
-            '-q 90', // quality factor that brings the least noticeable changes.
+            '-m 6',
+            '-pass 10',
+            '-mt',
+            '-q 90',
         ],
         Avifenc::class => [
-            '-a cq-level=23', // constant quality level, lower values mean better quality and greater file size (0-63).
-            '-j all', // number of jobs (worker threads, "all" uses all available cores).
-            '--min 0', // min quantizer for color (0-63).
-            '--max 63', // max quantizer for color (0-63).
-            '--minalpha 0', // min quantizer for alpha (0-63).
-            '--maxalpha 63', // max quantizer for alpha (0-63).
-            '-a end-usage=q', // rate control mode set to Constant Quality mode.
-            '-a tune=ssim', // SSIM as tune the encoder for distortion metric.
+            '-a cq-level=23',
+            '-j all',
+            '--min 0',
+            '--max 63',
+            '--minalpha 0',
+            '--maxalpha 63',
+            '-a end-usage=q',
+            '-a tune=ssim',
         ],
     ],
 
