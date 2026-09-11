@@ -78,6 +78,16 @@ if [[ "$BACKEND_RUN_MIGRATIONS" == "false" && "$BACKEND_REQUIRE_NO_PENDING_MIGRA
   fi
 fi
 
+CONTENT_FINGERPRINT_BEFORE=""
+if [[ "$BACKEND_RUN_MIGRATIONS" == "false" ]]; then
+  CONTENT_FINGERPRINT_BEFORE=$(cd "$APP_DIR" && php artisan production:content-fingerprint --hash-only --no-interaction)
+  [[ "$CONTENT_FINGERPRINT_BEFORE" =~ ^[0-9a-f]{64}$ ]] || {
+    echo "Production deployment stopped: invalid pre-deploy content fingerprint." >&2
+    exit 78
+  }
+  echo "CONTENT_FINGERPRINT_BEFORE=$CONTENT_FINGERPRINT_BEFORE"
+fi
+
 maintenance_started=false
 if [[ "$BACKEND_MAINTENANCE" == "true" && -n "$PREVIOUS_TARGET" && -f "$DEPLOY_ROOT/current/app/artisan" ]]; then
   (cd "$DEPLOY_ROOT/current/app" && php artisan down --retry=60 --no-interaction) || true
@@ -136,7 +146,7 @@ check_health() {
   fi
 }
 restore_previous_release() {
-  echo "Backend restart or health check failed; restoring previous release symlink." >&2
+  echo "Deployment verification failed; restoring previous release symlink." >&2
   if [[ -n "$PREVIOUS_TARGET" ]]; then
     activate_release "$PREVIOUS_TARGET"
     restart_runtime || true
@@ -151,6 +161,19 @@ if ! restart_runtime; then
   restore_previous_release
   echo "Database migrations are not automatically reversed; inspect migration compatibility before retrying." >&2
   exit 1
+fi
+
+if [[ "$BACKEND_RUN_MIGRATIONS" == "false" ]]; then
+  CONTENT_FINGERPRINT_AFTER=$(cd "$DEPLOY_ROOT/current/app" && php artisan production:content-fingerprint --hash-only --no-interaction)
+  if [[ "$CONTENT_FINGERPRINT_AFTER" != "$CONTENT_FINGERPRINT_BEFORE" ]]; then
+    echo "CONTENT_FINGERPRINT_AFTER=$CONTENT_FINGERPRINT_AFTER" >&2
+    echo "Production deployment stopped: admin-managed storefront/catalog data changed during a code-only deployment." >&2
+    restore_previous_release
+    echo "Database content is never auto-reverted; inspect the data change before retrying." >&2
+    exit 1
+  fi
+  echo "CONTENT_FINGERPRINT_AFTER=$CONTENT_FINGERPRINT_AFTER"
+  echo "CONTENT_FINGERPRINT=PASS"
 fi
 
 cleanup_maintenance
