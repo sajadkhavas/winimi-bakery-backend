@@ -15,6 +15,7 @@ class ProductionContentFingerprintTest extends TestCase
     public function test_managed_content_changes_are_detected_without_exposing_raw_values(): void
     {
         $before = ProductionContentFingerprint::capture();
+        $storeSettingCountBefore = $before['tables']['store_settings']['count'];
 
         $setting = StoreSetting::query()->create([
             'group' => 'brand',
@@ -28,7 +29,10 @@ class ProductionContentFingerprintTest extends TestCase
         $afterCreate = ProductionContentFingerprint::capture();
 
         $this->assertNotSame($before['aggregate'], $afterCreate['aggregate']);
-        $this->assertSame(1, $afterCreate['tables']['store_settings']['count']);
+        $this->assertSame(
+            $storeSettingCountBefore + 1,
+            $afterCreate['tables']['store_settings']['count'],
+        );
         $this->assertMatchesRegularExpression('/^[0-9a-f]{64}$/', $afterCreate['aggregate']);
         $this->assertStringNotContainsString(
             'محتوای تست خصوصی',
