@@ -2,9 +2,12 @@
 
 namespace Tests\Feature;
 
+use App\Filament\Resources\BakeryContentPageResource;
 use App\Filament\Resources\BakeryFaqResource;
+use App\Filament\Resources\BakeryGalleryItemResource;
 use App\Filament\Resources\CustomerResource;
 use App\Filament\Resources\StoreSettingResource;
+use App\Models\BakeryContentPage;
 use App\Models\BakeryFaq;
 use App\Models\BakeryProductVariant;
 use App\Models\StoreSetting;
@@ -117,5 +120,41 @@ class PostHandoffOperatorUxTest extends TestCase
         $this->assertStringContainsString("'weightMinGrams' => \$this->weight_min_grams", $apiResource);
         $this->assertStringContainsString("'weightMaxGrams' => \$this->weight_max_grams", $apiResource);
         $this->assertStringContainsString("'weight' => \$this->weightLabel()", $apiResource);
+    }
+
+    public function test_gallery_uses_the_specialized_media_library_and_safe_reordering(): void
+    {
+        $source = file_get_contents(app_path('Filament/Resources/BakeryGalleryItemResource.php'));
+
+        $this->assertIsString($source);
+        $this->assertStringContainsString("Select::make('image_url')", $source);
+        $this->assertStringContainsString('AdminMediaLibrary::imageUrlOptions', $source);
+        $this->assertStringNotContainsString("TextInput::make('image_url')->label('آدرس تصویر')->url()", $source);
+        $this->assertStringContainsString("->reorderable('sort_order')", $source);
+        $this->assertStringContainsString('->bulkActions([])', $source);
+        $this->assertStringContainsString('DeleteAction::make()', $source);
+    }
+
+    public function test_core_managed_pages_cannot_be_deleted_or_have_their_route_slug_edited_from_normal_admin(): void
+    {
+        $protected = new BakeryContentPage(['slug' => 'privacy']);
+        $ordinary = new BakeryContentPage(['slug' => 'campaign-story']);
+
+        $this->assertTrue(BakeryContentPageResource::isProtectedPage($protected));
+        $this->assertFalse(BakeryContentPageResource::isProtectedPage($ordinary));
+
+        $source = file_get_contents(app_path('Filament/Resources/BakeryContentPageResource.php'));
+        $this->assertIsString($source);
+        $this->assertStringContainsString("'about'", $source);
+        $this->assertStringContainsString("'shipping'", $source);
+        $this->assertStringContainsString("'privacy'", $source);
+        $this->assertStringContainsString("'terms'", $source);
+        $this->assertStringContainsString("'quality'", $source);
+        $this->assertMatchesRegularExpression(
+            "/TextInput::make\('slug'\).*?->disabled\(fn \(\?BakeryContentPage \$record\): bool => \$record !== null && self::isProtectedPage\(\$record\)\)/s",
+            $source,
+        );
+        $this->assertStringContainsString("->visible(fn (BakeryContentPage \$record): bool => ! self::isProtectedPage(\$record))", $source);
+        $this->assertStringContainsString('->bulkActions([])', $source);
     }
 }
