@@ -71,7 +71,7 @@ require_one_of_env() {
     [[ "$actual" == "$allowed" ]] && return
   done
 
-  errors+=("backend env has unsupported ${name}=${actual")
+  errors+=("backend env has unsupported ${name}=${actual}")
 }
 
 require_nonempty_secret() {
