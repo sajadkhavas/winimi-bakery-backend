@@ -5,13 +5,12 @@ namespace App\Filament\Resources;
 use App\Filament\Resources\BakeryPostResource\Pages;
 use App\Models\BakeryPost;
 use App\Support\AdminMediaLibrary;
+use App\Support\WinimiContentEditor;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
-use FilamentTiptapEditor\Enums\TiptapOutput;
-use FilamentTiptapEditor\TiptapEditor;
 
 class BakeryPostResource extends Resource
 {
@@ -33,21 +32,17 @@ class BakeryPostResource extends Resource
     {
         return $form->schema([
             Forms\Components\Section::make('مقاله')
-                ->description('ویرایشگر مدیریت‌شده WINIMI فعال است: Heading، فهرست، نقل‌قول، رنگ/Highlight، Alignment، جدول، لینک داخلی و تصویر از کتابخانه رسانه. HTML خام، کد و Embed عمومی عمداً در دسترس نیستند.')
+                ->description('ویرایشگر یکپارچه WINIMI با HTML / Source امن، Media Library و Link Picker مدیریت‌شده فعال است.')
                 ->schema([
                     Forms\Components\TextInput::make('title')->label('عنوان')->required()->maxLength(260)->columnSpanFull(),
                     Forms\Components\TextInput::make('slug')->label('Slug')->required()->unique(ignoreRecord: true)->maxLength(180),
                     Forms\Components\TextInput::make('category')->label('دسته')->maxLength(120),
                     Forms\Components\TagsInput::make('tags')->label('برچسب‌ها')->columnSpanFull(),
                     Forms\Components\Textarea::make('excerpt')->label('خلاصه')->rows(3)->maxLength(500)->columnSpanFull(),
-                    TiptapEditor::make('content')
+                    WinimiContentEditor::make('content')
                         ->label('محتوا')
                         ->required()
-                        ->profile('default')
-                        ->output(TiptapOutput::Html)
-                        ->maxContentWidth('full')
-                        ->extraInputAttributes(['style' => 'min-height: 20rem;'])
-                        ->helperText('لینک‌های داخلی و تصاویر را از Pickerهای خود Editor انتخاب کنید تا Slug و Media از منابع معتبر سایت بیایند. خروجی HTML با Frontend فعلی سازگار می‌ماند.')
+                        ->helperText(WinimiContentEditor::helperText())
                         ->columnSpanFull(),
                     Forms\Components\Select::make('cover_url')
                         ->label('تصویر شاخص از کتابخانه رسانه')

@@ -4,13 +4,12 @@ namespace App\Filament\Resources;
 
 use App\Filament\Resources\BakeryFaqResource\Pages;
 use App\Models\BakeryFaq;
+use App\Support\WinimiContentEditor;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
-use FilamentTiptapEditor\Enums\TiptapOutput;
-use FilamentTiptapEditor\TiptapEditor;
 
 class BakeryFaqResource extends Resource
 {
@@ -53,14 +52,11 @@ class BakeryFaqResource extends Resource
                 ->required()
                 ->maxLength(500)
                 ->columnSpanFull(),
-            TiptapEditor::make('answer')
+            WinimiContentEditor::make('answer')
                 ->label('پاسخ')
                 ->required()
-                ->profile('default')
-                ->output(TiptapOutput::Html)
-                ->maxContentWidth('full')
                 ->extraInputAttributes(['style' => 'min-height: 10rem;'])
-                ->helperText('پاسخ را خوانا و کوتاه نگه دارید. لینک داخلی و تصویر فقط از Pickerهای مدیریت‌شده WINIMI می‌آیند؛ HTML خام، کد و Embed عمومی غیرفعال‌اند.')
+                ->helperText(WinimiContentEditor::helperText())
                 ->columnSpanFull(),
         ])->columns(3);
     }

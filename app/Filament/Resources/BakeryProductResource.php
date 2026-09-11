@@ -5,14 +5,13 @@ namespace App\Filament\Resources;
 use App\Filament\Resources\BakeryProductResource\Pages;
 use App\Models\BakeryProduct;
 use App\Support\AdminImageUpload;
+use App\Support\WinimiContentEditor;
 use Filament\Forms;
 use Filament\Forms\Components\SpatieMediaLibraryFileUpload;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
-use FilamentTiptapEditor\Enums\TiptapOutput;
-use FilamentTiptapEditor\TiptapEditor;
 use Illuminate\Database\Eloquent\Builder;
 
 class BakeryProductResource extends Resource
@@ -30,24 +29,6 @@ class BakeryProductResource extends Resource
     protected static ?string $navigationGroup = 'فروشگاه';
 
     protected static ?int $navigationSort = 2;
-
-    private const EDITOR_TOOLS = [
-        'heading',
-        'hr',
-        'bullet-list',
-        'ordered-list',
-        'checked-list',
-        'blockquote',
-        'bold',
-        'italic',
-        'strike',
-        'underline',
-        'lead',
-        'small',
-        'link',
-        'table',
-        'details',
-    ];
 
     public static function form(Form $form): Form
     {
@@ -84,13 +65,10 @@ class BakeryProductResource extends Resource
                                         ->rows(3)
                                         ->maxLength(320)
                                         ->columnSpanFull(),
-                                    TiptapEditor::make('description')
+                                    WinimiContentEditor::make('description')
                                         ->label('توضیح کامل')
-                                        ->tools(self::EDITOR_TOOLS)
-                                        ->output(TiptapOutput::Html)
-                                        ->maxContentWidth('full')
                                         ->extraInputAttributes(['style' => 'min-height: 18rem;'])
-                                        ->helperText('ویرایشگر حرفه‌ای با خروجی HTML سازگار با Frontend است. ابزارهای HTML خام، اجرای کد، iframe، Embed و آپلود رسانه داخل متن عمداً فعال نیستند؛ تصاویر محصول از تب رسانه مدیریت می‌شوند.')
+                                        ->helperText(WinimiContentEditor::helperText().' تصاویر محتوایی نیز فقط از Media Library مرکزی انتخاب می‌شوند؛ تصویر اصلی و گالری فروش همچنان در تب رسانه مرجع هستند.')
                                         ->columnSpanFull(),
                                 ])
                                 ->columns(2),

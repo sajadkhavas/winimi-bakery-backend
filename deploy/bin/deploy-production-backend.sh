@@ -8,9 +8,15 @@ PHP_FPM_SERVICE=${PHP_FPM_SERVICE:-php8.3-fpm.service}
 QUEUE_SERVICE=${BACKEND_QUEUE_SERVICE:-winimi-backend-queue.service}
 SCHEDULER_TIMER=${BACKEND_SCHEDULER_TIMER:-winimi-backend-scheduler.timer}
 HEALTH_URL=${BACKEND_INTERNAL_HEALTH_URL:-https://api.winimibakery.com/api/system/ready}
+ALLOW_MIGRATIONS=${BACKEND_ALLOW_PRODUCTION_MIGRATIONS:-false}
 
 if [[ -z "$RELEASE_SOURCE" ]]; then
   echo "Usage: deploy-production-backend.sh <verified-release-directory> [deploy-root]" >&2
+  exit 64
+fi
+
+if [[ "$ALLOW_MIGRATIONS" != "true" && "$ALLOW_MIGRATIONS" != "false" ]]; then
+  echo "BACKEND_ALLOW_PRODUCTION_MIGRATIONS must be true or false." >&2
   exit 64
 fi
 
@@ -27,7 +33,10 @@ systemctl cat "$SCHEDULER_TIMER" >/dev/null
 
 export BACKEND_RESTART_COMMAND="sudo systemctl restart $PHP_FPM_SERVICE && sudo systemctl restart $QUEUE_SERVICE && sudo systemctl start $SCHEDULER_TIMER"
 export BACKEND_HEALTH_URL="$HEALTH_URL"
-export BACKEND_RUN_MIGRATIONS=true
+# Production is code-only by default. Running database migrations requires an
+# explicit one-deploy opt-in after the pending migration set has been reviewed.
+export BACKEND_RUN_MIGRATIONS="$ALLOW_MIGRATIONS"
+export BACKEND_REQUIRE_NO_PENDING_MIGRATIONS=true
 export BACKEND_MAINTENANCE=true
 
 SCRIPT_ROOT=$(cd "$(dirname "$0")/../.." && pwd)
