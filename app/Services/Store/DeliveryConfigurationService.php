@@ -16,9 +16,20 @@ final class DeliveryConfigurationService
         'هزینه ارسال در مبلغ سفارش محاسبه نشده و هنگام تحویل مستقیماً به پیک پرداخت می‌شود.';
 
     /**
+     * Confirmed business coverage for temperature-sensitive orders.
+     * Additional verified surrounding cities may be added through an active
+     * DeliveryZone with an explicit city and chilled_enabled=true.
+     */
+    private const BASE_CHILLED_CITIES = [
+        'تهران',
+        'کرج',
+        'اندیشه',
+    ];
+
+    /**
      * DeliveryZone pricing remains non-authoritative for new checkout.
-     * Active zones with an explicit city and chilled_enabled=true are the
-     * allow-list for temperature-sensitive deliveries only.
+     * Zones can only extend chilled-delivery eligibility to an explicitly
+     * named verified city; province-wide wildcard coverage is not allowed.
      *
      * @return array{
      *     zone: null,
@@ -50,7 +61,7 @@ final class DeliveryConfigurationService
     /**
      * Only the canonical merchant-arranged courier method is offered.
      * For dry products it is nationwide. For a chilled cart it is enabled only
-     * when the exact destination city has an active chilled DeliveryZone.
+     * for a confirmed base city or an explicitly configured extra covered city.
      *
      * @return array<int, array{
      *     method: string,
@@ -68,7 +79,7 @@ final class DeliveryConfigurationService
         return [[
             'method' => DeliveryMethod::Standard->value,
             'label' => DeliveryMethod::Standard->label(),
-            'enabled' => ! $requiresCooling || $this->resolveChilledZone($province, $city) !== null,
+            'enabled' => ! $requiresCooling || $this->supportsChilledDestination($province, $city),
             'feeToman' => 0,
         ]];
     }
@@ -88,11 +99,7 @@ final class DeliveryConfigurationService
         ?string $city,
         bool $requiresCooling,
     ): void {
-        if (! $requiresCooling) {
-            return;
-        }
-
-        if ($this->resolveChilledZone($province, $city) !== null) {
+        if (! $requiresCooling || $this->supportsChilledDestination($province, $city)) {
             return;
         }
 
@@ -101,6 +108,21 @@ final class DeliveryConfigurationService
                 'ارسال محصولات یخچالی برای این مقصد فعال نیست. لطفاً یک شهر تحت پوشش انتخاب کنید یا با پشتیبانی هماهنگ کنید.',
             ],
         ]);
+    }
+
+    private function supportsChilledDestination(?string $province, ?string $city): bool
+    {
+        $normalizedCity = DeliveryZone::normalizeLocation($city);
+
+        if ($normalizedCity === null) {
+            return false;
+        }
+
+        if (in_array($normalizedCity, self::BASE_CHILLED_CITIES, true)) {
+            return true;
+        }
+
+        return $this->resolveChilledZone($province, $normalizedCity) !== null;
     }
 
     private function resolveChilledZone(?string $province, ?string $city): ?DeliveryZone
