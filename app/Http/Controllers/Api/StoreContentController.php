@@ -28,7 +28,19 @@ class StoreContentController extends Controller
             ->orderBy('key')
             ->get()
             ->each(function (StoreSetting $setting) use (&$settings): void {
-                Arr::set($settings, $setting->key, $setting->typedValue());
+                $typedValue = $setting->typedValue();
+
+                Arr::set(
+                    $settings,
+                    $setting->key,
+                    $typedValue,
+                );
+
+                /*
+                 * Compatibility for storefront consumers
+                 * that read literal dotted setting keys.
+                 */
+                $settings[$setting->key] = $typedValue;
             });
         $enamadEnabled = (bool) StoreSetting::value('trust.enamad_enabled', false);
         $badgeCode = $enamadEnabled
