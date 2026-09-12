@@ -12,7 +12,7 @@ PR=30
 TITLE=Sync storefront settings dotted-key compatibility
 PR_HEAD=c478956cb573763bde44889c3126d2abc43ac010
 MERGE_SHA=b83af12e227ac9cb08b30fc78f01ec4798afbcc3
-MAIN=b83af12e227ac9cb08b30fc78f01ec4798afbcc3
+RUNTIME_CODE_MAIN_AT_CLOSURE=b83af12e227ac9cb08b30fc78f01ec4798afbcc3
 STATE=MERGED
 ```
 
@@ -22,6 +22,8 @@ Backend Phase18 post-merge:
 PHASE18_BACKEND_RUN=34665867392
 PHASE18_BACKEND_RESULT=SUCCESS
 ```
+
+نکته: بعد از این closure ممکن است `main` به‌علت commitهای docs-only جلوتر از `b83af12...` باشد. این به معنی deploy شدن code جدید Backend نیست. Runtime authority این maintenance همان merge/code SHA بالا و active release واقعی سرور است تا زمانی که deploy جدید جداگانه اثبات شود.
 
 ## Compatibility contract
 
